@@ -8,6 +8,7 @@
 // your own open-world crime game in its place (three.js or any library you vendor under game/),
 // put your 3 or 4 PNG or JPEG screenshots in screenshots/ (the first by name is the cover) and run it.
 //
+// Solara Nights: this entrypoint hands in the open-world crime game in game/.
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts

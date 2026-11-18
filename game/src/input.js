@@ -1,53 +1,106 @@
-// Keyboard and pointer input. Held keys give a steering direction; one-shot presses (start or
-// restart, pause) are queued as bit flags and taken once by the loop, so a press between two
-// frames is never lost and never counted twice.
+// Solara Nights — keyboard + mouse input with pointer lock.
+// Held keys are read every frame; one-shot presses (interact, reload, pause) are queued
+// as flags and taken once, so a press between frames is never lost or counted twice.
+export const ACT_INTERACT = 1;
+export const ACT_RELOAD = 2;
+export const ACT_PAUSE = 4;
+export const ACT_HORN = 8;
 
-export const ACTION_CONFIRM = 1;
-export const ACTION_PAUSE = 2;
+export class Input {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.keys = new Set();
+    this.actions = 0;
+    this.mouseDX = 0;
+    this.mouseDY = 0;
+    this.mouseDown = false;
+    this.mouseClicked = false;
+    this.locked = false;
+    this.onFirstGesture = null;
+    this._gestured = false;
 
-const LEFT = new Set(['ArrowLeft', 'KeyA']);
-const RIGHT = new Set(['ArrowRight', 'KeyD']);
-const CONFIRM = new Set(['Space', 'Enter']);
-const PAUSE = new Set(['KeyP', 'Escape']);
+    window.addEventListener('keydown', (e) => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON')) return;
+      this.keys.add(e.code);
+      if (!e.repeat) {
+        if (e.code === 'KeyE') this.actions |= ACT_INTERACT;
+        if (e.code === 'KeyR') this.actions |= ACT_RELOAD;
+        if (e.code === 'Escape' || e.code === 'KeyP') this.actions |= ACT_PAUSE;
+        if (e.code === 'KeyH') this.actions |= ACT_HORN;
+      }
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+      this._gesture();
+    });
+    window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+    window.addEventListener('blur', () => this.keys.clear());
+    document.addEventListener('mousemove', (e) => {
+      if (this.locked) {
+        this.mouseDX += e.movementX;
+        this.mouseDY += e.movementY;
+      }
+    });
+    canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 0) {
+        this.mouseDown = true;
+        this.mouseClicked = true;
+      }
+      this._gesture();
+    });
+    window.addEventListener('mouseup', (e) => {
+      if (e.button === 0) this.mouseDown = false;
+    });
+    document.addEventListener('pointerlockchange', () => {
+      this.locked = document.pointerLockElement === canvas;
+    });
+  }
 
-export function createInput(target) {
-  let left = false;
-  let right = false;
-  let actions = 0;
+  _gesture() {
+    if (!this._gestured) {
+      this._gestured = true;
+      if (this.onFirstGesture) this.onFirstGesture();
+    }
+  }
 
-  window.addEventListener('keydown', (event) => {
-    if (LEFT.has(event.code)) left = true;
-    else if (RIGHT.has(event.code)) right = true;
-    else if (CONFIRM.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_CONFIRM;
-    } else if (PAUSE.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_PAUSE;
-    } else return;
-    event.preventDefault();
-  });
-  window.addEventListener('keyup', (event) => {
-    if (LEFT.has(event.code)) left = false;
-    else if (RIGHT.has(event.code)) right = false;
-  });
-  // A key released while the tab is hidden never sends keyup: let go of everything on blur.
-  window.addEventListener('blur', () => {
-    left = false;
-    right = false;
-  });
-  target.addEventListener('pointerdown', () => {
-    actions |= ACTION_CONFIRM;
-  });
+  down(code) {
+    return this.keys.has(code);
+  }
 
-  return {
-    /** -1 for left, 1 for right, 0 for neither or both. */
-    direction() {
-      return (right ? 1 : 0) - (left ? 1 : 0);
-    },
-    /** The one-shot presses since the last call, as ACTION_* flags. */
-    takeActions() {
-      const taken = actions;
-      actions = 0;
-      return taken;
-    },
-  };
+  /** Forward/back/strafe as -1..1, from WASD or arrows. */
+  moveAxes() {
+    const f = (this.down('KeyW') || this.down('ArrowUp') ? 1 : 0) - (this.down('KeyS') || this.down('ArrowDown') ? 1 : 0);
+    const s = (this.down('KeyD') || this.down('ArrowRight') ? 1 : 0) - (this.down('KeyA') || this.down('ArrowLeft') ? 1 : 0);
+    return { forward: f, strafe: s };
+  }
+
+  takeMouseDelta() {
+    const dx = this.mouseDX;
+    const dy = this.mouseDY;
+    this.mouseDX = 0;
+    this.mouseDY = 0;
+    return { dx, dy };
+  }
+
+  takeActions() {
+    const taken = this.actions;
+    this.actions = 0;
+    return taken;
+  }
+
+  takeClick() {
+    const c = this.mouseClicked;
+    this.mouseClicked = false;
+    return c;
+  }
+
+  lockPointer() {
+    try {
+      this.canvas.requestPointerLock();
+    } catch {
+      // Pointer lock can fail in headless runs; mouse look then stays off.
+    }
+  }
+
+  unlockPointer() {
+    if (document.pointerLockElement) document.exitPointerLock();
+  }
 }

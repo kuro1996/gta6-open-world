@@ -1,61 +1,57 @@
-// Every tuning number and colour in one place. The playfield is a fixed 1280x720 logical area;
-// the renderer scales it to the window, so no rule below depends on the screen size.
+// Solara Nights — tuning constants and city layout.
+// All distances are metres, all speeds metres per second, all angles radians.
+export const PITCH = 58; // road centre to road centre (44 m block + 14 m road)
+export const ROAD_WIDTH = 14;
+export const GRID_K = 4; // road lines at k * PITCH for k in -4..4
+export const CITY_HALF = GRID_K * PITCH + ROAD_WIDTH / 2; // 239
+export const BLOCK = PITCH - ROAD_WIDTH; // 44
 
-export const FIELD = { width: 1280, height: 720, groundY: 664 };
-
-/** The simulation's fixed step, in seconds: 60 updates a second whatever the display's rate. */
-export const STEP = 1 / 60;
-
-export const PLAYER = {
-  width: 72,
-  height: 24,
-  speed: 560,
-  invulnerable: 1.5,
+export const WORLD = {
+  gravity: 22,
+  playerWalk: 6,
+  playerSprint: 10,
+  playerJump: 8,
+  playerRadius: 0.6,
+  playerHealth: 100,
+  carAccel: 16,
+  carBrake: 34,
+  carReverseMax: 12,
+  carMaxSpeed: 38,
+  carSportMax: 48,
+  carTurn: 1.9,
+  carRadius: 1.9,
+  trafficCount: 14,
+  pedCount: 22,
+  maxWanted: 5,
+  pistolDamage: 34,
+  pistolRange: 90,
+  pistolMag: 12,
+  pistolReload: 1.2,
+  pistolRate: 0.22,
 };
 
-export const LIVES = 3;
-
-export const BLOCK = {
-  minWidth: 40,
-  maxWidth: 110,
-  height: 36,
-  speed: 240,
-  speedPerLevel: 30,
-  speedJitter: 90,
-  interval: 0.55,
-  intervalScale: 0.88,
-  minInterval: 0.14,
-  dodgePoints: 1,
+export const COLORS = {
+  sky: 0x87bfe8,
+  fog: 0x9fc6e8,
+  sun: 0xfff2d8,
+  ground: 0x8f8a7c,
+  sidewalk: 0xb8b2a4,
+  road: 0x2e2e33,
+  sand: 0xe8d29a,
+  ocean: 0x1e6f9e,
+  buildingPalette: [0xd8c9a3, 0xc9b8a8, 0xa8c4d4, 0xd4a8a8, 0xb8d4b0, 0xe0d8c8, 0x9fb8cc, 0xe8c98a],
+  carPalette: [0xc23b2e, 0x2e6fc2, 0xe8c33a, 0x3aa655, 0xe8e8e8, 0x222226, 0x7a4ac2, 0xd4762e],
 };
 
-export const COIN = {
-  size: 24,
-  speed: 190,
-  speedPerLevel: 14,
-  interval: 1.4,
-  intervalJitter: 0.8,
-  points: 10,
+// Named places in Solara Bay (world x, z). South is +z, east is +x (ocean).
+export const PLACES = {
+  garage: { x: -203.5, z: 203.5, name: 'Voss Garage' },
+  plaza: { x: 29, z: 29, name: 'Solara Plaza' },
+  marina: { x: 0, z: 262, name: 'Marina' },
+  docks: { x: -120, z: 262, name: 'Crown Docks' },
+  hospital: { x: 203.5, z: -203.5, name: 'Solara General' },
+  beach: { x: 262, z: 0, name: 'Solara Beach' },
+  playerStart: { x: -190, z: 190 },
 };
 
-/** Seconds of play per level, and the last level: speeds and spawn rates stop growing there. */
-export const LEVEL = { seconds: 12, max: 12 };
-
-/** How many falling things can exist at once; the pool is allocated once, at boot. */
-export const POOL_SIZE = 64;
-
-export const PALETTE = {
-  backdrop: '#11141b',
-  sky: '#1b1f2a',
-  ground: '#2a3040',
-  player: '#4fc3f7',
-  block: '#e5534b',
-  coin: '#f2c94c',
-  panel: '#252b38',
-  text: '#eef1f5',
-  muted: '#8b93a3',
-};
-
-export const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
-
-/** Where the best score is kept between visits (this browser only). */
-export const BEST_KEY = 'block-dodger.best';
+export const SAVE_KEY = 'solara-nights-save-v1';
