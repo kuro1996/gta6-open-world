@@ -4,8 +4,7 @@ import * as THREE from 'three';
 import { PLACES } from './config.js';
 import { distance2D } from './random.js';
 
-export const MISSIONS = [
-  {
+export const MISSIONS = [  {
     id: 'homecoming',
     title: '1 — Homecoming',
     briefing: 'Mara Voss: "Ria. You are back. The Crown took your brother\'s garage — drive to Voss Garage and we will talk."',
@@ -177,5 +176,132 @@ export class MissionManager {
       }
     }
     return null;
+  }
+}
+
+// --- Side jobs (round 4 attempt 2) -----------------------------------------
+// Optional paid work between story missions: Mara Voss always has a fare,
+// a parcel or a stunt to pay for. A job is offered when the player is free
+// (no story mission active), accepted with Q, and pays cash on arrival.
+// Jobs never block the story — starting a story mission cancels the job.
+export const SIDE_JOBS = [
+  {
+    id: 'taxi',
+    title: 'Side Job — Taxi Fare',
+    text: 'Mara: "A tourist at the beach needs a lift to the hospital. $150, no questions."',
+    target: { x: 262, z: 0, name: 'Solara Beach' },
+    dest: { x: 203.5, z: -203.5, name: 'Solara General' },
+    reward: 150,
+    needsCar: true,
+  },
+  {
+    id: 'courier',
+    title: 'Side Job — Courier Run',
+    text: 'Mara: "A parcel for the marina, quick and quiet. $250 if it gets there in one piece."',
+    target: { x: 0, z: 262, name: 'Marina' },
+    dest: { x: -120, z: 262, name: 'Crown Docks' },
+    reward: 250,
+    needsCar: false,
+  },
+  {
+    id: 'stunt',
+    title: 'Side Job — Stunt Jump',
+    text: 'Mara: "The crew bets you can\'t clear the plaza fountain at speed. $400 says you can."',
+    target: { x: 29, z: 29, name: 'Solara Plaza' },
+    dest: { x: 29, z: 29, name: 'Solara Plaza' },
+    reward: 400,
+    needsCar: true,
+    stunt: true, // complete by crossing the plaza faster than 25 m/s
+  },
+];
+
+export class SideJobs {
+  constructor(scene, audio) {
+    this.scene = scene;
+    this.audio = audio;
+    this.offered = null; // job on offer (player may accept with Q)
+    this.active = null; // accepted job, with its own waypoint
+    this.stage = 'pickup'; // pickup | deliver (stunt jobs skip to 'stunt')
+    this.done = {}; // id -> times completed
+    this.offerTimer = 20; // first offer appears 20 s into free play
+  }
+
+  /** Offer the next job the player has not done yet, rotating the list. */
+  offer() {
+    const remaining = SIDE_JOBS.filter((j) => !this.done[j.id]);
+    const pool = remaining.length ? remaining : SIDE_JOBS;
+    this.offered = pool[Math.floor(Math.random() * pool.length)];
+    return this.offered;
+  }
+
+  accept() {
+    if (!this.offered) return null;
+    this.active = this.offered;
+    this.offered = null;
+    this.stage = this.active.stunt ? 'stunt' : 'pickup';
+    if (this.audio) this.audio.pickup();
+    return this.active;
+  }
+
+  cancel() {
+    this.active = null;
+    this.offered = null;
+    this.offerTimer = 30;
+  }
+
+  /** Called every frame while playing: counts down to the next offer. */
+  update(dt, free) {
+    if (this.active || this.offered) return;
+    if (!free) {
+      this.offerTimer = 20;
+      return;
+    }
+    this.offerTimer -= dt;
+    if (this.offerTimer <= 0) this.offer();
+  }
+
+  /** Returns the completed job (or null) when the player reaches a target. */
+  checkArrival(x, z, speed) {
+    if (!this.active) return null;
+    if (this.active.stunt) {
+      const d = distance2D(x, z, this.active.target.x, this.active.target.z);
+      if (d < 12 && Math.abs(speed || 0) > 25) return this._finish();
+      return null;
+    }
+    const target = this.stage === 'pickup' ? this.active.target : this.active.dest;
+    if (distance2D(x, z, target.x, target.z) < 10) {
+      if (this.stage === 'pickup') {
+        this.stage = 'deliver';
+        if (this.audio) this.audio.pickup();
+        return 'picked';
+      }
+      return this._finish();
+    }
+    return null;
+  }
+
+  _finish() {
+    const job = this.active;
+    this.done[job.id] = (this.done[job.id] || 0) + 1;
+    this.active = null;
+    this.offerTimer = 45; // a breather before the next offer
+    if (this.audio) this.audio.jingle();
+    return job;
+  }
+
+  /** Current waypoint for the HUD beacon/minimap (pickup, then delivery). */
+  get waypoint() {
+    if (!this.active) return null;
+    if (this.active.stunt) return this.active.target;
+    return this.stage === 'pickup' ? this.active.target : this.active.dest;
+  }
+
+  /** One-line objective for the HUD while a job is running. */
+  get objective() {
+    if (!this.active) return '';
+    if (this.active.stunt) return `Stunt: cross ${this.active.target.name} faster than 25 m/s — $${this.active.reward}`;
+    const where = this.stage === 'pickup' ? this.active.target.name : this.active.dest.name;
+    const verb = this.stage === 'pickup' ? 'Pick up at' : 'Deliver to';
+    return `${verb} ${where} — $${this.active.reward}`;
   }
 }

@@ -110,6 +110,8 @@ export class TrafficSystem {
     this.rng = rng;
     this.city = city;
     this.cars = [];
+    // Rain factor 0..1 (from main.js): traffic slows on wet roads.
+    this.rainF = 0;
     for (let i = 0; i < WORLD.trafficCount; i += 1) {
       // Weighted mix instead of a fixed rotation: sedans dominate, sports
       // cars and vans are rarer, so no two drives see the same street.
@@ -192,6 +194,11 @@ export class TrafficSystem {
     }
   }
 
+  /** Rain factor from the weather cycle; 0 is dry, 1 is a shower. */
+  setRain(f) {
+    this.rainF = Math.max(0, Math.min(1, f));
+  }
+
   update(dt, playerCar) {
     for (const car of this.cars) {
       // A car that drifted far from the player (long chase, long drive)
@@ -201,7 +208,11 @@ export class TrafficSystem {
         this._respawnNear(car, playerCar.x, playerCar.z);
       }
       // Slow down for the car ahead on the same lane.
-      let target = car.maxSpeed;
+      // Rain (attempt 2): the whole flow runs slower on wet roads, so a
+      // shower genuinely thins the traffic's pace instead of only the
+      // player's car feeling it.
+      const wetSlow = 1 - (1 - WORLD.rainTrafficSlow) * this.rainF;
+      let target = car.maxSpeed * wetSlow;
       for (const other of this.cars) {
         if (other === car || other.axis !== car.axis || Math.abs(other.line - car.line) > 1) continue;
         const ahead = car.axis === 'x' ? (other.x - car.x) * car.dir : (other.z - car.z) * car.dir;
@@ -249,6 +260,9 @@ export function spawnParkedCars(scene, rng) {
     { x: 262, z: -120, heading: Math.PI, type: 'sedan', color: 0x7a4ac2, name: 'Sunset Sedan' },
     // Round 4 — a ninth ride, a blue truck by the marina containers.
     { x: 58, z: 250, heading: 0, type: 'truck', color: 0x2e6fc2, name: 'Marina Hauler' },
+    // Round 4 attempt 2 — a tenth ride, a red taxi by the hospital, so
+    // the north-east corner has a stealable car of its own.
+    { x: 174, z: -174, heading: -Math.PI / 2, type: 'taxi', color: 0xc23b2e, name: 'Hospital Taxi' },
   ];
   for (const spot of spots) {
     const mesh = makeCarMesh(spot.type, spot.color);

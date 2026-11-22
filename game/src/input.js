@@ -8,6 +8,9 @@ export const ACT_RELOAD = 2;
 export const ACT_PAUSE = 4;
 export const ACT_HORN = 8;
 export const ACT_MUTE = 16;
+// Round 4 attempt 2 — Q accepts an offered side job; T skips the tutorial.
+export const ACT_SIDEJOB = 32;
+export const ACT_TUTORIAL = 64;
 
 export class Input {
   constructor(canvas) {
@@ -33,6 +36,8 @@ export class Input {
         if (e.code === 'Escape' || e.code === 'KeyP') this.actions |= ACT_PAUSE;
         if (e.code === 'KeyH') this.actions |= ACT_HORN;
         if (e.code === 'KeyM') this.actions |= ACT_MUTE;
+        if (e.code === 'KeyQ') this.actions |= ACT_SIDEJOB;
+        if (e.code === 'KeyT') this.actions |= ACT_TUTORIAL;
       }
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
       this._gesture();

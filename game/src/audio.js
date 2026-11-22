@@ -12,6 +12,9 @@ export class AudioEngine {
     this.sirenOsc = null;
     this.sirenGain = null;
     this.sirenOn = false;
+    // Rain loop handles (created lazily by setRainLevel, stopped by it).
+    this._rainSrc = null;
+    this._rainGain = null;
   }
 
   /** Call from a user gesture; safe to call repeatedly. */
@@ -90,6 +93,54 @@ export class AudioEngine {
   horn() {
     this._tone(370, 0.16, 'square', 0.13);
     setTimeout(() => this._tone(466, 0.22, 'square', 0.13), 140);
+  }
+
+  /** Short radio squelch blip: a foot cop just called the rest of the force. */
+  radioBlip() {
+    this._tone(1150, 0.05, 'square', 0.08);
+    setTimeout(() => this._tone(1150, 0.05, 'square', 0.08), 90);
+  }
+
+  /** Soft chime for a tutorial step completing — quieter than the jingle. */
+  chime() {
+    this._tone(880, 0.12, 'sine', 0.12);
+    setTimeout(() => this._tone(1318, 0.16, 'sine', 0.1), 110);
+  }
+
+  /** Looping rain patter (filtered noise). level 0..1; call every frame
+   * or with 0 to stop. The loop reuses one buffer source, so rain costs
+   * no allocation while it falls. */
+  setRainLevel(level) {
+    if (!this.ctx) return;
+    if (level <= 0.02) {
+      if (this._rainSrc) {
+        try { this._rainSrc.stop(); } catch { /* already stopped */ }
+        this._rainSrc = null;
+        this._rainGain = null;
+      }
+      return;
+    }
+    if (!this._rainSrc) {
+      const len = this.ctx.sampleRate * 2;
+      const buffer = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < len; i += 1) data[i] = Math.random() * 2 - 1;
+      const src = this.ctx.createBufferSource();
+      src.buffer = buffer;
+      src.loop = true;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 1400;
+      const gain = this.ctx.createGain();
+      gain.gain.value = 0;
+      src.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.master);
+      src.start();
+      this._rainSrc = src;
+      this._rainGain = gain;
+    }
+    this._rainGain.gain.setTargetAtTime(0.05 + level * 0.09, this.ctx.currentTime, 0.3);
   }
 
   /** Short reverse warning beep while the car backs up. */

@@ -56,6 +56,10 @@ export class PedestrianSystem {
       // a shop window, wait out a crossing — instead of marching forever.
       pause: 0,
       nextPause: rng.range(8, 24),
+      // Rain hurry (attempt 2): set by update() from the weather — in a
+      // shower pedestrians walk faster and never idle-pause, hurrying for
+      // cover like everyone does when the rain starts.
+      rainF: 0,
       // Dodge state: sidestepping a car that is about to run them over.
       dodge: 0,
       dodgeDir: 1,
@@ -99,29 +103,32 @@ export class PedestrianSystem {
   }
 
   /** hazards: cars (player + traffic + police) to sidestep away from. */
-  update(dt, hazards) {
+  update(dt, hazards, rainF) {
     for (const ped of this.peds) {
-      let speed = ped.speed;
+      // Rain hurry (attempt 2): in a shower everyone walks faster and no
+      // one stops to window-shop — the street empties toward cover.
+      const hurry = 1 + (WORLD.rainPedHurry - 1) * (rainF || 0);
+      let speed = ped.speed * hurry;
       let heading = ped.heading;
       if (ped.flee > 0) {
         ped.flee -= dt;
         // Fleeing pace follows the pedestrian's own walk speed, so a slow
         // stroller does not suddenly sprint like an athlete.
-        speed = ped.speed * 2.6;
+        speed = ped.speed * 2.6 * hurry;
         const away = Math.atan2(ped.x - ped.fleeX, ped.z - ped.fleeZ);
         heading = away;
       } else if (ped.dodge > 0) {
         // Mid-dodge: keep sidestepping perpendicular to the road until the
         // timer runs out, then resume the stroll.
         ped.dodge -= dt;
-        speed = ped.speed * WORLD.pedDodgeMult;
+        speed = ped.speed * WORLD.pedDodgeMult * hurry;
         heading = ped.heading + (Math.PI / 2) * ped.dodgeDir;
-      } else if (ped.pause > 0) {
+      } else if (ped.pause > 0 && !(rainF > 0.3)) {
         ped.pause -= dt;
         speed = 0;
       } else {
         ped.nextPause -= dt;
-        if (ped.nextPause <= 0) {
+        if (ped.nextPause <= 0 && !(rainF > 0.3)) {
           ped.pause = this.rng.range(0.8, 2);
           ped.nextPause = this.rng.range(10, 26);
         }

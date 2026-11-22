@@ -44,14 +44,36 @@ export class Enemy {
     // Flinch: seconds left of the stagger after taking a hit, during which
     // the guard holds fire.
     this.flinch = 0;
+    // Round 4 attempt 2 — patrol + radio: a guard who cannot see Ria
+    // walks a random waypoint near his post instead of standing still,
+    // and a guard who spots her (or takes a bullet) radios the others.
+    this.patrolX = x;
+    this.patrolZ = z;
+    // The post (spawn point) anchors the patrol: waypoints are picked
+    // around it, never around wherever the guard happens to be standing.
+    this._postX = x;
+    this._postZ = z;
+    this.patrolTimer = 1 + Math.random() * 2;
+    this.alerted = false;
+    this.alertTimer = 0;
     this.mesh.position.set(x, 0, z);
+  }
+
+  /** Another guard (or a bullet) tipped this one off: hunt the player. */
+  alert() {
+    this.alerted = true;
+    this.alertTimer = 6;
   }
 
   damage(amount) {
     this.health = Math.max(0, this.health - amount);
     // A hit staggers the guard: he holds fire briefly, so landing shots
     // actually suppresses the docks instead of trading damage one-for-one.
-    if (this.alive) this.flinch = WORLD.guardFlinchTime;
+    // It also tips him off — a wounded guard radios the others (see alert).
+    if (this.alive) {
+      this.flinch = WORLD.guardFlinchTime;
+      this.alert();
+    }
     if (this.health <= 0 && this.alive) {
       this.alive = false;
       this.mesh.rotation.x = -Math.PI / 2;
@@ -63,6 +85,11 @@ export class Enemy {
     if (!this.alive) return null;
     const d = distance2D(this.x, this.z, player.x, player.z);
     let shot = false;
+    // Spotting Ria at close range tips this guard off too: he radios the
+    // others (the Combat class relays the alert to guards in range).
+    if (d < 25 && !this.alerted) this.alert();
+    this.alertTimer = Math.max(0, this.alertTimer - dt);
+    if (this.alertTimer <= 0) this.alerted = false;
     if (this.flinch > 0) {
       // Staggered: no movement, no shooting — the flinch timer is the only
       // thing that ticks down.
@@ -112,6 +139,39 @@ export class Enemy {
           );
         }
       }
+    } else if (this.alerted) {
+      // Alerted but out of sight: close in fast toward the player instead
+      // of standing at the post waiting to be picked off one by one.
+      this.mesh.rotation.y = Math.atan2(player.x - this.x, player.z - this.z);
+      const step = WORLD.guardAlertSpeed * dt;
+      this.x += Math.sin(this.mesh.rotation.y) * step;
+      this.z += Math.cos(this.mesh.rotation.y) * step;
+      this.walkPhase += dt * 8;
+      const swing = Math.sin(this.walkPhase) * 0.45;
+      this.mesh.userData.legL.rotation.x = swing;
+      this.mesh.userData.legR.rotation.x = -swing;
+    } else {
+      // Idle patrol: pick a fresh random waypoint near the post every few
+      // seconds and stroll to it, so the docks feel guarded, not frozen.
+      this.patrolTimer -= dt;
+      const pd = distance2D(this.x, this.z, this.patrolX, this.patrolZ);
+      if (this.patrolTimer <= 0 || pd < 1.5) {
+        this.patrolTimer = 3 + Math.random() * 3;
+        // The post is the guard's spawn point: waypoints stay within
+        // guardPatrolRange of it, so a patrol never wanders into the sea.
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.random() * WORLD.guardPatrolRange;
+        this.patrolX = this._postX + Math.sin(a) * r;
+        this.patrolZ = this._postZ + Math.cos(a) * r;
+      }
+      this.mesh.rotation.y = Math.atan2(this.patrolX - this.x, this.patrolZ - this.z);
+      const step = 1.6 * dt;
+      this.x += Math.sin(this.mesh.rotation.y) * step;
+      this.z += Math.cos(this.mesh.rotation.y) * step;
+      this.walkPhase += dt * 4;
+      const swing = Math.sin(this.walkPhase) * 0.3;
+      this.mesh.userData.legL.rotation.x = swing;
+      this.mesh.userData.legR.rotation.x = -swing;
     }
     // Strafing has no building collision: keep the guard inside the map so
     // a sidestep can never carry one through a wall or into the ocean.
@@ -155,6 +215,19 @@ export class Combat {
 
   get aliveCount() {
     return this.enemies.filter((e) => e.alive).length;
+  }
+
+  /** Guard radio relay: any alerted guard tips off the other alive guards
+   * within guardAlertRadius, so the docks react as a team instead of six
+   * lone shooters who never notice their neighbour going down. */
+  relayAlerts() {
+    for (const a of this.enemies) {
+      if (!a.alive || !a.alerted) continue;
+      for (const b of this.enemies) {
+        if (b === a || !b.alive || b.alerted) continue;
+        if (distance2D(a.x, a.z, b.x, b.z) < WORLD.guardAlertRadius) b.alert();
+      }
+    }
   }
 
   reload() {

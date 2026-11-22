@@ -5,10 +5,12 @@ import { SAVE_KEY } from './config.js';
 // instead of choking on a shape it no longer writes.
 // v3 (round 4): adds a stats block — kills, missions completed, best Drop
 // time left — so Continue can show the player what they have done.
-export const SAVE_VERSION = 3;
+// v4 (round 4 attempt 2): adds side-job earnings and whether the tutorial
+// was finished or skipped, so a returning player is not taught twice.
+export const SAVE_VERSION = 4;
 
 export function emptyStats() {
-  return { kills: 0, missions: 0, bestDrop: 0 };
+  return { kills: 0, missions: 0, bestDrop: 0, sideJobs: 0, sideEarned: 0 };
 }
 
 export function saveGame(data) {
@@ -44,7 +46,12 @@ export function loadGame() {
       if (typeof data.stats.kills !== 'number') data.stats.kills = 0;
       if (typeof data.stats.missions !== 'number') data.stats.missions = 0;
       if (typeof data.stats.bestDrop !== 'number') data.stats.bestDrop = 0;
+      // v4 fields: side jobs done and cash earned from them.
+      if (typeof data.stats.sideJobs !== 'number') data.stats.sideJobs = 0;
+      if (typeof data.stats.sideEarned !== 'number') data.stats.sideEarned = 0;
     }
+    // v4: tutorialSeen is a plain boolean; anything else means "not seen".
+    if (typeof data.tutorialSeen !== 'boolean') data.tutorialSeen = false;
     return data;
   } catch {
     return null;

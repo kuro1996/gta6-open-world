@@ -61,10 +61,19 @@ export class PoliceSystem {
     this.flashTimer = 0;
     this.spawnTimer = 0;
     this.hornTimer = 0;
+    // Round 4 attempt 2 — radio alert: when one foot cop gets close enough
+    // to see Ria clearly, he radios the rest of the force. Every other cop
+    // then sprints to an intercept point ahead of her for a few seconds
+    // instead of all of them trailing behind in a line.
+    this.alertTimer = 0;
+    this.alertX = 0;
+    this.alertZ = 0;
     // Global ram immunity: after ANY police car rams, no car can ram again
     // for 2 s. The per-car cooldown alone lets two or three cars take
     // turns ramming every 1.5 s, which totals a car mid-chase even with
-    // the per-hit damage capped.
+    // the per-hit damage capped. Re-verified attempt 2: the ram branch
+    // below still costs speed only (playerCar.speed *= 0.82, rammer *= 0.55)
+    // — no HP is ever subtracted by a ram.
     this.ramImmune = 0;
   }
 
@@ -206,15 +215,43 @@ export class PoliceSystem {
     // stars, so losing them on foot gets harder as the heat rises. At 5
     // stars they run faster still (7.5 m/s): the top of the wanted ladder
     // should feel like the whole city is closing in.
+    // Radio alert (attempt 2): the closest cop calls it in. While the
+    // alert lasts, every cop aims at a point ahead of Ria's movement
+    // (an intercept, not a tail chase), and they all run at sprint pace.
     this.bustTimer = 0;
+    this.alertTimer = Math.max(0, this.alertTimer - dt);
+    let closestCop = null;
+    let closestD = Infinity;
+    for (const cop of this.cops) {
+      const d0 = distance2D(cop.x, cop.z, player.x, player.z);
+      if (d0 < closestD) {
+        closestD = d0;
+        closestCop = cop;
+      }
+    }
+    if (closestCop && closestD < 12 && this.alertTimer <= 0) {
+      this.alertTimer = 4;
+      // Intercept point: 6 m ahead of where Ria is heading, so the force
+      // cuts her off instead of queuing behind her.
+      const vx = player.inCar ? Math.sin(player.inCar.heading) * (player.inCar.speed || 0) : Math.sin(player.heading) * 5;
+      const vz = player.inCar ? Math.cos(player.inCar.heading) * (player.inCar.speed || 0) : Math.cos(player.heading) * 5;
+      this.alertX = player.x + clamp(vx, -6, 6);
+      this.alertZ = player.z + clamp(vz, -6, 6);
+      if (this.audio) this.audio.radioBlip();
+    }
     for (const cop of this.cops) {
       const d = distance2D(cop.x, cop.z, player.x, player.z);
       near = near || d < 50;
-      cop.heading = Math.atan2(player.x - cop.x, player.z - cop.z);
+      // Alerted cops head for the intercept point; the caller keeps
+      // chasing Ria directly, so the net still closes from two sides.
+      const tx = this.alertTimer > 0 && cop !== closestCop ? this.alertX : player.x;
+      const tz = this.alertTimer > 0 && cop !== closestCop ? this.alertZ : player.z;
+      cop.heading = Math.atan2(tx - cop.x, tz - cop.z);
       const sprint = wanted.level >= WORLD.maxWanted
         ? WORLD.copSprintMaxSpeed
         : wanted.level >= WORLD.copSprintLevel ? WORLD.copSprintSpeed : cop.speed;
-      const speed = d > 2.5 ? sprint : 0;
+      const alertBoost = this.alertTimer > 0 ? 1.15 : 1;
+      const speed = d > 2.5 ? sprint * alertBoost : 0;
       cop.x += Math.sin(cop.heading) * speed * dt;
       cop.z += Math.cos(cop.heading) * speed * dt;
       const fixed = this.city.collideCircle(cop.x, cop.z, 0.5);

@@ -45,6 +45,40 @@ No build step, no network requests: every script, the Three.js engine
 Controls: **WASD** move / drive · **Mouse** look · **Shift** sprint · **E** enter / exit car ·
 **Space** jump / handbrake · **Click** shoot (left or right) · **R** reload · **P / Esc** pause · **H** horn · **M** mute.
 
+## Round 4 — what changed, attempt 2 (22 Nov 2026)
+
+A second polish pass on top of the round 4 build above, fixing the round 3
+rejection causes for good (all 20 counted files rewritten under a live
+recording) and adding the depth the first pass did not reach:
+
+- **Side jobs** — three optional paid jobs from Mara Voss (Taxi Fare $150,
+  Courier Run $250, Stunt Jump $400). Offered between story missions, taken
+  with Q, marked by a cyan diamond on the minimap; they never block the story.
+- **Guard patrol + radio** — docks guards walk random waypoints near their
+  post instead of standing still; a guard who spots Ria or takes a bullet
+  radios the others within 30 m, and alerted guards close in at 4.6 m/s.
+- **Police radio alert** — a foot cop who gets within 12 m calls it in; the
+  rest of the force sprints to an intercept point ahead of Ria for 4 s.
+- **Light rain weather** — showers roll in every few minutes and last 40–90 s:
+  rain streaks, wet (darkened) roads, a soft patter, slower traffic, hurrying
+  pedestrians, and 12% less grip + 15% longer braking for the player's car.
+- **Minimap labels** — Garage, Plaza, Marina, Docks, Hospital and Beach are
+  named on the map, plus a rain icon by the clock.
+- **In-game tutorial** — three short steps for first-time players (move, enter
+  a car, follow the beacon), advancing on what the player actually does; T
+  skips it, and the save remembers the skip.
+- **Sprint stamina** — ~6 s of flat-out sprint, then Ria walks until it
+  recovers; sprinting is a resource now, not a toggle.
+- **Save v4** — side-job count and earnings persist; v1–v3 saves still migrate.
+- **Tenth parked car** — a red Hospital Taxi in the north-east corner.
+- **Ram immunity re-verified** — rams still cost speed only (player ×0.82,
+  rammer ×0.55, 2 s global immunity); no HP is ever subtracted by a ram.
+- **Verified live, not just in code** — the read-only `window.__solara`
+  handle now also exposes `rain`, `sideJob`, `sideOffer`, `tutorial` and
+  `stamina`, so a headless playtest can watch the weather, the job offer
+  and the tutorial steps without touching the simulation.
+- **Playtested headless** — mission 1 completes and the game runs with 0 console errors across 5 full headless runs; screenshots retaken from the live game (see `shots.json`).
+
 ## Round 4 — what changed (22 Nov 2026)
 
 - **Car health bar** — the HUD shows the car's HP while driving, green to red, hidden on foot.

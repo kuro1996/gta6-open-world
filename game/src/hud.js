@@ -25,6 +25,10 @@ export class HUD {
       car: document.getElementById('hud-car'),
       carFill: document.getElementById('hud-car-fill'),
       carText: document.getElementById('hud-car-text'),
+      // Round 4 attempt 2 — weather readout + tutorial toast, both fed
+      // by the same state object as the rest of the HUD.
+      weather: document.getElementById('hud-weather'),
+      tutorial: document.getElementById('hud-tutorial'),
     };
     this.mapCtx = this.el.minimap.getContext('2d');
     this._bannerTimer = 0;
@@ -51,6 +55,18 @@ export class HUD {
       this.el.prompt.classList.remove('hidden');
     } else {
       this.el.prompt.classList.add('hidden');
+    }
+  }
+
+  /** Tutorial toast (attempt 2): one short instruction at a time, shown
+   * until the player does it or presses T to skip the whole tutorial. */
+  setTutorial(text) {
+    if (!this.el.tutorial) return;
+    if (text) {
+      this.el.tutorial.textContent = text;
+      this.el.tutorial.classList.remove('hidden');
+    } else {
+      this.el.tutorial.classList.add('hidden');
     }
   }
 
@@ -99,6 +115,12 @@ export class HUD {
     // The Drop timer turns red under 30 seconds: the last half-minute of a
     // delivery should feel urgent before the banner says it failed.
     this.el.clock.style.color = state.timeLeft && state.timeLeft < 30 ? '#ff6b5e' : '#cfe3ff';
+    // Weather readout (attempt 2): a rain icon next to the clock, so the
+    // grip change on wet roads is never a surprise.
+    if (this.el.weather) {
+      this.el.weather.textContent = state.raining ? '🌧 Rain — wet roads, less grip' : '';
+      this.el.weather.classList.toggle('hidden', !state.raining);
+    }
     this.el.vignette.style.opacity = state.hurt ? '0.85' : state.health < 30 ? '0.45' : '0';
     this._drawMinimap(state);
   }
@@ -142,6 +164,35 @@ export class HUD {
       ctx.rotate(Math.PI / 4);
       ctx.fillRect(-4, -4, 8, 8);
       ctx.restore();
+    }
+    // Side-job waypoint (attempt 2): a cyan diamond, distinct from the
+    // gold story waypoint, so optional work never reads as the main goal.
+    if (state.sideWaypoint) {
+      const [sx, sy] = toMap(state.sideWaypoint.x, state.sideWaypoint.z);
+      ctx.fillStyle = '#3dd8ff';
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillRect(-4, -4, 8, 8);
+      ctx.restore();
+    }
+    // Named places (attempt 2): the minimap labels the spots the story
+    // keeps sending Ria to, so a new player can navigate by name instead
+    // of memorising coordinates.
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.font = 'bold 9px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    for (const p of state.places || []) {
+      const [lx, ly] = toMap(p.x, p.z);
+      // East-edge labels (Hospital, Beach) would run off the map's right
+      // edge: right-align them so the name stays inside the frame.
+      if (lx > S - 48) {
+        ctx.textAlign = 'right';
+        ctx.fillText(p.name, lx - 4, ly + 3);
+        ctx.textAlign = 'left';
+      } else {
+        ctx.fillText(p.name, lx + 4, ly + 3);
+      }
     }
     // Traffic + police dots.
     for (const c of state.cars || []) {

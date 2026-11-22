@@ -16,6 +16,14 @@ export class Driving {
     this.nightF = 0;
     this.headlight = null;
     this.beepTimer = 0;
+    // Rain factor 0..1 (from main.js): wet roads cost grip — slower
+    // acceleration and longer braking, so a rainy chase feels different.
+    this.rainF = 0;
+  }
+
+  /** Rain factor from the weather cycle; 0 is dry asphalt, 1 is a shower. */
+  setRain(f) {
+    this.rainF = Math.max(0, Math.min(1, f));
   }
 
   /** Night factor from the day/night cycle; the beam follows the car. */
@@ -53,7 +61,12 @@ export class Driving {
     // The handbrake's speed bleed is skipped while burning out, or the car
     // could never build the revs to smoke.
     const burnout = handbrake && axes.forward > 0 && Math.abs(car.speed) < 2;
-    const accel = axes.forward > 0 ? WORLD.carAccel : axes.forward < 0 ? -WORLD.carBrake * 0.7 : 0;
+    // Wet roads (attempt 2): acceleration falls toward rainGrip and
+    // braking stretches toward rainBrake, so the same car stops later in
+    // a shower than in the sun.
+    const grip = 1 - (1 - WORLD.rainGrip) * this.rainF;
+    const brakeMult = 1 + (WORLD.rainBrake - 1) * this.rainF;
+    const accel = axes.forward > 0 ? WORLD.carAccel * grip : axes.forward < 0 ? -WORLD.carBrake * 0.7 * (2 - brakeMult) : 0;
     const maxSpeed = car.maxSpeed;
     if (axes.forward > 0) car.speed = Math.min(maxSpeed, car.speed + accel * dt);
     else if (axes.forward < 0) {
@@ -70,9 +83,11 @@ export class Driving {
     // bound, so a fast run parallel to the beach is unaffected.
     const edgeCap = this._edgeSpeedCap(car);
     if (car.speed > edgeCap) car.speed = edgeCap;
-    // Steering: sharper when slow, reversed when reversing.
+    // Steering: sharper when slow, reversed when reversing. Wet roads make
+    // the steering a touch lazier too — the same input turns the car less
+    // in a shower, so the player feels the rain through the wheel.
     const speedFactor = clamp(Math.abs(car.speed) / 14, 0, 1);
-    const steerTarget = -axes.strafe * WORLD.carTurn * (0.35 + 0.65 * (1 - speedFactor * 0.6));
+    const steerTarget = -axes.strafe * WORLD.carTurn * (0.35 + 0.65 * (1 - speedFactor * 0.6)) * (1 - 0.12 * this.rainF);
     const steerRate = handbrake ? 4.5 : 3.2;
     car.steer += clamp(steerTarget - car.steer, -steerRate * dt, steerRate * dt);
     const turnSign = car.speed >= 0 ? 1 : -1;

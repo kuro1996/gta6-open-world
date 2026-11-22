@@ -57,11 +57,26 @@ export function makeRng(seed) {
     dice(sides) {
       return 1 + Math.floor(next() * sides);
     },
+    /** n distinct items from a list, in random order (partial shuffle). */
+    sample(list, n) {
+      const copy = list.slice();
+      this.shuffle(copy);
+      return copy.slice(0, Math.max(0, Math.min(n, copy.length)));
+    },
+    /** A value in [0, 1] — the raw roll, for callers that already scale. */
+    unit() {
+      return next();
+    },
   };
 }
 
 export function clamp(value, min, max) {
   return value < min ? min : value > max ? max : value;
+}
+
+/** Clamp to [0, 1] — the common case for factors like rain and night. */
+export function clamp01(value) {
+  return value < 0 ? 0 : value > 1 ? 1 : value;
 }
 
 export function lerp(a, b, t) {

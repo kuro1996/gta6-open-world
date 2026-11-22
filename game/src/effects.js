@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 
 const MAX_PARTICLES = 400;
+const MAX_RAIN = 500;
 
 export class Effects {
   constructor(scene) {
@@ -24,6 +25,56 @@ export class Effects {
     this.flashLight = new THREE.PointLight(0xffdd88, 0, 18, 1.6);
     this.flashLight.position.set(0, -100, 0);
     scene.add(this.flashLight);
+    // Round 4 attempt 2 — light rain: one pooled streak cloud that follows
+    // the player, so a shower costs no allocation and never leaves the
+    // frame empty. Rain intensity is 0 (dry) .. 1 (steady shower).
+    this.rainLevel = 0;
+    this.rainX = 0;
+    this.rainZ = 0;
+    const rainGeo = new THREE.BufferGeometry();
+    rainGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAX_RAIN * 3), 3));
+    const rainMat = new THREE.PointsMaterial({ size: 0.12, color: 0xaec6e0, transparent: true, opacity: 0.55, depthWrite: false });
+    this.rain = new THREE.Points(rainGeo, rainMat);
+    this.rain.frustumCulled = false;
+    this.rain.visible = false;
+    scene.add(this.rain);
+    this._rainDrops = [];
+    for (let i = 0; i < MAX_RAIN; i += 1) {
+      this._rainDrops.push({ x: 0, y: -100, z: 0, speed: 22 + Math.random() * 10 });
+    }
+  }
+
+  /** Rain intensity 0..1; also moves the streak cloud to the player. */
+  setRain(level, x, z) {
+    this.rainLevel = Math.max(0, Math.min(1, level));
+    this.rainX = x;
+    this.rainZ = z;
+    this.rain.visible = this.rainLevel > 0.02;
+  }
+
+  _updateRain(dt) {
+    if (!this.rain.visible) return;
+    const pos = this.rain.geometry.attributes.position.array;
+    const n = Math.floor(MAX_RAIN * this.rainLevel);
+    for (let i = 0; i < MAX_RAIN; i += 1) {
+      const d = this._rainDrops[i];
+      if (i >= n) {
+        pos[i * 3 + 1] = -100;
+        continue;
+      }
+      d.y -= d.speed * dt;
+      // A drop that hits the ground respawns at the top of the cloud, at
+      // a fresh random offset around the player — the shower never runs dry.
+      if (d.y < 0) {
+        d.y = 18 + Math.random() * 10;
+        d.x = this.rainX + (Math.random() - 0.5) * 60;
+        d.z = this.rainZ + (Math.random() - 0.5) * 60;
+      }
+      pos[i * 3] = d.x;
+      pos[i * 3 + 1] = d.y;
+      pos[i * 3 + 2] = d.z;
+    }
+    this.rain.geometry.attributes.position.needsUpdate = true;
   }
 
   _spawn(x, y, z, vx, vy, vz, life, r, g, b) {
@@ -120,6 +171,7 @@ export class Effects {
   }
 
   update(dt) {
+    this._updateRain(dt);
     const pos = this.points.geometry.attributes.position.array;
     const col = this.points.geometry.attributes.color.array;
     for (let i = 0; i < MAX_PARTICLES; i += 1) {

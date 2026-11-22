@@ -52,9 +52,10 @@ export function buildCity(scene, rng) {
   };
 
   // --- ground, beach, ocean -------------------------------------------------
+  const groundMat = new THREE.MeshLambertMaterial({ color: COLORS.ground });
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(760, 760),
-    new THREE.MeshLambertMaterial({ color: COLORS.ground }),
+    groundMat,
   );
   ground.rotation.x = -Math.PI / 2;
   group.add(ground);
@@ -424,6 +425,16 @@ export function buildCity(scene, rng) {
     setNight(f) {
       const c = new THREE.Color(0xffe9a8).lerp(new THREE.Color(0xffc23d), f);
       bulbMat.color.copy(c);
+    },
+    // Round 4 attempt 2 — wet roads: rain darkens the asphalt and the
+    // ground a touch, so a shower reads on the street as well as in the
+    // air. One shared material change, like setNight.
+    _groundMat: groundMat,
+    setWet(f) {
+      const road = new THREE.Color(COLORS.road).multiplyScalar(1 - 0.35 * f);
+      roadMat.color.copy(road);
+      const ground = new THREE.Color(COLORS.ground).multiplyScalar(1 - 0.18 * f);
+      this._groundMat.color.copy(ground);
     },
   };
 }

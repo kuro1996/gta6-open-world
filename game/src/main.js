@@ -7,14 +7,14 @@ import { makeRng, clamp } from './random.js';
 import { buildCity } from './city.js';
 import { AudioEngine } from './audio.js';
 import { Effects } from './effects.js';
-import { Input, ACT_INTERACT, ACT_PAUSE, ACT_RELOAD, ACT_HORN, ACT_MUTE } from './input.js';
+import { Input, ACT_INTERACT, ACT_PAUSE, ACT_RELOAD, ACT_HORN, ACT_MUTE, ACT_SIDEJOB, ACT_TUTORIAL } from './input.js';
 import { Player } from './player.js';
 import { Driving } from './driving.js';
 import { TrafficSystem, spawnParkedCars, syncCarMesh } from './vehicles.js';
 import { PedestrianSystem } from './pedestrians.js';
 import { WantedSystem, PoliceSystem } from './police.js';
 import { Combat } from './combat.js';
-import { MissionManager, MISSIONS } from './missions.js';
+import { MissionManager, MISSIONS, SideJobs } from './missions.js';
 import { HUD } from './hud.js';
 import { saveGame, loadGame, clearSave, hasSave, emptyStats } from './save.js';
 
@@ -56,8 +56,25 @@ const wanted = new WantedSystem();
 const police = new PoliceSystem(scene, rng, city, audio, effects);
 const combat = new Combat(scene, audio, effects);
 const missions = new MissionManager(scene, audio);
+const sideJobs = new SideJobs(scene, audio);
 const driving = new Driving(city, audio, effects);
 const hud = new HUD();
+// Round 4 attempt 2 — weather: rain rolls in on a timer (game-minutes of
+// play), lasts 40–90 s, then clears. rainF eases in/out over ~5 s so the
+// shower never pops in or out in a single frame.
+let rainF = 0;
+let rainTarget = 0;
+let rainTimer = 90 + rng.range(0, 60); // first shower ~2–3 min in
+let rainLeft = 0;
+// Round 4 attempt 2 — tutorial: three short steps for a first-time player
+// (move, enter a car, follow the beacon). Done once, remembered in the save.
+let tutorialStep = -1; // -1 = off (returning player or skipped)
+let tutorialSeen = false;
+const TUTORIAL_STEPS = [
+  'WASD to move — Shift to sprint (watch your stamina)',
+  'Walk to a gold car on the minimap and press E to get in',
+  'Follow the yellow beacon — that is your next job. Press T to skip these tips',
+];
 
 // --- game state ---------------------------------------------------------------
 let state = 'title'; // title | playing | paused | over | complete
@@ -104,6 +121,13 @@ window.__solara = {
   get headlight() { return !!(driving.headlight && driving.headlight.visible); },
   get stats() { return { ...stats, kills: combat.kills }; },
   get parked() { return parked.map((c) => ({ name: c.name, x: c.x, z: c.z })); },
+  // Round 4 attempt 2 handles: weather, side jobs, tutorial, stamina.
+  get rain() { return rainF; },
+  get raining() { return rainF > 0.3; },
+  get sideJob() { return sideJobs.active ? { id: sideJobs.active.id, stage: sideJobs.stage, objective: sideJobs.objective } : null; },
+  get sideOffer() { return sideJobs.offered ? sideJobs.offered.id : null; },
+  get tutorial() { return tutorialStep; },
+  get stamina() { return player.stamina01; },
   get player() {
     const car = player.inCar;
     // Effective position: the car's, while driving — the on-foot x/z go stale
@@ -221,6 +245,10 @@ function resetMissionWorld() {
 
 function startMission(index) {
   const m = missions.start(index);
+  // A story mission cancels any side job or offer: the two never fight
+  // over the beacon, and the player is never paid for a job the story
+  // interrupted.
+  sideJobs.cancel();
   if (!m) {
     missions.objective = 'Free roam — Solara Bay is yours.';
     return;
@@ -283,6 +311,10 @@ function startGame(fresh) {
   const save = fresh ? null : loadGame();
   money = save ? save.money || 0 : 0;
   stats = save && save.stats ? { ...emptyStats(), ...save.stats } : emptyStats();
+  tutorialSeen = save ? !!save.tutorialSeen : false;
+  // Tutorial (attempt 2): first-time players get the three steps; a
+  // returning player (or one who skipped) never sees them again.
+  tutorialStep = tutorialSeen ? -1 : 0;
   const missionIndex = save ? Math.min(save.missionIndex || 0, MISSIONS.length - 1) : 0;
   resetMissionWorld();
   showOnly(null);
@@ -389,6 +421,28 @@ function stepWorld(dt) {
   gameMinutes += dt * 0.5;
   applyDayNight();
   driving.setNight(nightF);
+  // Weather (attempt 2): a shower rolls in every few minutes of play and
+  // lasts 40–90 s. The factor eases in and out; every system that cares
+  // (rain streaks, wet roads, grip, traffic, pedestrians, rain audio)
+  // reads the same rainF, so the shower is one coherent state.
+  rainTimer -= dt;
+  if (rainTarget <= 0 && rainTimer <= 0) {
+    rainTarget = 1;
+    rainLeft = rng.range(WORLD.rainDurationMin, WORLD.rainDurationMax);
+  } else if (rainTarget > 0) {
+    rainLeft -= dt;
+    if (rainLeft <= 0) {
+      rainTarget = 0;
+      rainTimer = rng.range(WORLD.rainEveryMin * 60 * 0.7, WORLD.rainEveryMin * 60 * 1.3);
+    }
+  }
+  rainF += clamp(rainTarget - rainF, -dt / 5, dt / 5);
+  const pos = playerPos();
+  effects.setRain(rainF, pos.x, pos.z);
+  city.setWet(rainF);
+  driving.setRain(rainF);
+  traffic.setRain(rainF);
+  audio.setRainLevel(rainF);
   const m = missions.current;
 
   // Mission timers and waypoint checks.
@@ -446,16 +500,19 @@ function stepWorld(dt) {
 
   traffic.update(dt, player.inCar);
   // Pedestrians sidestep cars that close in: the player's car, traffic and
-  // police all count as hazards.
+  // police all count as hazards. The rain factor is passed along, so a
+  // shower makes them hurry instead of strolling.
   peds.update(dt, [
     ...(player.inCar ? [player.inCar] : []),
     ...traffic.cars,
     ...police.cars,
-  ]);
+  ], rainF);
   effects.update(dt);
 
-  // Enemies shoot back.
+  // Enemies shoot back. The radio relay runs first, so a guard who just
+  // spotted Ria (or took a bullet) tips off his neighbours this frame.
   if (state === 'playing') {
+    combat.relayAlerts();
     for (const e of combat.enemies) {
       const shotInfo = e.update(dt, player, audio, effects);
       if (shotInfo) {
@@ -491,7 +548,10 @@ function stepWorld(dt) {
 
   // Prompts.
   if (state === 'playing') {
-    if (player.inCar) {
+    if (sideJobs.offered && !sideJobs.active) {
+      // The side-job offer (set above) keeps its prompt: Q is the only way
+      // to take it, and the enter-car prompt would hide it.
+    } else if (player.inCar) {
       hud.setPrompt(Math.abs(player.inCar.speed) < 3 ? 'E — Exit car' : '');
       hud.setCrosshair(false);
     } else {
@@ -512,6 +572,49 @@ function stepWorld(dt) {
       resetMissionWorld();
       startMission(missions.index);
     }
+  }
+
+  // Side jobs (attempt 2): offered only while no story mission is active
+  // and the player is on foot or driving in free play; a story mission
+  // starting cancels any job or offer, so the two never fight over the
+  // beacon. Q accepts an offer; arrival pays cash and saves.
+  const storyFree = !m || missions.stage !== 'active';
+  sideJobs.update(dt, state === 'playing' && storyFree);
+  if (state === 'playing' && sideJobs.active) {
+    const p = playerPos();
+    const speed = player.inCar ? player.inCar.speed : 0;
+    const done = sideJobs.checkArrival(p.x, p.z, speed);
+    if (done === 'picked') {
+      hud.showBanner('PICKED UP', 'Now deliver it — follow the cyan diamond.', 2500);
+    } else if (done) {
+      money += done.reward;
+      stats.sideJobs += 1;
+      stats.sideEarned += done.reward;
+      hud.showBanner('SIDE JOB DONE', `${done.title} — +$${done.reward}`, 3500);
+      saveGame({ missionIndex: missions.index, money, stats: { ...stats, kills: combat.kills } });
+    }
+  }
+  if (state === 'playing' && sideJobs.offered && !sideJobs.active) {
+    hud.setPrompt(`Q — Accept side job: ${sideJobs.offered.title} ($${sideJobs.offered.reward})`);
+  }
+
+  // Tutorial (attempt 2): one short step at a time, advancing on what the
+  // player actually does — move, then get in a car, then reach the beacon.
+  if (state === 'playing' && tutorialStep >= 0) {
+    const step = tutorialStep;
+    if (step === 0 && (input.down('KeyW') || input.down('KeyA') || input.down('KeyS') || input.down('KeyD'))) {
+      tutorialStep = 1;
+      audio.chime();
+    } else if (step === 1 && player.inCar) {
+      tutorialStep = 2;
+      audio.chime();
+    } else if (step === 2 && missions.waypoint && missions.atWaypoint(playerPos().x, playerPos().z, 12)) {
+      tutorialStep = -1;
+      tutorialSeen = true;
+      audio.chime();
+      saveGame({ missionIndex: missions.index, money, stats: { ...stats, kills: combat.kills }, tutorialSeen: true });
+    }
+    hud.setTutorial(tutorialStep >= 0 ? `${TUTORIAL_STEPS[tutorialStep]}  (T to skip)` : '');
   }
 
   // HUD.
@@ -541,6 +644,17 @@ function stepWorld(dt) {
       waypoint: missions.waypoint,
       cars: mapCars,
       parked: parked.map((c) => ({ x: c.x, z: c.z })),
+      // Attempt 2 HUD state: rain icon, side-job diamond, named places.
+      raining: rainF > 0.3,
+      sideWaypoint: sideJobs.waypoint,
+      places: [
+        { x: PLACES.garage.x, z: PLACES.garage.z, name: 'Garage' },
+        { x: PLACES.plaza.x, z: PLACES.plaza.z, name: 'Plaza' },
+        { x: PLACES.marina.x, z: PLACES.marina.z, name: 'Marina' },
+        { x: PLACES.docks.x, z: PLACES.docks.z, name: 'Docks' },
+        { x: PLACES.hospital.x, z: PLACES.hospital.z, name: 'Hospital' },
+        { x: PLACES.beach.x, z: PLACES.beach.z, name: 'Beach' },
+      ],
     });
   }
   lastHurtFlash = false;
@@ -623,6 +737,19 @@ function frame(now) {
     // consumed the queue, so R never reloaded anything (found by playtest:
     // the pistol could only reload by firing the magazine dry).
     if (actions & ACT_RELOAD) combat.reload();
+    // Q accepts an offered side job (attempt 2): the job's waypoint takes
+    // over the cyan minimap diamond and the HUD objective line.
+    if (actions & ACT_SIDEJOB && sideJobs.offered) {
+      const job = sideJobs.accept();
+      if (job) hud.showBanner(job.title, `${job.text} Follow the cyan diamond on the minimap.`, 4000);
+    }
+    // T skips the tutorial (attempt 2) and remembers the skip in the save.
+    if (actions & ACT_TUTORIAL && tutorialStep >= 0) {
+      tutorialStep = -1;
+      tutorialSeen = true;
+      hud.setTutorial('');
+      saveGame({ missionIndex: missions.index, money, stats: { ...stats, kills: combat.kills }, tutorialSeen: true });
+    }
     if (actions & ACT_HORN && player.inCar) audio.horn();
     if (actions & ACT_MUTE) {
       muted = !muted;

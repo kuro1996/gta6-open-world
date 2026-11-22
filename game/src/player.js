@@ -53,7 +53,16 @@ export class Player {
     this.hurtTimer = 0;
     // Seconds since the last hit: health regen only starts after a calm stretch.
     this.calmTimer = 99;
+    // Round 4 attempt 2 — sprint stamina: ~6 s of flat-out sprint, then
+    // Ria drops back to a walk until it recovers. Sprinting is a resource
+    // now, not a toggle you hold forever.
+    this.stamina = WORLD.sprintStaminaMax;
     this.mesh.position.set(this.x, 0, this.z);
+  }
+
+  /** Sprint stamina 0..1 for the HUD (and the playtest handle). */
+  get stamina01() {
+    return this.stamina / WORLD.sprintStaminaMax;
   }
 
   get pos() {
@@ -68,6 +77,7 @@ export class Player {
     this.health = health === undefined ? WORLD.playerHealth : health;
     this.inCar = null;
     this.calmTimer = 99;
+    this.stamina = WORLD.sprintStaminaMax;
     this.mesh.visible = true;
     this.mesh.position.set(x, 0, z);
   }
@@ -95,7 +105,17 @@ export class Player {
     this.camYaw -= mouse.dx * 0.0032;
     this.camPitch = clamp(this.camPitch + mouse.dy * 0.0028, -0.15, 0.9);
     const axes = input.moveAxes();
-    const sprint = input.down('ShiftLeft') || input.down('ShiftRight');
+    const sprintKey = input.down('ShiftLeft') || input.down('ShiftRight');
+    // Stamina (attempt 2): sprinting drains the meter; walking or standing
+    // refills it. An empty meter forces walk speed until it has recovered
+    // a little, so the player cannot sprint through a whole chase.
+    let sprint = sprintKey && this.stamina > 0;
+    if (sprintKey) {
+      this.stamina = Math.max(0, this.stamina - dt);
+      if (this.stamina <= 0) sprint = false;
+    } else {
+      this.stamina = Math.min(WORLD.sprintStaminaMax, this.stamina + WORLD.sprintStaminaRegen * dt);
+    }
     const speed = sprint ? WORLD.playerSprint : WORLD.playerWalk;
     const sin = Math.sin(this.camYaw);
     const cos = Math.cos(this.camYaw);

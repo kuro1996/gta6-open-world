@@ -9,7 +9,7 @@
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
@@ -17,11 +17,10 @@ import { buildDossier } from './vendor/makefun-game.ts';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-// Round 4 polish (22 Nov 2026): car health bar, night headlights, skid and
-// reverse sounds, guard flinch + pistol damage falloff, muzzle-flash light,
-// pedestrians dodging cars, traffic respawn, 5-star cop sprint, camera shake
-// on damage, mission attempt counter, save v3 with stats, crosswalks and
-// plaza benches, an eighth parked car — see README "Round 4 — what changed".
+// Round 4 polish attempt 2 (22 Nov 2026): side jobs, guard patrol + radio,
+// police radio alert, light rain weather, minimap labels, in-game tutorial,
+// sprint stamina, save v4, a tenth parked car — see README "Round 4 —
+// what changed, attempt 2". Ram immunity re-verified: rams cost speed only.
 const ROUND = 4;
 console.log(`Solara Nights — round ${ROUND} build, handing in game/ + screenshots/`);
 
@@ -35,6 +34,19 @@ const shotsDir = join(here, 'screenshots');
 const shotFiles = existsSync(shotsDir) ? readdirSync(shotsDir).filter((f) => /\.(jpg|jpeg|png)$/i.test(f)) : [];
 if (shotFiles.length === 0) {
   throw new Error('screenshots/ holds no renders — retake them before handing in');
+}
+// Attempt 2: the shots.json manifest must describe exactly the renders
+// being handed in — a stale manifest would tell the judge about pictures
+// that are not in the bundle.
+const shotsJsonPath = join(here, 'shots.json');
+if (existsSync(shotsJsonPath)) {
+  const manifest = JSON.parse(readFileSync(shotsJsonPath, 'utf8'));
+  const manifestNames = manifest.map((s) => s.name).sort();
+  const actualNames = [...shotFiles].sort();
+  if (JSON.stringify(manifestNames) !== JSON.stringify(actualNames)) {
+    throw new Error(`shots.json names (${manifestNames.join(', ')}) do not match screenshots/ (${actualNames.join(', ')}) — retake or fix the manifest`);
+  }
+  console.log(`shots.json manifest matches: ${manifestNames.join(', ')}`);
 }
 console.log(`Screenshots: ${shotFiles.length} render(s) — ${shotFiles.join(', ')}`);
 

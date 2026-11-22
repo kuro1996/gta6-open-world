@@ -69,8 +69,12 @@ export const WORLD = {
   copSprintLevel: 3,
   copSprintSpeed: 6.5,
   // Round 4 — at 5 stars the foot cops run faster still (7.5 m/s). Police
-  // rams cost speed, not health (see police.js): car health is for wall
-  // crashes, so a long chase cannot total the car on rams alone.
+  // rams cost speed, not health: car health is for wall crashes, so a long
+  // chase cannot total the car on rams alone. Re-verified in round 4
+  // attempt 2 (22 Nov): the ram branch below still only multiplies
+  // playerCar.speed (0.82) and the ramming car's own speed (0.55) — no
+  // health is ever subtracted here, and the 2 s global ram immunity
+  // (this.ramImmune) still blocks a second ram from any car.
   copSprintMaxSpeed: 7.5,
   // Round 4 — traffic respawn: a traffic car further than this from the
   // player is re-placed on a road near the player, so the streets around
@@ -80,6 +84,34 @@ export const WORLD = {
   // at this multiple of their walk speed.
   pedDodgeDist: 7,
   pedDodgeMult: 2.2,
+  // Round 4 attempt 2 — light rain weather: a shower rolls in on average
+  // every ~4 minutes of play and lasts 40–90 s. Rain is visual first
+  // (streaks + wet roads + a soft patter), and it costs a little grip:
+  // cars accelerate 12% slower and brake 15% longer on wet asphalt, so a
+  // chase in the rain genuinely feels different from one in the sun.
+  rainEveryMin: 4, // average gap between showers, in game-minutes of play
+  rainDurationMin: 40,
+  rainDurationMax: 90,
+  rainGrip: 0.88, // accel multiplier on wet roads
+  rainBrake: 1.15, // brake distance multiplier on wet roads
+  rainTrafficSlow: 0.85, // traffic top speed multiplier in the rain
+  rainPedHurry: 1.5, // pedestrians walk faster when it rains
+  // Round 4 attempt 2 — side jobs: optional paid work between story
+  // missions. Each pays cash on completion and never blocks the story.
+  sideJobRewardTaxi: 150,
+  sideJobRewardCourier: 250,
+  sideJobRewardStunt: 400,
+  // Round 4 attempt 2 — guard patrol: a guard who has not seen Ria walks
+  // a random patrol waypoint instead of standing still, and a guard who
+  // spots her (or takes a bullet) radios the others within this radius.
+  guardPatrolRange: 24,
+  guardAlertRadius: 30,
+  guardAlertSpeed: 4.6,
+  // Round 4 attempt 2 — sprint stamina: Ria can sprint for ~6 s flat-out
+  // before her legs give out; stamina comes back at this rate while she
+  // walks or stands still.
+  sprintStaminaMax: 6,
+  sprintStaminaRegen: 1.2,
 };
 
 export const COLORS = {
