@@ -77,7 +77,11 @@ recording) and adding the depth the first pass did not reach:
   handle now also exposes `rain`, `sideJob`, `sideOffer`, `tutorial` and
   `stamina`, so a headless playtest can watch the weather, the job offer
   and the tutorial steps without touching the simulation.
-- **Playtested headless** — mission 1 completes and the game runs with 0 console errors across 5 full headless runs; screenshots retaken from the live game (see `shots.json`).
+- **Playtested headless** — mission 1 completes with 0 console errors in the
+  attempt-2 headless run (driver `solara-playtest-r4.mjs`, still running when
+  this was written; missions 2–4 not yet reached by the synthetic driver —
+  same driver limitation as round 4 attempt 1, not a game regression);
+  screenshots retaken from the live game (see `shots.json`).
 
 ## Round 4 — what changed (22 Nov 2026)
 
