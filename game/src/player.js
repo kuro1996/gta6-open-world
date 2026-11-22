@@ -102,6 +102,9 @@ export class Player {
     const fixed = city.collideCircle(this.x, this.z, WORLD.playerRadius);
     this.x = fixed.x;
     this.z = fixed.z;
+    // The map ends at the world bounds: never walk off the ground plane.
+    this.x = clamp(this.x, WORLD.boundMinX, WORLD.boundX);
+    this.z = clamp(this.z, WORLD.boundMinZ, WORLD.boundZ);
     // Jump + gravity.
     if (input.down('Space') && this.y <= 0.01) this.vy = WORLD.playerJump;
     this.vy -= WORLD.gravity * dt;

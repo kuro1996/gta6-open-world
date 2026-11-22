@@ -137,7 +137,8 @@ export class MissionManager {
 
   atWaypoint(x, z, radius) {
     if (!this.waypoint) return false;
-    return distance2D(x, z, this.waypoint.x, this.waypoint.z) < (radius || 9);
+    // ??, not ||: a radius of 0 is an exact-position check, not the default.
+    return distance2D(x, z, this.waypoint.x, this.waypoint.z) < (radius ?? 9);
   }
 
   update(dt) {

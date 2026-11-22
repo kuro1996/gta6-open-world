@@ -17,7 +17,12 @@ export class AudioEngine {
   /** Call from a user gesture; safe to call repeatedly. */
   ensure() {
     if (this.ctx) {
-      if (this.ctx.state === 'suspended') this.ctx.resume();
+      if (this.ctx.state === 'suspended') {
+        // resume() returns a promise in current Chrome; a rejection (e.g.
+        // the tab lost audio focus) must not surface as an uncaught error.
+        const p = this.ctx.resume();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      }
       return;
     }
     try {

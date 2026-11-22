@@ -38,10 +38,16 @@ export function lerp(a, b, t) {
 }
 
 export function dampAngle(current, target, lambda, dt) {
-  let diff = target - current;
-  while (diff > Math.PI) diff -= Math.PI * 2;
-  while (diff < -Math.PI) diff += Math.PI * 2;
+  const diff = wrapAngle(target - current);
   return current + diff * (1 - Math.exp(-lambda * dt));
+}
+
+/** Normalise an angle to (-PI, PI]. */
+export function wrapAngle(angle) {
+  let a = angle;
+  while (a > Math.PI) a -= Math.PI * 2;
+  while (a <= -Math.PI) a += Math.PI * 2;
+  return a;
 }
 
 export function angleLerp(a, b, t) {

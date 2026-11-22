@@ -1,6 +1,6 @@
 // Solara Nights — pedestrians strolling the sidewalks, fleeing from gunfire.
 import * as THREE from 'three';
-import { CITY_HALF, GRID_K, PITCH } from './config.js';
+import { CITY_HALF, GRID_K, PITCH, WORLD } from './config.js';
 import { clamp, distance2D } from './random.js';
 
 const BODY_GEO = new THREE.CylinderGeometry(0.32, 0.38, 1.1, 8);
@@ -16,7 +16,9 @@ export class PedestrianSystem {
     this.rng = rng;
     this.city = city;
     this.peds = [];
-    for (let i = 0; i < 22; i += 1) {
+    // The count lives in config (WORLD.pedCount); the old hardcoded 22 here
+    // silently ignored any tuning done there.
+    for (let i = 0; i < WORLD.pedCount; i += 1) {
       const ped = this._makePed();
       this.peds.push(ped);
       scene.add(ped.group);

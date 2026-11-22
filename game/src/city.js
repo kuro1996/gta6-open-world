@@ -60,11 +60,13 @@ export function buildCity(scene, rng) {
   group.add(ground);
 
   const sand = new THREE.Mesh(
-    new THREE.PlaneGeometry(90, 560),
+    // 78 m wide, centred on 279: the sand runs x 240..318 and ends exactly
+    // at the water collider, instead of overlapping 12 m into the ocean.
+    new THREE.PlaneGeometry(78, 560),
     new THREE.MeshLambertMaterial({ color: COLORS.sand }),
   );
   sand.rotation.x = -Math.PI / 2;
-  sand.position.set(285, 0.01, 0);
+  sand.position.set(279, 0.01, 0);
   group.add(sand);
 
   const ocean = new THREE.Mesh(

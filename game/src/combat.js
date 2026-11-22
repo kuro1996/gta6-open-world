@@ -41,7 +41,7 @@ export class Enemy {
   }
 
   damage(amount) {
-    this.health -= amount;
+    this.health = Math.max(0, this.health - amount);
     if (this.health <= 0 && this.alive) {
       this.alive = false;
       this.mesh.rotation.x = -Math.PI / 2;

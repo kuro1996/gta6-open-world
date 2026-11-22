@@ -16,6 +16,9 @@ export function loadGame() {
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (typeof data !== 'object' || data === null) return null;
+    // Shape-check the save: a hand-edited or truncated entry must not
+    // hand the game a missionIndex/money of the wrong type.
+    if (typeof data.missionIndex !== 'number' || typeof data.money !== 'number') return null;
     return data;
   } catch {
     return null;

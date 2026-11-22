@@ -1,5 +1,7 @@
 // Solara Nights — the HUD: money, health, wanted stars, speed, ammo, objective,
 // banners, and a live 2D minimap drawn on a canvas.
+import { clamp } from './random.js';
+
 export class HUD {
   constructor() {
     this.el = {
@@ -29,6 +31,8 @@ export class HUD {
   showBanner(title, sub, ms) {
     this.el.bannerTitle.textContent = title;
     this.el.bannerSub.textContent = sub || '';
+    // An empty sub leaves a blank line that shifts the title; hide it.
+    this.el.bannerSub.classList.toggle('hidden', !sub);
     this.el.banner.classList.remove('hidden');
     this._bannerTimer = (ms || 3500) / 1000;
   }
@@ -122,8 +126,11 @@ export class HUD {
       ctx.fillStyle = c.police ? (Math.floor(performance.now() / 250) % 2 ? '#ff2222' : '#2244ff') : '#c8c8c8';
       ctx.fillRect(cx - 2, cy - 2, 4, 4);
     }
-    // Player arrow.
-    const [px, py] = toMap(state.px, state.pz);
+    // Player arrow, clamped inside the map so it never vanishes when the
+    // player drives out to the world bounds.
+    const [rawPx, rawPy] = toMap(state.px, state.pz);
+    const px = clamp(rawPx, 5, S - 5);
+    const py = clamp(rawPy, 5, S - 5);
     ctx.save();
     ctx.translate(px, py);
     ctx.rotate(state.heading || 0);

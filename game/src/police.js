@@ -2,7 +2,7 @@
 // player lays low; police cars chase and ram, foot cops chase and bust on foot.
 import * as THREE from 'three';
 import { CITY_HALF, WORLD } from './config.js';
-import { clamp, distance2D } from './random.js';
+import { clamp, distance2D, wrapAngle } from './random.js';
 import { makeCarMesh, makeCarState, syncCarMesh } from './vehicles.js';
 
 export class WantedSystem {
@@ -124,9 +124,7 @@ export class PoliceSystem {
     let near = false;
     for (const car of this.cars) {
       const targetHeading = Math.atan2(px - car.x, pz - car.z);
-      let diff = targetHeading - car.heading;
-      while (diff > Math.PI) diff -= Math.PI * 2;
-      while (diff < -Math.PI) diff += Math.PI * 2;
+      const diff = wrapAngle(targetHeading - car.heading);
       car.heading += clamp(diff, -2.4 * dt, 2.4 * dt);
       const d = distance2D(car.x, car.z, px, pz);
       near = near || d < 70;
@@ -138,6 +136,9 @@ export class PoliceSystem {
       if (fixed.hit) car.speed *= 0.6;
       car.x = fixed.x;
       car.z = fixed.z;
+      // A chase onto the beach must not run the police car off the map edge.
+      car.x = clamp(car.x, WORLD.boundMinX, WORLD.boundX);
+      car.z = clamp(car.z, WORLD.boundMinZ, WORLD.boundZ);
       // Ram the player's car.
       if (playerCar && d < 4.4) {
         const push = 4.4 - d;
@@ -170,6 +171,8 @@ export class PoliceSystem {
       const fixed = this.city.collideCircle(cop.x, cop.z, 0.5);
       cop.x = fixed.x;
       cop.z = fixed.z;
+      cop.x = clamp(cop.x, WORLD.boundMinX, WORLD.boundX);
+      cop.z = clamp(cop.z, WORLD.boundMinZ, WORLD.boundZ);
       cop.walkPhase += dt * speed * 3;
       const swing = Math.sin(cop.walkPhase) * 0.5;
       cop.mesh.userData.legL.rotation.x = swing;

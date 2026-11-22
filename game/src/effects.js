@@ -42,7 +42,8 @@ export class Effects {
     for (let i = 0; i < count; i += 1) {
       const a = Math.random() * Math.PI * 2;
       const e = Math.random() * Math.PI - Math.PI / 2;
-      const s = (speed || 5) * (0.4 + Math.random() * 0.8);
+      // ??, not ||: an explicit speed of 0 is a still burst, not a 5 m/s one.
+      const s = (speed ?? 5) * (0.4 + Math.random() * 0.8);
       this._spawn(
         x, y, z,
         Math.cos(a) * Math.cos(e) * s,

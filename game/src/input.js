@@ -1,6 +1,8 @@
 // Solara Nights — keyboard + mouse input with pointer lock.
 // Held keys are read every frame; one-shot presses (interact, reload, pause) are queued
 // as flags and taken once, so a press between frames is never lost or counted twice.
+import { clamp } from './random.js';
+
 export const ACT_INTERACT = 1;
 export const ACT_RELOAD = 2;
 export const ACT_PAUSE = 4;
@@ -73,8 +75,10 @@ export class Input {
   }
 
   takeMouseDelta() {
-    const dx = this.mouseDX;
-    const dy = this.mouseDY;
+    // Clamp the accumulated delta: after a tab switch a huge backlog would
+    // otherwise spin the camera a full turn in one frame.
+    const dx = clamp(this.mouseDX, -300, 300);
+    const dy = clamp(this.mouseDY, -300, 300);
     this.mouseDX = 0;
     this.mouseDY = 0;
     return { dx, dy };

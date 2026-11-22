@@ -20,6 +20,17 @@ export const WORLD = {
   carSportMax: 48,
   carTurn: 1.9,
   carRadius: 1.9,
+  // Playable bounds: the ground plane ends at ±380 and the water starts at
+  // x = 318, so cars and players stop short of both.
+  boundMinX: -360,
+  boundX: 308,
+  boundMinZ: -360,
+  boundZ: 360,
+  // Edge governor: within this distance of a bound, a car pointed at the
+  // bound is capped toward edgeSpeed, so a full-speed U-turn near the
+  // sand's end tightens up instead of sweeping past the map edge.
+  edgeMargin: 30,
+  edgeSpeed: 20,
   trafficCount: 14,
   pedCount: 22,
   maxWanted: 5,

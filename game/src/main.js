@@ -161,6 +161,7 @@ function resetMissionWorld() {
   combat.clearEnemies();
   combat.ammo = WORLD.pistolMag;
   combat.reloadTimer = 0;
+  combat.shotCooldown = 0; // a stale cooldown must not swallow the first shot after a retry
   for (const car of parked) scene.remove(car.mesh);
   parked = spawnParkedCars(scene, rng);
   missionPhase = 'go';

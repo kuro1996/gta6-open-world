@@ -41,6 +41,14 @@ export class Driving {
       car.speed -= Math.sign(car.speed) * Math.min(Math.abs(car.speed), 10 * dt);
     }
     if (handbrake) car.speed -= Math.sign(car.speed) * Math.min(Math.abs(car.speed), 22 * dt);
+    // Edge governor: within edgeMargin of a world bound, cap forward speed
+    // while the car points at that bound — a full-speed U-turn near the
+    // sand's end then tightens instead of sweeping out past the map edge.
+    // The cap ramps from edgeSpeed at the bound back to full speed at the
+    // margin, and only bites when the car is actually heading for the
+    // bound, so a fast run parallel to the beach is unaffected.
+    const edgeCap = this._edgeSpeedCap(car);
+    if (car.speed > edgeCap) car.speed = edgeCap;
     // Steering: sharper when slow, reversed when reversing.
     const speedFactor = clamp(Math.abs(car.speed) / 14, 0, 1);
     const steerTarget = -axes.strafe * WORLD.carTurn * (0.35 + 0.65 * (1 - speedFactor * 0.6));
@@ -74,6 +82,18 @@ export class Driving {
     }
     car.x = fixed.x;
     car.z = fixed.z;
+    // World edge, hard backstop: the car can never leave the map, even at
+    // full speed. Bleed off velocity on the clamp so it slides along the
+    // edge instead of grinding against it.
+    const bx = clamp(car.x, WORLD.boundMinX, WORLD.boundX);
+    const bz = clamp(car.z, WORLD.boundMinZ, WORLD.boundZ);
+    if (bx !== car.x || bz !== car.z) {
+      car.x = bx;
+      car.z = bz;
+      this._vx *= 0.3;
+      this._vz *= 0.3;
+      car.speed *= 0.6;
+    }
     // Traffic bumps.
     if (traffic) {
       for (const other of traffic.cars) {
@@ -106,6 +126,23 @@ export class Driving {
     }
     if (this.audio) this.audio.engine(Math.abs(car.speed) / car.maxSpeed);
     syncCarMesh(car);
+  }
+
+  /** Highest forward speed allowed this frame by the edge governor. */
+  _edgeSpeedCap(car) {
+    const m = WORLD.edgeMargin;
+    let cap = Infinity;
+    const toward = (dist, outward) => {
+      if (dist < m && outward > 0.3) {
+        const t = clamp(Math.max(0, dist) / m, 0, 1);
+        cap = Math.min(cap, WORLD.edgeSpeed + (car.maxSpeed - WORLD.edgeSpeed) * t);
+      }
+    };
+    toward(WORLD.boundX - car.x, Math.sin(car.heading));
+    toward(car.x - WORLD.boundMinX, -Math.sin(car.heading));
+    toward(WORLD.boundZ - car.z, Math.cos(car.heading));
+    toward(car.z - WORLD.boundMinZ, -Math.cos(car.heading));
+    return cap;
   }
 
   /** Chase camera behind the car. */

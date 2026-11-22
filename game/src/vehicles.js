@@ -100,7 +100,8 @@ export function syncCarMesh(car) {
   car.mesh.position.set(car.x, 0, car.z);
   car.mesh.rotation.y = car.heading;
   const spin = car.speed * 0.12;
-  for (const wheel of car.mesh.userData.wheels || []) wheel.rotation.x += spin;
+  // Wrap the spin so wheel rotation never grows unbounded over a long session.
+  for (const wheel of car.mesh.userData.wheels || []) wheel.rotation.x = (wheel.rotation.x + spin) % (Math.PI * 2);
 }
 
 export class TrafficSystem {
