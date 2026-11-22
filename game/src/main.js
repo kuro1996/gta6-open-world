@@ -7,7 +7,7 @@ import { makeRng, clamp } from './random.js';
 import { buildCity, buildRooftopBeacons } from './city.js';
 import { AudioEngine } from './audio.js';
 import { Effects } from './effects.js';
-import { Input, ACT_INTERACT, ACT_PAUSE, ACT_RELOAD, ACT_HORN, ACT_MUTE, ACT_SIDEJOB, ACT_TUTORIAL, ACT_MARKET, ACT_NIGHTOPS, ACT_RACE, ACT_SAFEHOUSE } from './input.js';
+import { Input, ACT_INTERACT, ACT_PAUSE, ACT_RELOAD, ACT_HORN, ACT_MUTE, ACT_SIDEJOB, ACT_TUTORIAL, ACT_MARKET, ACT_NIGHTOPS, ACT_RACE, ACT_SAFEHOUSE, ACT_FISH, ACT_PHOTO } from './input.js';
 import { WeatherSystem } from './weather.js';
 import { NightOps } from './nightops.js';
 import { BlackMarket, MARKET_ITEMS } from './blackmarket.js';
@@ -16,6 +16,20 @@ import { BlackMarket, MARKET_ITEMS } from './blackmarket.js';
 import { createEconomySystem, SHOPS } from './economy.js';
 import { createSafehouseSystem, SAFEHOUSES } from './safehouse.js';
 import { createStreetRaceSystem, ROUTES } from './streetrace.js';
+// Round 4 attempt 6 — eleven all-new systems: shore fishing, the casino,
+// buyable businesses, courier deliveries, stunt jumps, the in-car radio,
+// photo mode, smuggling runs, the gym, the chop shop, and taxi shifts.
+import { createFishingSystem, FISHING_SPOTS } from './fishing.js';
+import { createCasinoSystem } from './casino.js';
+import { createBusinessSystem, BUSINESS_TYPES } from './businesses.js';
+import { createDeliverySystem } from './delivery.js';
+import { createStuntSystem, STUNT_RAMPS } from './stunt.js';
+import { createRadioSystem, STATIONS } from './radio.js';
+import { createPhotoSystem } from './photo.js';
+import { createSmugglingSystem } from './smuggling.js';
+import { createGymSystem, EXERCISES } from './gym.js';
+import { createChopShopSystem, CAR_VALUES } from './chopshop.js';
+import { createTaxiSystem } from './taxi.js';
 import { Player } from './player.js';
 import { Driving } from './driving.js';
 import { TrafficSystem, spawnParkedCars, syncCarMesh, setCarGlow } from './vehicles.js';
@@ -131,6 +145,93 @@ const streetrace = createStreetRaceSystem({
   addHeat: (n) => wanted.addHeat(n),
   playerName: 'Ria',
 });
+// Round 4 attempt 6 — eleven more systems, same pattern: each owns its
+// state and only touches the game through the small hooks below.
+const hourFloat = () => (Math.floor(gameMinutes / 60) % 24) + ((gameMinutes % 60) / 60);
+const dayCount = () => Math.floor(gameMinutes / 1440) + 1;
+const fishing = createFishingSystem({
+  rng: () => rng.next(), getHour: hourFloat, getCash: () => money, addCash: (d) => { money += d; },
+  log: announce, onBite: () => audio.blip(),
+});
+const casino = createCasinoSystem({
+  getCash: () => money, addCash: (d) => { money += d; }, log: announce,
+  addHeat: (n) => wanted.addHeat(n),
+});
+const businesses = createBusinessSystem({
+  rng: () => rng.next(), getHour: hourFloat, getHeatLevel: () => wanted.level,
+  getCash: () => money, addCash: (d) => { money += d; }, log: announce,
+  reduceHeat: (n) => { wanted.heat = Math.max(0, wanted.heat - n); },
+});
+const delivery = createDeliverySystem({
+  rng: () => rng.next(), getPlayerPos: playerPos, getCash: () => money,
+  addCash: (d) => { money += d; }, log: announce,
+});
+const stunt = createStuntSystem({
+  rng: () => rng.next(), getPlayerPos: playerPos,
+  getSpeed: () => (player.inCar ? Math.abs(player.inCar.speed) : 0),
+  isAirborne: () => !!(player.inCar && player.inCar.airborne),
+  addCash: (d) => { money += d; }, log: announce,
+  onCrash: () => { if (player.inCar) player.inCar.health = Math.max(10, (player.inCar.health || 100) - 15); },
+});
+const radio = createRadioSystem({
+  rng: () => rng.next(), getWanted: () => wanted.level, getHour: hourFloat,
+  log: announce, now: () => Date.now(),
+});
+const photo = createPhotoSystem({
+  getPlayerPos: playerPos, getHour: hourFloat, getWanted: () => wanted.level,
+  getSpeed: () => (player.inCar ? Math.abs(player.inCar.speed) : 0),
+  isAirborne: () => !!(player.inCar && player.inCar.airborne),
+  log: announce,
+  captureFrame: () => { try { return renderer.domElement.toDataURL('image/jpeg', 0.6); } catch { return null; } },
+});
+const smuggling = createSmugglingSystem({
+  rng: () => rng.next(), getPlayerPos: playerPos, getHeatLevel: () => wanted.level,
+  getWanted: () => wanted.level, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n),
+  log: announce, getDeliveryRep: () => delivery.stats().rep,
+  hasBusiness: (id) => businesses.hasPerk(id),
+});
+const gym = createGymSystem({
+  getDay: dayCount, getCash: () => money, addCash: (d) => { money += d; },
+  log: announce,
+});
+const chopshop = createChopShopSystem({
+  getDay: dayCount, getHeatLevel: () => wanted.level,
+  getCash: () => money, addCash: (d) => { money += d; },
+  addHeat: (n) => wanted.addHeat(n), log: announce,
+});
+const taxi = createTaxiSystem({
+  rng: () => rng.next(), getPlayerPos: playerPos, getDay: dayCount,
+  getSpeed: () => (player.inCar ? Math.abs(player.inCar.speed) : 0),
+  getCash: () => money, addCash: (d) => { money += d; }, log: announce,
+});
+const NEW_SYSTEMS = { fishing, casino, businesses, delivery, stunt, radio, photo, smuggling, gym, chopshop, taxi };
+// NOTE: gameMinutes is declared below (17:40 start); mirror its initial
+// hour here instead of reading it, or the TDZ throws at boot.
+let lastGameHour = Math.floor((17 * 60 + 40) / 60);
+function systemsHudLine() {
+  const lines = [];
+  for (const s of Object.values(NEW_SYSTEMS)) {
+    if (typeof s.hudLine === 'function') {
+      const line = s.hudLine();
+      if (line) lines.push(line);
+    }
+  }
+  return lines.slice(0, 2).join('  ');
+}
+function saveNewSystems() {
+  const out = {};
+  for (const [name, s] of Object.entries(NEW_SYSTEMS)) {
+    if (typeof s.serialize === 'function') out[name] = s.serialize();
+  }
+  return out;
+}
+function restoreNewSystems(data) {
+  if (!data) return;
+  for (const [name, s] of Object.entries(NEW_SYSTEMS)) {
+    if (data[name] && typeof s.deserialize === 'function') s.deserialize(data[name]);
+  }
+}
 // Round 4 attempt 2 — weather: rain rolls in on a timer (game-minutes of
 // play), lasts 40–90 s, then clears. rainF eases in/out over ~5 s so the
 // shower never pops in or out in a single frame.
@@ -220,6 +321,29 @@ window.__solara = {
   get safehouses() { return SAFEHOUSES.map((s) => s.id); },
   get streetrace() { return streetrace.hud(); },
   get raceBoard() { return ROUTES.map((r) => ({ id: r.id, best: streetrace.bestTime(r.id) })); },
+  // Round 4 attempt 6 handles: the eleven new systems, live stats each,
+  // plus a debug dispatcher (act) so a playtest can drive them.
+  get systems() {
+    const out = {};
+    for (const [name, s] of Object.entries(NEW_SYSTEMS)) {
+      out[name] = typeof s.stats === 'function' ? s.stats() : null;
+    }
+    return out;
+  },
+  get systemsOk() {
+    return Object.values(NEW_SYSTEMS).every((s) => s && typeof s.stats === 'function')
+      && FISHING_SPOTS.length === 5 && BUSINESS_TYPES.length === 5
+      && STUNT_RAMPS.length === 6 && STATIONS.length === 5
+      && EXERCISES.length === 6 && CAR_VALUES.length === 10;
+  },
+  get fishingSpots() { return FISHING_SPOTS.map((s) => s.id); },
+  get businessTypes() { return BUSINESS_TYPES.map((b) => b.id); },
+  get radioStations() { return STATIONS.map((s) => s.id); },
+  act(system, method, ...args) {
+    const s = NEW_SYSTEMS[system];
+    if (!s || typeof s[method] !== 'function') return { ok: false, reason: 'no-such-system-method' };
+    try { return s[method](...args); } catch (e) { return { ok: false, reason: String(e).slice(0, 120) }; }
+  },
   get rep() { return rep; },
   get sneaking() { return player.sneaking; },
   get tutorial() { return tutorialStep; },
@@ -379,13 +503,13 @@ function completeMission() {
     showOnly('menu-complete');
     audio.engine(null);
     audio.siren(false);
-    saveGame({ missionIndex: MISSIONS.length, money, rep, stats: { ...stats, kills: combat.kills }, market: market.serialize(), nightops: nightops.serialize(), weather: weather.serialize(), economy: economy.serialize(), safehouse: safehouse.serialize(), streetrace: streetrace.serialize() });
+    saveGame({ missionIndex: MISSIONS.length, money, rep, stats: { ...stats, kills: combat.kills }, market: market.serialize(), nightops: nightops.serialize(), weather: weather.serialize(), economy: economy.serialize(), safehouse: safehouse.serialize(), streetrace: streetrace.serialize(), newSystems: saveNewSystems() });
     announce('Story complete. Free roam continues.');
     return;
   }
   // Save AFTER missions.complete() bumped the index, so Continue resumes at
   // the next mission instead of replaying the one just finished.
-  saveGame({ missionIndex: missions.index, money, stats: { ...stats, kills: combat.kills } });
+  saveGame({ missionIndex: missions.index, money, stats: { ...stats, kills: combat.kills }, newSystems: saveNewSystems() });
   nextMissionTimer = 2.5;
 }
 
@@ -418,6 +542,8 @@ function startGame(fresh) {
   if (save && save.economy) economy.deserialize(save.economy);
   if (save && save.safehouse) safehouse.deserialize(save.safehouse);
   if (save && save.streetrace) streetrace.deserialize(save.streetrace);
+  // Attempt 6 — restore the eleven new systems (fishing, casino, ...).
+  if (save && save.newSystems) restoreNewSystems(save.newSystems);
   // Tutorial (attempt 2): first-time players get the three steps; a
   // returning player (or one who skipped) never sees them again.
   tutorialStep = tutorialSeen ? -1 : 0;
@@ -487,6 +613,16 @@ function handleInteract() {
     audio.doorSlam();
     audio.blip();
     return;
+  }
+  // Attempt 6 — E at the water starts fishing, or strikes on a bite.
+  if (fishing.state.phase === 'bite') { fishing.strike(); return; }
+  if (fishing.state.phase === 'idle') {
+    const spot = FISHING_SPOTS.find((s) => Math.hypot(s.x - player.x, s.z - player.z) < 14);
+    if (spot) {
+      const res = fishing.startFishing(spot);
+      if (!res.ok) hud.showBanner('FISHING', res.reason === 'no-bait-money' ? 'Not enough cash for bait.' : 'Already fishing.', 2500);
+      return;
+    }
   }
   const car = nearestParked(4.5);
   if (!car) return;
@@ -592,6 +728,32 @@ function stepWorld(dt) {
     wanted.level = Math.min(WORLD.maxWanted, Math.floor(wanted.heat / 20));
   }
   if (state === 'playing') streetrace.update(dt);
+  // Attempt 6 — the eleven new systems, per frame: fishing (Space reels
+  // while a fish fights), the delivery / smuggling / taxi job clocks, the
+  // radio (chase flips the station), and the gym needle. Businesses and
+  // the chop shop settle once per in-game hour, on the hour change.
+  if (state === 'playing') {
+    fishing.tick(dt, { reel: input.down('Space') });
+    delivery.tick(dt);
+    smuggling.tick(dt);
+    taxi.tick(dt);
+    radio.tick(dt, { wanted: wanted.level, hour: hourFloat() });
+    gym.tick(dt);
+    if (player.inCar && player.inCar.airborne && !stunt.state.airborne) {
+      const ramp = STUNT_RAMPS.find((r) => Math.hypot(r.x - player.inCar.x, r.z - player.inCar.z) < 40) || null;
+      stunt.startJump(ramp);
+    }
+    if (stunt.state.airborne && player.inCar) {
+      if (player.inCar.airborne) stunt.tickAir(dt);
+      else stunt.land(0.85);
+    }
+    const hourNow = Math.floor(gameMinutes / 60);
+    if (hourNow !== lastGameHour) {
+      lastGameHour = hourNow;
+      businesses.tickHour(hourFloat());
+      chopshop.tickHour();
+    }
+  }
   const m = missions.current;
 
   // Mission timers and waypoint checks.
@@ -814,7 +976,7 @@ function stepWorld(dt) {
       // Attempt 4 HUD state: weather outlook, night contract line, and
       // the Black Market line (stall prompt or open catalogue).
       outlook: weather.outlook(),
-      nightops: nightops.statusLine(),
+      nightops: [nightops.statusLine(), systemsHudLine()].filter(Boolean).join('  '),
       market: market.open ? market.statusLine(money, rep) : (market.nearStall ? market.statusLine(money, rep) : ''),
       sideWaypoint: sideJobs.waypoint,
       // Attempt 3 HUD state: drift meter, heli warning, roadblocks and
@@ -937,6 +1099,19 @@ function frame(now) {
     }
     if (actions & ACT_NIGHTOPS && nightops.hasOffer) {
       nightops.acceptOffer();
+    }
+    // J casts / strikes while fishing (attempt 6); V toggles photo mode.
+    if (actions & ACT_FISH) {
+      if (fishing.state.phase === 'bite' || fishing.state.phase === 'waiting') fishing.strike();
+      else if (fishing.state.phase === 'idle') {
+        const spot = FISHING_SPOTS.find((s) => Math.hypot(s.x - playerPos().x, s.z - playerPos().z) < 14);
+        if (spot) fishing.startFishing(spot);
+        else hud.showBanner('FISHING', 'No fishing spot nearby — head to the waterfront.', 2500);
+      }
+    }
+    if (actions & ACT_PHOTO) {
+      if (photo.state.active) photo.exit();
+      else photo.enter();
     }
     // G starts a street race when the player is in a car near a route
     // start (attempt 5); U slips into / out of an owned safehouse.

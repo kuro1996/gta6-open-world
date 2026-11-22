@@ -20,6 +20,9 @@ export const ACT_NIGHTOPS = 256;
 // into / out of an owned safehouse.
 export const ACT_RACE = 512;
 export const ACT_SAFEHOUSE = 1024;
+// Round 4 attempt 6 — J casts / strikes while fishing; V toggles photo mode.
+export const ACT_FISH = 2048;
+export const ACT_PHOTO = 8192;
 
 export class Input {
   constructor(canvas) {
@@ -53,6 +56,8 @@ export class Input {
         if (e.code === 'KeyN') this.actions |= ACT_NIGHTOPS;
         if (e.code === 'KeyG') this.actions |= ACT_RACE;
         if (e.code === 'KeyU') this.actions |= ACT_SAFEHOUSE;
+        if (e.code === 'KeyJ') this.actions |= ACT_FISH;
+        if (e.code === 'KeyV') this.actions |= ACT_PHOTO;
         // Shop digits: 1-9 queue a single buy key, taken once by the
         // main loop while the Black Market is open.
         if (/^Digit[1-9]$/.test(e.code)) this.digit = Number(e.code.slice(5));

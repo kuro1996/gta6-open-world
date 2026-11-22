@@ -47,6 +47,43 @@ Controls: **WASD** move / drive · **Mouse** look · **Shift** sprint · **E** e
 **C** sneak (half speed, half noise) · **N** take a Night Shift contract · **B** open the Black Market at the docks stall · **1-9** buy ·
 **G** start a street race at a start line (in a car) · **U** slip into / out of an owned safehouse.
 
+## Round 4 — what changed, attempt 6 (22 Nov 2026)
+
+Eleven all-new systems written for this attempt — no rewrites of existing code:
+
+- **Fishing** (`game/src/fishing.js`) — five waterfront spots, four baits, a bite-window strike and a
+  tension minigame (reel too hard and the line snaps). Prices move with the clock and with how many of
+  each species you already flooded the market with. E (or J) at the water casts; Space reels.
+- **Casino** (`game/src/casino.js`) — the Solara Royale: buy chips at the cage, play a 3-reel slot with a
+  progressive jackpot, or blackjack (hit, stand, double down, dealer stands on 17, blackjack pays 3:2).
+  Big wins draw the pit boss's eye — and a little heat.
+- **Businesses** (`game/src/businesses.js`) — buy five fronts (laundromat, garage, bar, diner, arcade),
+  collect hourly income, survive police raids, repair them when they wear down. Own three for the
+  "King of the Bay" bonus; own the bar to unlock the biggest smuggling runs.
+- **Delivery** (`game/src/delivery.js`) — courier chains: pick up, deliver before the timer, build a
+  reputation from Rookie to VIP Runner. Fast and clean pays more; damaged goods and late drops cost rep.
+- **Stunts** (`game/src/stunt.js`) — six ramps, scored on airtime, distance, flips, spins and landing
+  quality, with a chain multiplier and a local leaderboard per ramp. Beat the par to get paid.
+- **Radio** (`game/src/radio.js`) — five stations (synthwave, hip-hop, salsa, lo-fi, news) with DJs and
+  track lists. The auto-DJ flips to the high-energy station in a chase and to the chill station late
+  at night; the news station reads out city bulletins.
+- **Photo mode** (`game/src/photo.js`) — V freezes the world, frees the camera, and offers seven film
+  filters plus frames. Shots go to a 24-photo gallery with likes; chase and stunt shots trend best.
+- **Smuggling** (`game/src/smuggling.js`) — contraband runs for the crew: boat drops, fast car runs,
+  dead drops. Pays five to ten times a courier job, but every run raises heat and a bust loses the
+  cargo, the payout and crew rep. Crew rank gates the cargo, from cigars to diamonds.
+- **Gym** (`game/src/gym.js`) — six exercises with a rhythm minigame (press in the green zone). Strength
+  raises punch damage, stamina raises sprint speed and health regen; over-training builds fatigue
+  until you rest.
+- **Chop shop** (`game/src/chopshop.js`) — sell stolen cars to Vinnie: price follows model, condition,
+  heat and how many of that model he already took. Strip-down pays 40% more but takes an hour; a
+  respray cools a hot car down. Four cars a day, then he closes.
+- **Taxi** (`game/src/taxi.js`) — drive a cab: fares, tips for a smooth ride, five-star ratings, VIP
+  fares at 4.5★. Drop below 2.5★ and the cab company fires you for the day.
+- Wiring only (`main.js`, `input.js`, `main.ts`): the eleven systems are built at boot, ticked in the
+  frame loop, saved/restored with the game (save v5), shown on the HUD line, and exposed on the
+  `__solara` debug handle (`systems`, `systemsOk`, `act`).
+
 ## Round 4 — what changed, attempt 5 (22 Nov 2026)
 
 All-new systems written for this attempt — no rewrites of existing code:
