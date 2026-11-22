@@ -30,6 +30,12 @@ import { createSmugglingSystem } from './smuggling.js';
 import { createGymSystem, EXERCISES } from './gym.js';
 import { createChopShopSystem, CAR_VALUES } from './chopshop.js';
 import { createTaxiSystem } from './taxi.js';
+// Round 4 attempt 7 — three more all-new systems: the boardwalk arcade
+// (arcade.js), bank-heist planning with a vault-crack minigame (bank.js),
+// and the Voss Garage tuning shop (tuning.js).
+import { createArcadeSystem, ARCADE_CABINETS } from './arcade.js';
+import { createBankSystem, HEIST_TARGETS } from './bank.js';
+import { createTuningSystem, TUNING_CATEGORIES } from './tuning.js';
 import { Player } from './player.js';
 import { Driving } from './driving.js';
 import { TrafficSystem, spawnParkedCars, syncCarMesh, setCarGlow } from './vehicles.js';
@@ -205,7 +211,18 @@ const taxi = createTaxiSystem({
   getSpeed: () => (player.inCar ? Math.abs(player.inCar.speed) : 0),
   getCash: () => money, addCash: (d) => { money += d; }, log: announce,
 });
-const NEW_SYSTEMS = { fishing, casino, businesses, delivery, stunt, radio, photo, smuggling, gym, chopshop, taxi };
+// Round 4 attempt 7 — arcade, bank heists and tuning, same factory pattern.
+const arcade = createArcadeSystem({
+  rng: () => rng.next(), getCash: () => money, addCash: (d) => { money += d; }, log: announce,
+});
+const bank = createBankSystem({
+  rng: () => rng.next(), getCash: () => money, addCash: (d) => { money += d; },
+  addHeat: (n) => wanted.addHeat(n), log: announce,
+});
+const tuning = createTuningSystem({
+  rng: () => rng.next(), getCash: () => money, addCash: (d) => { money += d; }, log: announce,
+});
+const NEW_SYSTEMS = { fishing, casino, businesses, delivery, stunt, radio, photo, smuggling, gym, chopshop, taxi, arcade, bank, tuning };
 // NOTE: gameMinutes is declared below (17:40 start); mirror its initial
 // hour here instead of reading it, or the TDZ throws at boot.
 let lastGameHour = Math.floor((17 * 60 + 40) / 60);
@@ -334,7 +351,9 @@ window.__solara = {
     return Object.values(NEW_SYSTEMS).every((s) => s && typeof s.stats === 'function')
       && FISHING_SPOTS.length === 5 && BUSINESS_TYPES.length === 5
       && STUNT_RAMPS.length === 6 && STATIONS.length === 5
-      && EXERCISES.length === 6 && CAR_VALUES.length === 10;
+      && EXERCISES.length === 6 && CAR_VALUES.length === 10
+      && ARCADE_CABINETS.length === 4 && HEIST_TARGETS.length === 3
+      && TUNING_CATEGORIES.length === 5;
   },
   get fishingSpots() { return FISHING_SPOTS.map((s) => s.id); },
   get businessTypes() { return BUSINESS_TYPES.map((b) => b.id); },

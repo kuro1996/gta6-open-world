@@ -47,6 +47,23 @@ Controls: **WASD** move / drive · **Mouse** look · **Shift** sprint · **E** e
 **C** sneak (half speed, half noise) · **N** take a Night Shift contract · **B** open the Black Market at the docks stall · **1-9** buy ·
 **G** start a street race at a start line (in a car) · **U** slip into / out of an owned safehouse.
 
+## Round 4 — what changed, attempt 7 (22 Nov 2026)
+
+Three all-new systems written for this attempt — no rewrites of existing code:
+
+- **Arcade** (`game/src/arcade.js`) — four boardwalk cabinets (Neon Rush racing, Dead Pixel
+  light-gun shooter, Bassline Fever dance, Claw King crane). Buy tokens for $5, play for
+  score, S/A/B/C/D ranks pay cash back, local high scores per cabinet, a rotating hot
+  cabinet that doubles A/S-rank prizes, and a 3-play combo that earns a free token.
+- **Bank heists** (`game/src/bank.js`) — plan a job on one of three targets (Marina Branch,
+  Plaza Central, Crown Reserve), hire up to 3 crew (driver, hacker, muscle, lookout — each
+  takes a cut), buy gear (thermal drill, jammer, masks, smoke), pick silent (less pay,
+  less heat) or loud, then crack the vault dial-by-dial. Wrong dials trip the alarm.
+- **Tuning** (`game/src/tuning.js`) — the Voss Garage tuning shop: paint, wheels, engine,
+  handling and nitro, three tiers each, prices scale with tier, and every tune is stored
+  per car so the Comet GT and the Voss Sedan keep their own builds. Engine/handling parts
+  change top speed, acceleration, steering and braking; nitro is a refillable boost.
+
 ## Round 4 — what changed, attempt 6 (22 Nov 2026)
 
 Eleven all-new systems written for this attempt — no rewrites of existing code:
