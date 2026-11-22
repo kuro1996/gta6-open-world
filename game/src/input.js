@@ -94,7 +94,11 @@ export class Input {
 
   lockPointer() {
     try {
-      this.canvas.requestPointerLock();
+      // requestPointerLock returns a promise in current Chrome; a denial
+      // (headless, iframe without permission) rejects it, so swallow the
+      // rejection instead of letting it surface as an uncaught error.
+      const p = this.canvas.requestPointerLock();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
     } catch {
       // Pointer lock can fail in headless runs; mouse look then stays off.
     }

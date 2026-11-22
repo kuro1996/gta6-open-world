@@ -153,6 +153,10 @@ export class AudioEngine {
         this.sirenOsc = null;
         this.sirenGain = null;
       }
+      if (this._sirenLfo) {
+        try { this._sirenLfo.stop(); } catch { /* already stopped */ }
+        this._sirenLfo = null;
+      }
       return;
     }
     this.sirenOsc = this.ctx.createOscillator();

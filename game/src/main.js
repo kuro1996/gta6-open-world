@@ -70,6 +70,49 @@ let orbitAngle = 0.6;
 let gameMinutes = 17 * 60 + 40;
 let muted = false;
 let lastHurtFlash = false;
+let lastShotResult = null; // debug handle only: result of the last pistol shot
+let shotSeq = 0; // debug handle only: counts pistol shots (1 per fired round)
+
+// Read-only playtest handle: automated runs (and curious players in the
+// console) can watch live state without touching the simulation. It never
+// writes anything and the game plays exactly the same with or without it.
+window.__solara = {
+  get state() { return state; },
+  get money() { return money; },
+  get missionIndex() { return missions.index; },
+  get missionPhase() { return missionPhase; },
+  get missionStage() { return missions.stage; },
+  get objective() { return missions.objective; },
+  get waypoint() { return missions.waypoint; },
+  get timeLeft() { return missions.timeLeft; },
+  get wanted() { return { heat: wanted.heat, level: wanted.level }; },
+  get health() { return player.health; },
+  get ammo() { return combat.ammo; },
+  get lastShot() { return lastShotResult; },
+  get lastShotPoint() { return combat.lastHit; },
+  get shotSeq() { return shotSeq; },
+  get alive() { return combat.aliveCount; },
+  get police() { return police.cars.length + police.cops.length; },
+  get parked() { return parked.map((c) => ({ name: c.name, x: c.x, z: c.z })); },
+  get player() {
+    const car = player.inCar;
+    // Effective position: the car's, while driving — the on-foot x/z go stale
+    // the moment the player gets in, and a playtest reader would chase a ghost.
+    return {
+      x: car ? car.x : player.x, z: car ? car.z : player.z,
+      heading: player.heading, camYaw: player.camYaw, camPitch: player.camPitch,
+      inCar: !!car,
+      car: car ? { name: car.name, x: car.x, z: car.z, heading: car.heading, speed: car.speed, health: car.health } : null,
+    };
+  },
+  get enemies() { return combat.enemies.map((e) => ({ x: e.x, z: e.z, alive: e.alive, health: e.health })); },
+  get audio() {
+    return {
+      ctx: !!audio.ctx, running: audio.ctx ? audio.ctx.state === 'running' : false,
+      musicStep: audio.musicStep, siren: audio.sirenOn, engine: !!audio.engineOsc,
+    };
+  },
+};
 
 input.onFirstGesture = () => {
   audio.ensure();
@@ -129,7 +172,10 @@ function startMission(index) {
     missions.objective = 'Free roam — Solara Bay is yours.';
     return;
   }
-  missionPhase = 'go';
+  // Each mission's phase is what the step loop waits on: homecoming and
+  // thedrop just walk/drive to the waypoint ('go'), hotwheels waits for the
+  // Comet GT theft ('steal'), payback waits for the docks to be cleared.
+  missionPhase = m.id === 'hotwheels' ? 'steal' : m.id === 'payback' ? 'clear' : 'go';
   missions.begin();
   if (m.id === 'thedrop') wanted.addHeat(55);
   if (m.id === 'payback') {
@@ -154,6 +200,9 @@ function completeMission() {
     announce('Story complete. Free roam continues.');
     return;
   }
+  // Save AFTER missions.complete() bumped the index, so Continue resumes at
+  // the next mission instead of replaying the one just finished.
+  saveGame({ missionIndex: missions.index, money });
   nextMissionTimer = 2.5;
 }
 
@@ -167,7 +216,7 @@ function failMission(reason) {
 missions.onMissionComplete = (m) => {
   money += m.reward;
   hud.showBanner('MISSION COMPLETE', `${m.title} — +$${m.reward}`, 3500);
-  saveGame({ missionIndex: missions.index, money });
+  // No save here: completeMission() saves after the index has advanced.
 };
 
 function startGame(fresh) {
@@ -316,6 +365,8 @@ function stepWorld(dt) {
     if (!player.inCar && input.mouseDown) {
       const result = combat.shoot(camera, hittables());
       if (result) {
+        lastShotResult = result;
+        shotSeq += 1;
         wanted.addHeat(4);
         peds.scare(player.x, player.z, 40);
         if (result === 'ped') {
@@ -324,7 +375,7 @@ function stepWorld(dt) {
         } else if (result === 'car') wanted.addHeat(10);
       }
     }
-    if (input.takeActions() & ACT_RELOAD) combat.reload();
+    // (Reload is handled in frame(), next to the other one-shot actions.)
   }
 
   traffic.update(dt, player.inCar);
@@ -406,6 +457,7 @@ function stepWorld(dt) {
       reloading: combat.reloadTimer > 0,
       missionTitle: m ? m.title : 'FREE ROAM',
       objective: missions.stage === 'active' ? missions.objective : missions.message,
+      waypointDist: missions.waypoint ? Math.hypot(missions.waypoint.x - px, missions.waypoint.z - pz) : 0,
       timeLeft: m && m.id === 'thedrop' && missions.stage === 'active' ? missions.timeLeft : 0,
       clock: clockText(),
       hurt: player.hurtTimer > 0,
@@ -491,6 +543,11 @@ function frame(now) {
     } else if (actions & ACT_INTERACT) {
       handleInteract();
     }
+    // Reload is checked here, next to the other one-shot actions: stepWorld
+    // used to check it with a second takeActions(), but frame() had already
+    // consumed the queue, so R never reloaded anything (found by playtest:
+    // the pistol could only reload by firing the magazine dry).
+    if (actions & ACT_RELOAD) combat.reload();
     stepWorld(dt);
   } else if (state === 'title') {
     orbitAngle += dt * 0.045;
@@ -569,6 +626,7 @@ function runShot(name) {
       reloading: false,
       missionTitle: '1 — Homecoming',
       objective: missions.objective,
+      waypointDist: missions.waypoint ? Math.hypot(missions.waypoint.x - comet.x, missions.waypoint.z - comet.z) : 0,
       timeLeft: 0,
       clock: clockText(),
       hurt: false,
@@ -630,6 +688,7 @@ function runShot(name) {
       reloading: false,
       missionTitle: '2 — Hot Wheels',
       objective: missions.objective,
+      waypointDist: missions.waypoint ? Math.hypot(missions.waypoint.x - comet.x, missions.waypoint.z - comet.z) : 0,
       timeLeft: 0,
       clock: clockText(),
       hurt: false,

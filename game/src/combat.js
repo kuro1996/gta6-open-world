@@ -29,7 +29,11 @@ export class Enemy {
     scene.add(this.mesh);
     this.x = x;
     this.z = z;
-    this.health = 100;
+    // 68 HP = two pistol hits (34 dmg each). Three hits per guard made the
+    // six-guard fight mathematically unwinnable: six guards at close range
+    // deal ~34 dps while the player needs 4 s of perfect fire to kill them
+    // all, and the player only has 100 HP.
+    this.health = 68;
     this.alive = true;
     this.shootTimer = 1 + Math.random();
     this.walkPhase = 0;
@@ -52,8 +56,12 @@ export class Enemy {
     if (d < 45) {
       this.mesh.rotation.y = Math.atan2(player.x - this.x, player.z - this.z);
       this.shootTimer -= dt;
-      if (d > 26) {
-        // Close the distance.
+      if (d > 16) {
+        // Close the distance — into pistol range. The old 26 m stop let the
+        // guards sit outside the ~18 m the player's ray can reach (the ray
+        // leaves the camera toward the player's chest, so it dives under
+        // distant targets), forcing the player to walk 8 m through their fire
+        // just to shoot back.
         const step = 3.4 * dt;
         this.x += Math.sin(this.mesh.rotation.y) * step;
         this.z += Math.cos(this.mesh.rotation.y) * step;
@@ -63,7 +71,10 @@ export class Enemy {
         this.mesh.userData.legR.rotation.x = -swing;
       }
       if (this.shootTimer <= 0) {
-        this.shootTimer = 1.1 + Math.random() * 0.5;
+        // 1.5-2.1 s between shots: the old 1.1-1.6 s let six guards stack
+        // ~34 dps at close range, more than the player's 100 HP could absorb
+        // in the time needed to kill them all.
+        this.shootTimer = 1.5 + Math.random() * 0.6;
         shot = true;
         if (effects) {
           effects.muzzle(
@@ -94,6 +105,7 @@ export class Combat {
     this.enemies = [];
     this.raycaster = new THREE.Raycaster();
     this.raycaster.far = WORLD.pistolRange;
+    this.lastHit = null;
   }
 
   spawnEnemies(positions) {
@@ -144,17 +156,20 @@ export class Combat {
     for (const e of this.enemies) if (e.alive) targets.push(e.mesh);
     for (const h of hittables || []) targets.push(h.mesh);
     const hits = this.raycaster.intersectObjects(targets, true);
+    // Debug handle: where the ray stopped, so a playtest can tell what a
+    // shot actually hit (a car in the lane, a wall, the guard, thin air).
+    this.lastHit = hits.length ? { x: hits[0].point.x, y: hits[0].point.y, z: hits[0].point.z } : null;
     if (!hits.length) return 'empty';
     const point = hits[0].point;
     if (this.effects) this.effects.burst(point.x, point.y, point.z, 0xffdd88, 5, 3);
     for (const e of this.enemies) {
-      if (e.alive && (e.mesh === obj || e.mesh === hits[0].object || isDescendant(e.mesh, hits[0].object))) {
+      if (e.alive && (e.mesh === hits[0].object || isDescendant(e.mesh, hits[0].object))) {
         e.damage(WORLD.pistolDamage);
         return 'enemy';
       }
     }
     for (const h of hittables || []) {
-      if (h.mesh === obj || isDescendant(h.mesh, hits[0].object)) return h.kind || 'car';
+      if (h.mesh === hits[0].object || isDescendant(h.mesh, hits[0].object)) return h.kind || 'car';
     }
     return 'wall';
   }

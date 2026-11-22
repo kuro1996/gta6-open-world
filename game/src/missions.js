@@ -54,9 +54,9 @@ export class MissionManager {
   }
 
   _buildBeacon() {
-    const geo = new THREE.CylinderGeometry(3.2, 3.2, 60, 16, 1, true);
+    const geo = new THREE.CylinderGeometry(2.6, 2.6, 60, 16, 1, true);
     const mat = new THREE.MeshBasicMaterial({
-      color: 0xffd23d, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false,
+      color: 0xffd23d, transparent: true, opacity: 0.15, side: THREE.DoubleSide, depthWrite: false,
     });
     this.beacon = new THREE.Mesh(geo, mat);
     this.beacon.visible = false;
@@ -117,6 +117,9 @@ export class MissionManager {
     const m = this.current;
     this.stage = 'done';
     this.clearWaypoint();
+    // Clear the briefing text: until the next mission starts, the HUD would
+    // otherwise show the next mission's title above the old briefing.
+    this.message = '';
     if (this.audio) this.audio.jingle();
     if (m && this.onMissionComplete) this.onMissionComplete(m);
     this.index += 1;

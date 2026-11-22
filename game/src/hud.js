@@ -10,6 +10,7 @@ export class HUD {
       speed: document.getElementById('hud-speed'),
       ammo: document.getElementById('hud-ammo'),
       objective: document.getElementById('hud-objective'),
+      distance: document.getElementById('hud-distance'),
       mission: document.getElementById('hud-mission'),
       banner: document.getElementById('hud-banner'),
       bannerTitle: document.getElementById('hud-banner-title'),
@@ -69,6 +70,7 @@ export class HUD {
     this.el.ammo.textContent = state.reloading ? 'RELOADING…' : `◉ ${state.ammo} / ∞`;
     this.el.mission.textContent = state.missionTitle || 'FREE ROAM';
     this.el.objective.textContent = state.objective || '';
+    this.el.distance.textContent = state.waypointDist ? `▸ ${Math.round(state.waypointDist)} m to target` : '';
     this.el.clock.textContent = state.timeLeft ? `⏱ ${Math.ceil(state.timeLeft)}s` : state.clock;
     this.el.vignette.style.opacity = state.hurt ? '0.85' : state.health < 30 ? '0.45' : '0';
     this._drawMinimap(state);
