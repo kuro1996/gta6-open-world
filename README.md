@@ -55,7 +55,7 @@ Controls: **WASD** move / drive · **Mouse** look · **Shift** sprint · **E** e
 - **Muzzle-flash light** — a pooled point light pops with every shot and crash flash, then decays.
 - **Pedestrians dodge cars** — a pedestrian sidesteps when a car closes within 7 m instead of strolling into the bumper.
 - **Traffic respawn** — cars that drift far from the player re-appear on a road nearby, so the streets stay busy.
-- **5-star heat** — foot cops sprint at 7.5 m/s at 5 stars, and police ram damage scales with closing speed.
+- **5-star heat** — foot cops sprint at 7.5 m/s at 5 stars; rams cost speed, not health.
 - **Camera shake on damage** — taking a bullet jitters the camera as well as flashing the red vignette.
 - **Mission attempts** — a retry shows "Attempt 2" in the briefing banner.
 - **Save v3 with stats** — kills, missions completed and best Drop time left persist across sessions (v1/v2 saves migrate).
@@ -64,7 +64,7 @@ Controls: **WASD** move / drive · **Mouse** look · **Shift** sprint · **E** e
 - **Low-ammo warning and urgent timer** — ammo turns red at 3 rounds; The Drop clock turns red under 30 seconds.
 - **Fairer rams** — a global 2 s immunity after any police ram stops two or three cars taking turns; a single wall graze costs at most 10 HP; rams cost speed, not health, so a long chase cannot total the car on rams alone.
 - **Headshot bonus** — a pistol hit above 1.7 m deals 50% more damage.
-- **Playtested headless end-to-end** — all four missions driven to completion in a headless browser with 0 console errors; screenshots retaken from the live game (see `shots.json`).
+- **Playtested headless** — mission 1 completes and the game runs with 0 console errors across 5 full headless runs; screenshots retaken from the live game (see `shots.json`).
 
 ## Round 3 — what changed (22 Nov 2026)
 
