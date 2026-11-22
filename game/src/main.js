@@ -10,7 +10,7 @@ import { Effects } from './effects.js';
 import { Input, ACT_INTERACT, ACT_PAUSE, ACT_RELOAD, ACT_HORN, ACT_MUTE, ACT_SIDEJOB, ACT_TUTORIAL } from './input.js';
 import { Player } from './player.js';
 import { Driving } from './driving.js';
-import { TrafficSystem, spawnParkedCars, syncCarMesh } from './vehicles.js';
+import { TrafficSystem, spawnParkedCars, syncCarMesh, setCarGlow } from './vehicles.js';
 import { PedestrianSystem } from './pedestrians.js';
 import { WantedSystem, PoliceSystem } from './police.js';
 import { Combat } from './combat.js';
@@ -121,7 +121,14 @@ window.__solara = {
   get headlight() { return !!(driving.headlight && driving.headlight.visible); },
   get stats() { return { ...stats, kills: combat.kills }; },
   get parked() { return parked.map((c) => ({ name: c.name, x: c.x, z: c.z })); },
-  // Round 4 attempt 2 handles: weather, side jobs, tutorial, stamina.
+  // Round 4 attempt 3 handles: drift chain, helicopter, roadblocks,
+  // damage zones, side-job chains.
+  get drift() { return { score: Math.floor(driving.driftScore), banked: driving.bankedTotal, drifting: driving.drifting }; },
+  get heli() { return police.heliActive; },
+  get heliPos() { return police.heli ? { x: police.heli.x, z: police.heli.z } : null; },
+  get roadblocks() { return police.roadblocks.map((c) => ({ x: c.x, z: c.z })); },
+  get damage() { return driving.damageZones; },
+  get chain() { return sideJobs.chainStatus(); },
   get rain() { return rainF; },
   get raining() { return rainF > 0.3; },
   get sideJob() { return sideJobs.active ? { id: sideJobs.active.id, stage: sideJobs.stage, objective: sideJobs.objective } : null; },
@@ -442,6 +449,10 @@ function stepWorld(dt) {
   city.setWet(rainF);
   driving.setRain(rainF);
   traffic.setRain(rainF);
+  // Attempt 3 — night underglow: the fast cars' neon brightens with the
+  // night factor, traffic and parked alike.
+  traffic.setNight(nightF);
+  for (const c of parked) setCarGlow(c.mesh, nightF);
   audio.setRainLevel(rainF);
   const m = missions.current;
 
@@ -478,6 +489,19 @@ function stepWorld(dt) {
   if (state === 'playing') {
     if (player.inCar) driving.update(dt, input, traffic);
     else player.update(dt, input, city);
+    // Attempt 3 — drift payout: a banked drift chain pays cash, $1 per 2
+    // points, the moment the chain ends. The banner names the amount so
+    // the payout is never silent money.
+    if (player.inCar) {
+      const bankedPoints = driving.takeBanked();
+      if (bankedPoints > 0) {
+        const cash = Math.floor(bankedPoints / WORLD.driftBankRate);
+        if (cash > 0) {
+          money += cash;
+          hud.showBanner('DRIFT BANKED', `Clean slides paid +$${cash}`, 2500);
+        }
+      }
+    }
     // Health comes back slowly once Ria has been out of danger a while.
     player.regen(dt, effects);
     combat.update(dt);
@@ -587,10 +611,13 @@ function stepWorld(dt) {
     if (done === 'picked') {
       hud.showBanner('PICKED UP', 'Now deliver it — follow the cyan diamond.', 2500);
     } else if (done) {
-      money += done.reward;
+      // Attempt 3 — a finished job pays its reward plus the streak bonus
+      // and, when it completes a chain, the $500 chain bonus on top.
+      const jobBonus = (done.streakBonus || 0) + (done.chainBonus || 0);
+      money += done.reward + jobBonus;
       stats.sideJobs += 1;
-      stats.sideEarned += done.reward;
-      hud.showBanner('SIDE JOB DONE', `${done.title} — +$${done.reward}`, 3500);
+      stats.sideEarned += done.reward + jobBonus;
+      hud.showBanner('SIDE JOB DONE', `${done.title} — +$${done.reward}${jobBonus ? ` (+$${jobBonus} bonus)` : ''}${done.chainComplete ? ` — ${done.chainComplete} complete!` : ''}`, 3500);
       saveGame({ missionIndex: missions.index, money, stats: { ...stats, kills: combat.kills } });
     }
   }
@@ -647,6 +674,16 @@ function stepWorld(dt) {
       // Attempt 2 HUD state: rain icon, side-job diamond, named places.
       raining: rainF > 0.3,
       sideWaypoint: sideJobs.waypoint,
+      // Attempt 3 HUD state: drift meter, heli warning, roadblocks and
+      // heli on the minimap, chain progress, worst damage zone.
+      drift: driving.driftScore,
+      drifting: driving.drifting,
+      driftBanked: driving.bankedTotal,
+      heli: police.heliActive,
+      heliPos: police.heli ? { x: police.heli.x, z: police.heli.z } : null,
+      roadblocks: police.roadblocks.map((c) => ({ x: c.x, z: c.z })),
+      chain: sideJobs.chainStatus(),
+      damage: driving.damageZones,
       places: [
         { x: PLACES.garage.x, z: PLACES.garage.z, name: 'Garage' },
         { x: PLACES.plaza.x, z: PLACES.plaza.z, name: 'Plaza' },
@@ -741,7 +778,7 @@ function frame(now) {
     // over the cyan minimap diamond and the HUD objective line.
     if (actions & ACT_SIDEJOB && sideJobs.offered) {
       const job = sideJobs.accept();
-      if (job) hud.showBanner(job.title, `${job.text} Follow the cyan diamond on the minimap.`, 4000);
+      if (job) hud.showBanner(job.title, `${job.text}${job.chainNote ? ` (${job.chainNote})` : ''} Follow the cyan diamond on the minimap.`, 4000);
     }
     // T skips the tutorial (attempt 2) and remembers the skip in the save.
     if (actions & ACT_TUTORIAL && tutorialStep >= 0) {

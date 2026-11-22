@@ -49,6 +49,11 @@
   /* Round 4 attempt 2 — tutorial toast above the prompt, weather line under the clock. */
   #hud-tutorial { position: absolute; left: 50%; bottom: 160px; transform: translateX(-50%); background: rgba(18,40,60,.9); border: 1px solid rgba(61,216,255,.6); border-radius: 8px; padding: 8px 16px; font-size: 15px; font-weight: 700; white-space: nowrap; color: #bfefff; }
   #hud-weather { font-size: 13px; font-weight: 700; color: #9fc6e8; }
+  /* Round 4 attempt 3 — helicopter warning under the weather line, chain
+     progress under the objective, drift meter under the speed readout. */
+  #hud-heli { font-size: 13px; font-weight: 800; color: #ff8a7a; }
+  #hud-chain { font-size: 13px; font-weight: 700; color: #3dd8ff; }
+  #hud-drift { font-size: 18px; font-weight: 800; color: #ffd23d; }
   #hud-banner { position: absolute; left: 50%; top: 34%; transform: translateX(-50%); text-align: center; text-shadow: 0 2px 6px #000; background: rgba(8,14,26,.45); padding: 10px 28px 12px; border-radius: 12px; max-width: min(640px, 90vw); }
   #hud-banner-title { font-size: 40px; font-weight: 900; color: #ffd23d; letter-spacing: 1px; }
   #hud-banner-sub { font-size: 17px; margin-top: 6px; max-width: 560px; }
@@ -80,9 +85,11 @@
     <div id="hud-money">$0</div>
     <div id="hud-mission">FREE ROAM</div>
     <div id="hud-objective"></div>
+    <div id="hud-chain" class="hidden"></div>
     <div id="hud-distance"></div>
     <div id="hud-clock"></div>
     <div id="hud-weather" class="hidden"></div>
+    <div id="hud-heli" class="hidden"></div>
   </div>
   <div id="hud-stars">☆☆☆☆☆</div>
   <canvas id="minimap" width="180" height="180"></canvas>
@@ -92,6 +99,7 @@
   </div>
   <div id="hud-bottom-right">
     <div id="hud-speed"></div>
+    <div id="hud-drift" class="hidden"></div>
     <div id="hud-ammo">◉ 12 / ∞</div>
     <div id="hud-car" class="hidden">
       <div id="hud-car-label">CAR <span id="hud-car-text">100</span></div>
@@ -113,6 +121,7 @@
   <p>Ria Santos is back in Solara Bay — and the Crown Syndicate took her brother's garage.
   Take jobs from fixer Mara Voss, steal what you need, outrun the Solara PD, and take the
   city back, one mission at a time.</p>
+  <div class="sub">ROUND 4 — DRIFT FOR CASH · POLICE HELI · ROADBLOCKS · JOB CHAINS</div>
   <button id="btn-continue">Continue</button>
   <button id="btn-new">New Game</button>
   <button id="btn-how" class="secondary">How to Play</button>
@@ -122,8 +131,10 @@
     <b>Click</b> shoot (left or right) &nbsp;·&nbsp; <b>R</b> reload &nbsp;·&nbsp; <b>P / Esc</b> pause<br>
     <b>H</b> horn &nbsp;·&nbsp; <b>M</b> mute &nbsp;·&nbsp; <b>Space + W</b> burnout (in car)<br>
     <b>Q</b> accept a side job when Mara offers one &nbsp;·&nbsp; <b>T</b> skip the tutorial tips<br>
+    <b>Space + steer at speed</b> drift — chain slides for cash, but a wall hit kills the chain.<br>
     Rain makes roads wet and cars slower — watch the rain icon by the clock.
     Follow the yellow beacon. Stealing cars and shooting raise your wanted level — lay low and the heat cools off.
+    At 4 stars the PD sets roadblocks ahead of you; at 5 stars the helicopter keeps you lit and the heat never cools.
   </div>
 </div>
 

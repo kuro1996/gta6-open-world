@@ -1,7 +1,10 @@
 // Solara Nights — the story: four missions for Ria Santos, from homecoming to
 // payback at the Crown Docks, plus the waypoint beacon that marks each goal.
+// Round 4 attempt 3 adds two things on top of the story: a par-time speed
+// bonus for EVERY mission (not just The Drop), and side-job chains — Mara's
+// work now comes in runs of three, and finishing a whole chain pays a bonus.
 import * as THREE from 'three';
-import { PLACES } from './config.js';
+import { PLACES, WORLD } from './config.js';
 import { distance2D } from './random.js';
 
 export const MISSIONS = [  {
@@ -38,6 +41,18 @@ export const MISSIONS = [  {
   },
 ];
 
+// Par-time speed bonus, attempt 3: every mission pays for a fast finish,
+// not just The Drop. Beating par by the margin pays the big bonus;
+// finishing under par at all pays the small one. The Drop keeps its own
+// $200 timer bonus on top when the package lands with 30+ s to spare.
+export function parBonusFor(mission, elapsedSeconds) {
+  if (!mission || typeof elapsedSeconds !== 'number') return 0;
+  const under = mission.par - elapsedSeconds;
+  if (under >= WORLD.parBonusMargin) return WORLD.parBonusBig;
+  if (under > 0) return WORLD.parBonusSmall;
+  return 0;
+}
+
 export class MissionManager {
   constructor(scene, audio) {
     this.scene = scene;
@@ -56,6 +71,11 @@ export class MissionManager {
     // Attempts per mission id: a retry after a fail or a timeout shows
     // "Attempt 2" in the banner, so the player can feel the grind.
     this.attempts = {};
+    // Attempt 3 — par clock: seconds since begin() on the current attempt.
+    // The HUD reads it through missionElapsed(); complete() turns it into
+    // the speed bonus. Best times are kept per mission for the end screen.
+    this.elapsed = 0;
+    this.bestTimes = {};
     this._buildBeacon();
   }
 
@@ -96,6 +116,17 @@ export class MissionManager {
     return this.index >= MISSIONS.length;
   }
 
+  /** Seconds spent on the current attempt (0 before begin()). */
+  missionElapsed() {
+    return this.elapsed;
+  }
+
+  /** Best (fastest) finish per mission id, in seconds, or null. */
+  bestTimeFor(id) {
+    const t = this.bestTimes[id];
+    return typeof t === 'number' ? t : null;
+  }
+
   /** Attempts spent on this mission id (1 on the first try). */
   attemptsFor(id) {
     return this.attempts[id] || 0;
@@ -109,12 +140,14 @@ export class MissionManager {
     this.objective = m ? m.objective : '';
     this.timer = 0;
     this.timeLeft = 0;
+    this.elapsed = 0;
     if (m) this.attempts[m.id] = (this.attempts[m.id] || 0) + 1;
     return m;
   }
 
   begin() {
     this.stage = 'active';
+    this.elapsed = 0;
     const m = this.current;
     if (!m) return;
     if (m.id === 'homecoming') this.setWaypoint(PLACES.garage.x, PLACES.garage.z - 14);
@@ -131,9 +164,16 @@ export class MissionManager {
     const m = this.current;
     this.stage = 'done';
     this.clearWaypoint();
-    // Speed bonus: The Drop pays $200 extra when the package lands with
-    // more than 30 seconds to spare.
-    if (m) m.bonus = m.id === 'thedrop' && this.timeLeft > 30 ? 200 : 0;
+    // Speed bonus, attempt 3: the par clock decides. The Drop keeps its
+    // own $200 timer bonus on top when the package lands with more than
+    // 30 seconds to spare — the two bonuses stack, so a perfect Drop pays
+    // $800 + $200 + $200.
+    if (m) {
+      const dropBonus = m.id === 'thedrop' && this.timeLeft > 30 ? 200 : 0;
+      m.bonus = dropBonus + parBonusFor(m, this.elapsed);
+      const prevBest = this.bestTimes[m.id];
+      if (prevBest === undefined || this.elapsed < prevBest) this.bestTimes[m.id] = Math.round(this.elapsed * 10) / 10;
+    }
     // Clear the briefing text: until the next mission starts, the HUD would
     // otherwise show the next mission's title above the old briefing.
     this.message = '';
@@ -168,6 +208,9 @@ export class MissionManager {
     if (this.beacon.visible) {
       this.beacon.material.opacity = 0.12 + Math.sin(performance.now() * 0.004) * 0.06;
     }
+    // The par clock only runs while the mission is active, so a pause on
+    // the title screen or a retry does not charge the player for it.
+    if (this.stage === 'active') this.elapsed += dt;
     if (this.stage === 'active' && this.current && this.current.id === 'thedrop') {
       this.timeLeft -= dt;
       if (this.timeLeft <= 0) {
@@ -179,14 +222,28 @@ export class MissionManager {
   }
 }
 
-// --- Side jobs (round 4 attempt 2) -----------------------------------------
+// --- Side jobs (round 4 attempt 2, chains in attempt 3) ---------------------
 // Optional paid work between story missions: Mara Voss always has a fare,
 // a parcel or a stunt to pay for. A job is offered when the player is free
 // (no story mission active), accepted with Q, and pays cash on arrival.
 // Jobs never block the story — starting a story mission cancels the job.
+//
+// Attempt 3 — chains: the six jobs form two runs of three. "Mara's
+// Errands" is the day run (taxi → courier → stunt); "Night Shift" is the
+// late run (night courier → VIP taxi → beach drift). Jobs are offered in
+// chain order, so the player always knows what comes next, and finishing
+// a whole chain pays a $500 bonus on top of the three job rewards. A
+// streak of jobs finished without a cancellation adds $25 per job in the
+// streak, so steady work pays better than cherry-picking.
+export const SIDE_JOB_CHAINS = [
+  { id: 'errands', title: "Mara's Errands", jobs: ['taxi', 'courier', 'stunt'] },
+  { id: 'nightshift', title: 'Night Shift', jobs: ['nightcourier', 'viptaxi', 'beachdrift'] },
+];
+
 export const SIDE_JOBS = [
   {
     id: 'taxi',
+    chain: 'errands',
     title: 'Side Job — Taxi Fare',
     text: 'Mara: "A tourist at the beach needs a lift to the hospital. $150, no questions."',
     target: { x: 262, z: 0, name: 'Solara Beach' },
@@ -196,6 +253,7 @@ export const SIDE_JOBS = [
   },
   {
     id: 'courier',
+    chain: 'errands',
     title: 'Side Job — Courier Run',
     text: 'Mara: "A parcel for the marina, quick and quiet. $250 if it gets there in one piece."',
     target: { x: 0, z: 262, name: 'Marina' },
@@ -205,6 +263,7 @@ export const SIDE_JOBS = [
   },
   {
     id: 'stunt',
+    chain: 'errands',
     title: 'Side Job — Stunt Jump',
     text: 'Mara: "The crew bets you can\'t clear the plaza fountain at speed. $400 says you can."',
     target: { x: 29, z: 29, name: 'Solara Plaza' },
@@ -212,6 +271,37 @@ export const SIDE_JOBS = [
     reward: 400,
     needsCar: true,
     stunt: true, // complete by crossing the plaza faster than 25 m/s
+  },
+  {
+    id: 'nightcourier',
+    chain: 'nightshift',
+    title: 'Side Job — Night Courier',
+    text: 'Mara: "A sealed envelope for the docks, after dark. $250, and don\'t stop for anyone."',
+    target: { x: 29, z: 29, name: 'Solara Plaza' },
+    dest: { x: -120, z: 262, name: 'Crown Docks' },
+    reward: 250,
+    needsCar: false,
+  },
+  {
+    id: 'viptaxi',
+    chain: 'nightshift',
+    title: 'Side Job — VIP Taxi',
+    text: 'Mara: "A Crown defector at the marina wants a quiet ride to the garage. $300, and keep it smooth."',
+    target: { x: 0, z: 262, name: 'Marina' },
+    dest: { x: -203.5, z: 203.5, name: 'Voss Garage' },
+    reward: 300,
+    needsCar: true,
+  },
+  {
+    id: 'beachdrift',
+    chain: 'nightshift',
+    title: 'Side Job — Beach Drift',
+    text: 'Mara: "The crew wants a show on the sand: slide the beach road sideways, over 25 m/s. $400."',
+    target: { x: 262, z: 0, name: 'Solara Beach' },
+    dest: { x: 262, z: 0, name: 'Solara Beach' },
+    reward: 400,
+    needsCar: true,
+    stunt: true, // complete by crossing the beach faster than 25 m/s
   },
 ];
 
@@ -224,13 +314,35 @@ export class SideJobs {
     this.stage = 'pickup'; // pickup | deliver (stunt jobs skip to 'stunt')
     this.done = {}; // id -> times completed
     this.offerTimer = 20; // first offer appears 20 s into free play
+    // Attempt 3 — chain progress: chain id -> how many of its jobs are
+    // done in the current run (0..3). A chain completes at 3 and resets
+    // so it can be run again; the bonus is paid once per completion.
+    this.chainProgress = {};
+    // Attempt 3 — streak: jobs finished in a row without a cancellation.
+    // Cancelling (a story mission starting, or a manual cancel) resets it.
+    this.streak = 0;
+    this.lastChainBonus = 0; // bonus paid by the most recent finish (0 if none)
   }
 
-  /** Offer the next job the player has not done yet, rotating the list. */
+  /** Next job in chain order: the first un-done job of the chain the
+   * player is furthest along, so offers always advance a chain instead
+   * of jumping around the list at random. */
   offer() {
-    const remaining = SIDE_JOBS.filter((j) => !this.done[j.id]);
-    const pool = remaining.length ? remaining : SIDE_JOBS;
-    this.offered = pool[Math.floor(Math.random() * pool.length)];
+    for (const chain of SIDE_JOB_CHAINS) {
+      const done = this.chainProgress[chain.id] || 0;
+      if (done < chain.jobs.length) {
+        const nextId = chain.jobs[done];
+        this.offered = SIDE_JOBS.find((j) => j.id === nextId) || null;
+        // Second pass: the offer carries its chain position, so the HUD
+        // prompt can say "Mara's Errands 2/3" instead of just a job name.
+        if (this.offered) this.offered.chainNote = `${chain.title} ${done + 1}/${chain.jobs.length}`;
+        return this.offered;
+      }
+    }
+    // Both chains are mid-run-complete only when every job is done once
+    // this cycle — but chains reset on completion, so this is a fallback
+    // for a save that predates chains: offer the first job again.
+    this.offered = SIDE_JOBS[0];
     return this.offered;
   }
 
@@ -244,8 +356,12 @@ export class SideJobs {
   }
 
   cancel() {
+    // A story mission starting cancels the job AND breaks the streak:
+    // the player chose the story over the fare, and the chain keeps its
+    // progress (only the streak resets) so the work is not lost.
     this.active = null;
     this.offered = null;
+    this.streak = 0;
     this.offerTimer = 30;
   }
 
@@ -285,8 +401,39 @@ export class SideJobs {
     this.done[job.id] = (this.done[job.id] || 0) + 1;
     this.active = null;
     this.offerTimer = 45; // a breather before the next offer
+    // Streak bonus: every job in an unbroken streak adds $25, so the
+    // third job of a run pays $50 extra on top of its reward.
+    this.streak += 1;
+    const streakBonus = (this.streak - 1) * WORLD.sideStreakBonus;
+    job.streakBonus = streakBonus;
+    // Chain progress: finishing this job advances its chain. At 3/3 the
+    // chain pays the $500 bonus and resets, ready to run again.
+    this.lastChainBonus = 0;
+    if (job.chain) {
+      const chain = SIDE_JOB_CHAINS.find((c) => c.id === job.chain);
+      const next = (this.chainProgress[job.chain] || 0) + 1;
+      if (chain && next >= chain.jobs.length) {
+        this.chainProgress[job.chain] = 0;
+        this.lastChainBonus = WORLD.sideChainBonus;
+        job.chainBonus = WORLD.sideChainBonus;
+        job.chainComplete = chain.title;
+      } else {
+        this.chainProgress[job.chain] = next;
+      }
+    }
     if (this.audio) this.audio.jingle();
     return job;
+  }
+
+  /** Chain status for the HUD and the debug handle: the chain the player
+   * is furthest along, how far, and what the completion bonus pays. */
+  chainStatus() {
+    let best = null;
+    for (const chain of SIDE_JOB_CHAINS) {
+      const done = this.chainProgress[chain.id] || 0;
+      if (!best || done > best.done) best = { chain: chain.id, title: chain.title, done, total: chain.jobs.length, bonus: WORLD.sideChainBonus };
+    }
+    return best;
   }
 
   /** Current waypoint for the HUD beacon/minimap (pickup, then delivery). */

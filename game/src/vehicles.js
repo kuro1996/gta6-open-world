@@ -1,5 +1,9 @@
 // Solara Nights — cars: mesh factory plus the traffic system that drives them
 // around the road grid, and the parked cars the player can steal.
+// Round 4 attempt 3 adds two new body styles (a muscle car with a spoiler
+// and an open-top convertible), neon underglow on the fast cars that glows
+// brighter at night, and a per-car condition: traffic cars that have lived
+// a hard life drive slower, so no two streets ever feel the same.
 import * as THREE from 'three';
 import { CITY_HALF, COLORS, GRID_K, PITCH, ROAD_WIDTH, WORLD } from './config.js';
 import { clamp, distance2D } from './random.js';
@@ -9,13 +13,24 @@ const CABIN_GEO = new THREE.BoxGeometry(1, 1, 1);
 const WHEEL_GEO = new THREE.CylinderGeometry(0.36, 0.36, 0.28, 10);
 const LIGHT_GEO = new THREE.BoxGeometry(0.3, 0.18, 0.08);
 
+// Body dimensions per type. Muscle cars are wide with a low roof and a
+// spoiler; convertibles lose the cabin roof and gain a folded soft top.
+function carDims(type) {
+  if (type === 'truck') return { w: 2.2, l: 5.6, h: 1.0, cabH: 0.9 };
+  if (type === 'sport') return { w: 1.9, l: 4.4, h: 0.62, cabH: 0.55 };
+  if (type === 'van') return { w: 2.1, l: 5.0, h: 1.15, cabH: 0.75 };
+  if (type === 'muscle') return { w: 2.05, l: 4.8, h: 0.72, cabH: 0.5 };
+  if (type === 'convertible') return { w: 1.9, l: 4.5, h: 0.6, cabH: 0.34 };
+  return { w: 2.0, l: 4.6, h: 0.78, cabH: 0.7 }; // sedan
+}
+
 export function makeCarMesh(type, colorHex) {
   const group = new THREE.Group();
   const paint = new THREE.MeshLambertMaterial({ color: colorHex });
   const glass = new THREE.MeshLambertMaterial({ color: 0x1a2733 });
   const dark = new THREE.MeshLambertMaterial({ color: 0x15151a });
 
-  const dims = type === 'truck' ? { w: 2.2, l: 5.6, h: 1.0, cabH: 0.9 } : type === 'sport' ? { w: 1.9, l: 4.4, h: 0.62, cabH: 0.55 } : type === 'van' ? { w: 2.1, l: 5.0, h: 1.15, cabH: 0.75 } : { w: 2.0, l: 4.6, h: 0.78, cabH: 0.7 };
+  const dims = carDims(type);
   const body = new THREE.Mesh(BODY_GEO, paint);
   body.scale.set(dims.w, dims.h, dims.l);
   body.position.y = 0.55 + dims.h / 2;
@@ -29,6 +44,25 @@ export function makeCarMesh(type, colorHex) {
     bed.scale.set(dims.w * 0.9, 0.5, dims.l * 0.5);
     bed.position.set(0, 0.55 + dims.h + 0.25, -dims.l * 0.24);
     group.add(bed);
+  }
+  // Muscle cars wear a rear spoiler and a hood scoop: the two details that
+  // read as "fast" from across the street.
+  if (type === 'muscle') {
+    const spoiler = new THREE.Mesh(BODY_GEO, dark);
+    spoiler.scale.set(dims.w * 0.9, 0.08, 0.4);
+    spoiler.position.set(0, 0.55 + dims.h + 0.55, -dims.l / 2 + 0.2);
+    group.add(spoiler);
+    const scoop = new THREE.Mesh(BODY_GEO, dark);
+    scoop.scale.set(0.7, 0.16, 0.9);
+    scoop.position.set(0, 0.55 + dims.h + 0.08, dims.l * 0.22);
+    group.add(scoop);
+  }
+  // Convertibles get a folded soft top behind the cabin instead of a roof.
+  if (type === 'convertible') {
+    const softTop = new THREE.Mesh(BODY_GEO, dark);
+    softTop.scale.set(dims.w * 0.7, 0.18, dims.l * 0.22);
+    softTop.position.set(0, 0.55 + dims.h + 0.09, -dims.l * 0.28);
+    group.add(softTop);
   }
   const wheelMat = new THREE.MeshLambertMaterial({ color: 0x0c0c0e });
   const wheelPos = [
@@ -75,9 +109,32 @@ export function makeCarMesh(type, colorHex) {
     group.userData.lightRed = red;
     group.userData.lightBlue = blue;
   }
+  // Neon underglow (attempt 3): sport, muscle and convertible cars carry
+  // a flat glow plane under the body. It is dim by day and bright at
+  // night — TrafficSystem.setNight() and the parked cars' own glow both
+  // read the same night factor, so the whole street lights up together.
+  let glow = null;
+  if (type === 'sport' || type === 'muscle' || type === 'convertible') {
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: 0x3dd8ff, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false,
+    });
+    glow = new THREE.Mesh(new THREE.PlaneGeometry(dims.w + 0.5, dims.l + 0.5), glowMat);
+    glow.rotation.x = -Math.PI / 2;
+    glow.position.y = 0.12;
+    group.add(glow);
+  }
   group.userData.wheels = wheels;
   group.userData.type = type;
+  group.userData.glow = glow;
   return group;
+}
+
+/** Set the underglow brightness of one car mesh (0 = day, 1 = night). */
+export function setCarGlow(mesh, nightF) {
+  const glow = mesh && mesh.userData ? mesh.userData.glow : null;
+  if (!glow) return;
+  glow.visible = true;
+  glow.material.opacity = 0.18 + 0.5 * Math.max(0, Math.min(1, nightF));
 }
 
 /** A car the player (or traffic) drives: mesh plus arcade state. */
@@ -93,6 +150,11 @@ export function makeCarState(mesh, type, maxSpeed) {
     z: 0,
     health: 100,
     smoke: false,
+    // Attempt 3 — condition 0..100: a fresh car is 100. Traffic cars roll
+    // a condition when they spawn and drive slower when it is low; parked
+    // cars carry one too, so a stealable ride can be a bargain or a gem.
+    condition: 100,
+    damage: { front: 0, side: 0, rear: 0 },
   };
 }
 
@@ -112,14 +174,22 @@ export class TrafficSystem {
     this.cars = [];
     // Rain factor 0..1 (from main.js): traffic slows on wet roads.
     this.rainF = 0;
+    // Night factor 0..1 (attempt 3): the fast cars' underglow brightens.
+    this.nightF = 0;
     for (let i = 0; i < WORLD.trafficCount; i += 1) {
       // Weighted mix instead of a fixed rotation: sedans dominate, sports
       // cars and vans are rarer, so no two drives see the same street.
-      const type = this.rng.weighted([['sedan', 5], ['taxi', 2], ['truck', 2], ['sport', 1], ['van', 2]]);
+      // Attempt 3 adds muscle cars and convertibles to the mix.
+      const type = this.rng.weighted([['sedan', 5], ['taxi', 2], ['truck', 2], ['sport', 1], ['van', 2], ['muscle', 1], ['convertible', 1]]);
       const color = COLORS.carPalette[rng.int(0, COLORS.carPalette.length - 1)];
       const mesh = makeCarMesh(type, color);
       scene.add(mesh);
-      const car = makeCarState(mesh, type, type === 'sport' ? 30 : 22);
+      const topSpeed = type === 'sport' ? 30 : type === 'muscle' ? 28 : type === 'convertible' ? 27 : 22;
+      const car = makeCarState(mesh, type, topSpeed);
+      // Condition (attempt 3): 65..100. A hard-lived car tops out slower,
+      // so the traffic flow has slow and quick cars instead of one speed.
+      car.condition = rng.int(65, 100);
+      car.maxSpeed = topSpeed * (0.85 + 0.15 * (car.condition / 100));
       this._placeOnRoad(car);
       this.cars.push(car);
     }
@@ -199,6 +269,12 @@ export class TrafficSystem {
     this.rainF = Math.max(0, Math.min(1, f));
   }
 
+  /** Night factor from the day/night cycle; the fast cars glow brighter. */
+  setNight(f) {
+    this.nightF = Math.max(0, Math.min(1, f));
+    for (const car of this.cars) setCarGlow(car.mesh, this.nightF);
+  }
+
   update(dt, playerCar) {
     for (const car of this.cars) {
       // A car that drifted far from the player (long chase, long drive)
@@ -263,16 +339,31 @@ export function spawnParkedCars(scene, rng) {
     // Round 4 attempt 2 — a tenth ride, a red taxi by the hospital, so
     // the north-east corner has a stealable car of its own.
     { x: 174, z: -174, heading: -Math.PI / 2, type: 'taxi', color: 0xc23b2e, name: 'Hospital Taxi' },
+    // Round 4 attempt 3 — an eleventh ride, a white convertible on the
+    // beach road: the fastest open-top car in the city, and the natural
+    // ride for the beach-drift side job.
+    { x: 290, z: -58, heading: Math.PI, type: 'convertible', color: 0xe8e8e8, name: 'Beach Cruiser' },
+    // Round 4 attempt 3 — a twelfth ride, a black muscle car by the docks:
+    // spoiler, hood scoop, and the best acceleration of any parked car.
+    { x: -174, z: 240, heading: -Math.PI / 2, type: 'muscle', color: 0x222226, name: 'Night Muscle' },
   ];
   for (const spot of spots) {
     const mesh = makeCarMesh(spot.type, spot.color);
     scene.add(mesh);
-    const car = makeCarState(mesh, spot.type, spot.type === 'sport' ? 48 : 38);
+    const topSpeed = spot.type === 'sport' ? 48 : spot.type === 'muscle' ? 46 : spot.type === 'convertible' ? 44 : 38;
+    const car = makeCarState(mesh, spot.type, topSpeed);
     car.x = spot.x;
     car.z = spot.z;
     car.heading = spot.heading;
     car.name = spot.name;
     car.parked = true;
+    // Parked cars roll a condition too (70..100): the Comet GT is always
+    // a gem, the older rides show their age in the top speed.
+    car.condition = spot.name === 'Comet GT' ? 100 : rng.int(70, 100);
+    if (car.condition < 100) car.maxSpeed = topSpeed * (0.9 + 0.1 * (car.condition / 100));
+    // Second pass: a parked fast car shows its underglow from the start,
+    // dim in daylight, so the neon reads at dusk without waiting for night.
+    setCarGlow(mesh, 0.3);
     syncCarMesh(car);
     parked.push(car);
   }

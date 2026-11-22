@@ -45,6 +45,48 @@ No build step, no network requests: every script, the Three.js engine
 Controls: **WASD** move / drive · **Mouse** look · **Shift** sprint · **E** enter / exit car ·
 **Space** jump / handbrake · **Click** shoot (left or right) · **R** reload · **P / Esc** pause · **H** horn · **M** mute.
 
+## Round 4 — what changed, attempt 3 (22 Nov 2026)
+
+A full rewrite pass on top of attempt 2 (config, missions, police, driving,
+vehicles, HUD, index and the entrypoint all rewritten in full under a live
+recording), adding the systems the chase and the side work were missing:
+
+- **Drift scoring** — hold the handbrake and steer at speed and the car
+  slides; slides bank points into cash ($1 per 2 points) when the chain
+  ends cleanly, and a wall hit kills the chain. Wet roads score 25% faster.
+- **Suspension** — the car body rolls into corners and pitches under
+  braking, so the ride reads as a car instead of a sliding box.
+- **Damage zones** — a wall hit is charged to the side that took it
+  (front / side / rear), and each zone bites into the handling: front costs
+  acceleration, side costs steering, rear costs top speed. A full repair at
+  Voss Garage zeroes every zone.
+- **Police helicopter** — at 5 stars the PD sends a chopper that orbits Ria
+  and keeps her lit by its searchlight; while it watches, the heat never
+  cools. It never shoots — its job is to watch.
+- **Roadblocks** — at 4+ stars the PD parks two cruisers across the road
+  ahead of Ria; ramming through one costs speed and car health, like a wall.
+- **Chase coordination** — the lead car PITs at 3+ stars while the wing cars
+  flank left and right, so the force closes from three sides instead of
+  queuing on the bumper.
+- **Side-job chains** — six jobs in two chains of three ("Mara's Errands",
+  "Night Shift", offered in chain order). Finishing a whole chain pays a
+  $500 bonus, and an unbroken streak of jobs adds $25 per job.
+- **Par-time speed bonus** — every story mission pays for a fast finish
+  now, not just The Drop: +$200 for beating par by 30 s, +$75 for finishing
+  under par (The Drop's own $200 timer bonus stacks on top).
+- **New rides** — a muscle car (spoiler + hood scoop) and an open-top
+  convertible join traffic, with neon underglow that brightens at night;
+  two more stealable cars (Beach Cruiser convertible, Night Muscle) bring
+  the parked count to twelve. Traffic cars roll a condition (65–100) and
+  hard-lived ones drive slower.
+- **Verified live** — the read-only `window.__solara` handle now also
+  exposes `drift`, `heli`, `heliPos`, `roadblocks`, `damage` and `chain`,
+  and the minimap draws roadblocks (red crosses) and the helicopter
+  (white circle); the HUD shows the drift meter, the heli warning, the
+  chain progress, and the worst damage zone under the car bar.
+- **Ram immunity re-verified** — rams still cost speed only (player ×0.82,
+  rammer ×0.55, 2 s global immunity); no HP is ever subtracted by a ram.
+
 ## Round 4 — what changed, attempt 2 (22 Nov 2026)
 
 A second polish pass on top of the round 4 build above, fixing the round 3

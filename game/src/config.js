@@ -112,6 +112,62 @@ export const WORLD = {
   // walks or stands still.
   sprintStaminaMax: 6,
   sprintStaminaRegen: 1.2,
+  // Round 4 attempt 3 — drifting: hold the handbrake and steer at speed
+  // and the car slides. A slide only counts above this speed and this
+  // angle between the velocity and the nose; points bank into cash when
+  // the slide ends cleanly, so a chase can pay for itself.
+  driftMinSpeed: 12, // m/s before a slide can score
+  driftMinAngle: 0.35, // radians of slide angle before points start
+  driftScoreRate: 22, // points per second at a full sideways slide
+  driftChainTime: 1.5, // seconds without sliding before the chain banks
+  driftBankRate: 2, // $1 per 2 drift points banked
+  // Round 4 attempt 3 — police helicopter: at 5 stars the PD sends the
+  // chopper. It orbits above Ria, keeps her lit by its searchlight, and
+  // while it watches, the heat never cools — the only way out is to break
+  // line of sight under cover or lose the stars another way.
+  heliLevel: 5, // wanted level that calls the helicopter
+  heliHeight: 55, // metres above the street
+  heliOrbitRadius: 26, // metres out from the player
+  heliSpeed: 0.55, // radians per second around the orbit
+  heliSpotRange: 70, // searchlight reach in metres
+  // Round 4 attempt 3 — roadblocks: at 4+ stars the PD parks two cruisers
+  // across the road ahead of Ria. They sit still until she passes or the
+  // heat drops; ramming through one costs speed and car health, like a wall.
+  roadblockLevel: 4, // wanted level that starts roadblocks
+  roadblockAhead: 46, // metres ahead of the player to set the block
+  roadblockGap: 4.2, // half-distance between the two parked cruisers
+  roadblockRespawn: 18, // seconds before a cleared block is set again
+  roadblockClearDist: 70, // block despawns once the player is this far past it
+  // Round 4 attempt 3 — damage zones: a wall hit is charged to the side
+  // that took it, and each zone bites into the handling. Front damage
+  // costs acceleration, side damage costs steering, rear damage costs top
+  // speed — so a chase-wrecked car drives like a wrecked car until the
+  // Voss Garage crew patches every zone back up.
+  damageFrontAccel: 0.3, // accel lost at 100 front damage
+  damageSideSteer: 0.25, // steering lost at 100 side damage
+  damageRearTop: 0.2, // top speed lost at 100 rear damage
+  // Round 4 attempt 3 — side-job chains: jobs come in chains of three
+  // ("Mara's Errands", "Night Shift"). Finishing a whole chain pays this
+  // bonus on top of the three job rewards, and a streak of jobs done
+  // without a cancellation adds $25 per job in the streak.
+  sideChainBonus: 500,
+  sideStreakBonus: 25,
+  // Round 4 attempt 3 — par-time bonus: every story mission pays a speed
+  // bonus when it is finished under par, not just The Drop. Beating par
+  // by 30 s or more pays the big bonus; finishing under par at all pays
+  // the small one.
+  parBonusBig: 200, // beating par by 30+ s
+  parBonusSmall: 75, // finishing under par
+  parBonusMargin: 30, // seconds under par for the big bonus
+  // Round 4 attempt 3 — police coordination: the wing cars in a chase do
+  // not all pile onto the player's bumper. They hold an offset to the
+  // left and right of the player, so the force flanks instead of queuing.
+  policeWingOffset: 7, // metres to each side for the flanking cars
+  policeWingLevel: 2, // wanted level where flanking starts
+  // Round 4 attempt 3 (second pass) — wet roads reward a slide: drifting
+  // on rain-slick asphalt scores 25% faster, so a rainy chase is the
+  // best time to bank drift cash.
+  driftWetBonus: 1.25,
 };
 
 export const COLORS = {

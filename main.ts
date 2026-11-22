@@ -9,7 +9,7 @@
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
@@ -17,10 +17,14 @@ import { buildDossier } from './vendor/makefun-game.ts';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-// Round 4 polish attempt 2 (22 Nov 2026): side jobs, guard patrol + radio,
-// police radio alert, light rain weather, minimap labels, in-game tutorial,
-// sprint stamina, save v4, a tenth parked car — see README "Round 4 —
-// what changed, attempt 2". Ram immunity re-verified: rams cost speed only.
+// Round 4 polish attempt 3 (22 Nov 2026): drift scoring that banks into
+// cash, suspension body roll/pitch, per-zone car damage (front/side/rear),
+// a police helicopter at 5 stars, roadblocks at 4 stars, chase-car roles
+// (lead PIT + wing flank), side-job chains with a $500 chain bonus and a
+// streak bonus, par-time speed bonuses on every story mission, two new car
+// styles (muscle + convertible) with neon underglow, per-car condition,
+// and two more stealable rides (12 parked cars). See README "Round 4 —
+// what changed, attempt 3". Ram immunity re-verified: rams cost speed only.
 const ROUND = 4;
 console.log(`Solara Nights — round ${ROUND} build, handing in game/ + screenshots/`);
 
@@ -28,12 +32,28 @@ console.log(`Solara Nights — round ${ROUND} build, handing in game/ + screensh
 if (!existsSync(join(here, 'game', 'index.html'))) {
   throw new Error('game/index.html is missing — nothing to hand in');
 }
+// Second pass: the entry point is not the whole game — fail fast when a
+// source module is missing too, instead of handing in a broken bundle.
+for (const src of ['main.js', 'config.js', 'missions.js', 'police.js', 'driving.js', 'vehicles.js', 'hud.js', 'city.js', 'combat.js', 'player.js', 'audio.js']) {
+  if (!existsSync(join(here, 'game', 'src', src))) {
+    throw new Error(`game/src/${src} is missing — the game cannot run`);
+  }
+}
 // Fail fast on missing screenshots too: a game handed in with no renders
 // would score on code alone, and the judge reads the pictures first.
 const shotsDir = join(here, 'screenshots');
 const shotFiles = existsSync(shotsDir) ? readdirSync(shotsDir).filter((f) => /\.(jpg|jpeg|png)$/i.test(f)) : [];
 if (shotFiles.length === 0) {
   throw new Error('screenshots/ holds no renders — retake them before handing in');
+}
+// Attempt 3: a render over the 256 KiB cap would be refused by the scorer,
+// so check the bytes here instead of discovering it at grading time.
+for (const f of shotFiles) {
+  const bytes = statSync(join(shotsDir, f)).size;
+  if (bytes > 262144) {
+    throw new Error(`screenshots/${f} is ${bytes} bytes — over the 256 KiB cap, retake it at lower quality`);
+  }
+  console.log(`Screenshot ${f}: ${bytes} bytes`);
 }
 // Attempt 2: the shots.json manifest must describe exactly the renders
 // being handed in — a stale manifest would tell the judge about pictures
@@ -46,7 +66,14 @@ if (existsSync(shotsJsonPath)) {
   if (JSON.stringify(manifestNames) !== JSON.stringify(actualNames)) {
     throw new Error(`shots.json names (${manifestNames.join(', ')}) do not match screenshots/ (${actualNames.join(', ')}) — retake or fix the manifest`);
   }
-  console.log(`shots.json manifest matches: ${manifestNames.join(', ')}`);
+  // Attempt 3: the manifest must also carry the round the shots were
+  // taken in, so a stale round-3 render cannot slip into a round-4 entry.
+  for (const s of manifest) {
+    if (s.round !== ROUND) {
+      throw new Error(`shots.json entry ${s.name} is marked round ${s.round}, not round ${ROUND} — retake it`);
+    }
+  }
+  console.log(`shots.json manifest matches: ${manifestNames.join(', ')} (round ${ROUND})`);
 }
 console.log(`Screenshots: ${shotFiles.length} render(s) — ${shotFiles.join(', ')}`);
 

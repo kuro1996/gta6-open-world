@@ -1,5 +1,9 @@
 // Solara Nights — the HUD: money, health, wanted stars, speed, ammo, objective,
 // banners, and a live 2D minimap drawn on a canvas.
+// Round 4 attempt 3 adds three readouts on top: a drift meter (live chain
+// points while sliding, banked total after), a helicopter warning when the
+// 5-star chopper is overhead, and the side-job chain progress so the player
+// always knows how close the $500 chain bonus is.
 import { clamp } from './random.js';
 
 export class HUD {
@@ -29,10 +33,18 @@ export class HUD {
       // by the same state object as the rest of the HUD.
       weather: document.getElementById('hud-weather'),
       tutorial: document.getElementById('hud-tutorial'),
+      // Round 4 attempt 3 — drift meter, helicopter warning, chain line.
+      drift: document.getElementById('hud-drift'),
+      heli: document.getElementById('hud-heli'),
+      chain: document.getElementById('hud-chain'),
     };
     this.mapCtx = this.el.minimap.getContext('2d');
     this._bannerTimer = 0;
     this._lastStars = -1;
+    // The drift meter flashes briefly after a chain banks, so the payout
+    // reads even though the live score has already reset to zero.
+    this._driftFlashTimer = 0;
+    this._lastBanked = 0;
   }
 
   showBanner(title, sub, ms) {
@@ -104,6 +116,14 @@ export class HUD {
         this.el.carFill.style.width = `${ch}%`;
         this.el.carFill.style.background = ch > 50 ? '#3aa655' : ch > 25 ? '#e8a33a' : '#c23b2e';
         this.el.carText.textContent = `${ch}`;
+        // Attempt 3 — the worst damage zone reads under the car bar, so a
+        // wrecked front end is visible before the car stops accelerating.
+        const dmg = state.damage;
+        if (dmg) {
+          const worst = Math.max(dmg.front || 0, dmg.side || 0, dmg.rear || 0);
+          const zone = (dmg.front || 0) >= worst && worst > 0 ? 'FRONT' : (dmg.side || 0) >= worst && worst > 0 ? 'SIDE' : worst > 0 ? 'REAR' : '';
+          this.el.carText.textContent = worst > 0 ? `${ch} · ${zone} ${Math.round(worst)}%` : `${ch}`;
+        }
       }
     }
     this.el.mission.textContent = state.missionTitle || 'FREE ROAM';
@@ -120,6 +140,56 @@ export class HUD {
     if (this.el.weather) {
       this.el.weather.textContent = state.raining ? '🌧 Rain — wet roads, less grip' : '';
       this.el.weather.classList.toggle('hidden', !state.raining);
+    }
+    // Helicopter warning (attempt 3): at 5 stars the chopper is overhead
+    // and the heat cannot cool while it watches — the line says so plainly.
+    if (this.el.heli) {
+      const on = !!state.heli;
+      this.el.heli.textContent = on ? '🚁 HELI OVERHEAD — heat will not cool' : '';
+      this.el.heli.classList.toggle('hidden', !on);
+    }
+    // Drift meter (attempt 3): live chain points while sliding, and a
+    // short flash of the banked total when a chain pays out. The meter
+    // only exists while driving — on foot there is nothing to slide.
+    if (this.el.drift) {
+      const live = Math.floor(state.drift || 0);
+      const banked = state.driftBanked || 0;
+      // Second pass: the flash shows the LAST payout, not the lifetime
+      // total — the delta since the previous banked value is what just
+      // landed in the player's pocket.
+      const bankedDelta = banked - this._lastBanked;
+      if (bankedDelta > 0) {
+        this._lastBanked = banked;
+        this._driftFlashTimer = 2.5;
+        this._lastPayout = Math.floor(bankedDelta / 2);
+      }
+      if (this._driftFlashTimer > 0) this._driftFlashTimer -= dt;
+      if (!state.inCar) {
+        this.el.drift.textContent = '';
+        this.el.drift.classList.add('hidden');
+      } else if (state.drifting && live > 0) {
+        this.el.drift.textContent = `DRIFT +${live}`;
+        this.el.drift.classList.remove('hidden');
+      } else if (this._driftFlashTimer > 0) {
+        this.el.drift.textContent = `DRIFT BANKED $${this._lastPayout || 0}`;
+        this.el.drift.classList.remove('hidden');
+      } else {
+        this.el.drift.textContent = '';
+        this.el.drift.classList.add('hidden');
+      }
+    }
+    // Side-job chain line (attempt 3): how far along the current chain the
+    // player is, and what finishing it pays. It hides when no chain has
+    // been started, so free roam stays clean.
+    if (this.el.chain) {
+      const c = state.chain;
+      if (c && c.done > 0) {
+        this.el.chain.textContent = `⛓ ${c.title}: ${c.done}/${c.total} — finish for +$${c.bonus}`;
+        this.el.chain.classList.remove('hidden');
+      } else {
+        this.el.chain.textContent = '';
+        this.el.chain.classList.add('hidden');
+      }
     }
     this.el.vignette.style.opacity = state.hurt ? '0.85' : state.health < 30 ? '0.45' : '0';
     this._drawMinimap(state);
@@ -206,6 +276,31 @@ export class HUD {
       const [gx, gy] = toMap(p.x, p.z);
       ctx.fillStyle = '#ffd23d';
       ctx.fillRect(gx - 2, gy - 2, 4, 4);
+    }
+    // Roadblocks (attempt 3): red crosses on the minimap, so the player
+    // sees the block before driving into it at full speed.
+    for (const b of state.roadblocks || []) {
+      const [bx, by] = toMap(b.x, b.z);
+      ctx.strokeStyle = '#ff2222';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(bx - 4, by - 4);
+      ctx.lineTo(bx + 4, by + 4);
+      ctx.moveTo(bx + 4, by - 4);
+      ctx.lineTo(bx - 4, by + 4);
+      ctx.stroke();
+    }
+    // Helicopter (attempt 3): a white circle with a dot, so the 5-star
+    // eye in the sky reads on the map as well as in the world.
+    if (state.heliPos) {
+      const [hx, hy] = toMap(state.heliPos.x, state.heliPos.z);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(hx, hy, 5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(hx - 1, hy - 1, 2, 2);
     }
     // Player arrow, clamped inside the map so it never vanishes when the
     // player drives out to the world bounds.
