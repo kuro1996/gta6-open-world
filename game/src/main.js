@@ -7,10 +7,15 @@ import { makeRng, clamp } from './random.js';
 import { buildCity, buildRooftopBeacons } from './city.js';
 import { AudioEngine } from './audio.js';
 import { Effects } from './effects.js';
-import { Input, ACT_INTERACT, ACT_PAUSE, ACT_RELOAD, ACT_HORN, ACT_MUTE, ACT_SIDEJOB, ACT_TUTORIAL, ACT_MARKET, ACT_NIGHTOPS } from './input.js';
+import { Input, ACT_INTERACT, ACT_PAUSE, ACT_RELOAD, ACT_HORN, ACT_MUTE, ACT_SIDEJOB, ACT_TUTORIAL, ACT_MARKET, ACT_NIGHTOPS, ACT_RACE, ACT_SAFEHOUSE } from './input.js';
 import { WeatherSystem } from './weather.js';
 import { NightOps } from './nightops.js';
 import { BlackMarket, MARKET_ITEMS } from './blackmarket.js';
+// Round 4 attempt 5 — three all-new systems: the day/night shop economy,
+// wanted-heat persistence with safehouses, and street races / time trials.
+import { createEconomySystem, SHOPS } from './economy.js';
+import { createSafehouseSystem, SAFEHOUSES } from './safehouse.js';
+import { createStreetRaceSystem, ROUTES } from './streetrace.js';
 import { Player } from './player.js';
 import { Driving } from './driving.js';
 import { TrafficSystem, spawnParkedCars, syncCarMesh, setCarGlow } from './vehicles.js';
@@ -98,6 +103,34 @@ const nightops = new NightOps(scene, rng, audio, effects, {
     hud.showBanner('SPOTTED', 'A watcher made you — the cops got a tip.', 3000);
   },
 });
+// Round 4 attempt 5 — the day/night economy, safehouses and street races.
+// Each system owns its own state and only touches the game through the
+// small hooks below; money/wanted are read live so the HUD never lies.
+const economy = createEconomySystem({
+  getHour: () => (Math.floor(gameMinutes / 60) % 24) + ((gameMinutes % 60) / 60),
+  getCash: () => money,
+  addCash: (d) => { money += d; },
+  notify: announce,
+  addHeat: (n) => wanted.addHeat(n),
+});
+const safehouse = createSafehouseSystem({
+  getStars: () => wanted.level,
+  setStars: (s) => { wanted.heat = s * 20; wanted.level = s; },
+  getCash: () => money,
+  addCash: (d) => { money += d; },
+  notify: announce,
+  getPosition: () => playerPos(),
+  isChased: () => police.cars.length > 0 || police.cops.length > 0,
+});
+const streetrace = createStreetRaceSystem({
+  getPosition: () => playerPos(),
+  getSpeed: () => (player.inCar ? Math.abs(player.inCar.speed) : 0),
+  getCash: () => money,
+  addCash: (d) => { money += d; },
+  notify: announce,
+  addHeat: (n) => wanted.addHeat(n),
+  playerName: 'Ria',
+});
 // Round 4 attempt 2 — weather: rain rolls in on a timer (game-minutes of
 // play), lasts 40–90 s, then clears. rainF eases in/out over ~5 s so the
 // shower never pops in or out in a single frame.
@@ -180,6 +213,13 @@ window.__solara = {
   get weather() { return { condition: weather.condition, rain: weather.rainLevel, fog: weather.fogLevel, storms: weather.stormsSeen, strikes: weather.strikesSeen }; },
   get nightops() { return { active: nightops.active, offer: nightops.offer, noise: nightops.noise, eyes: nightops.eyes, done: nightops.contractsDone, burned: nightops.contractsBurned }; },
   get market() { return { near: market.nearStall, open: market.open, standing: { ...market.standing }, upgrades: { ...market.upgrades }, deals: market.deals }; },
+  // Round 4 attempt 5 handles: economy, safehouses, street races.
+  get economy() { return economy.summary(); },
+  get economyShops() { return SHOPS.map((s) => s.id); },
+  get safehouse() { return safehouse.status(); },
+  get safehouses() { return SAFEHOUSES.map((s) => s.id); },
+  get streetrace() { return streetrace.hud(); },
+  get raceBoard() { return ROUTES.map((r) => ({ id: r.id, best: streetrace.bestTime(r.id) })); },
   get rep() { return rep; },
   get sneaking() { return player.sneaking; },
   get tutorial() { return tutorialStep; },
@@ -339,7 +379,7 @@ function completeMission() {
     showOnly('menu-complete');
     audio.engine(null);
     audio.siren(false);
-    saveGame({ missionIndex: MISSIONS.length, money, rep, stats: { ...stats, kills: combat.kills }, market: market.serialize(), nightops: nightops.serialize(), weather: weather.serialize() });
+    saveGame({ missionIndex: MISSIONS.length, money, rep, stats: { ...stats, kills: combat.kills }, market: market.serialize(), nightops: nightops.serialize(), weather: weather.serialize(), economy: economy.serialize(), safehouse: safehouse.serialize(), streetrace: streetrace.serialize() });
     announce('Story complete. Free roam continues.');
     return;
   }
@@ -374,6 +414,10 @@ function startGame(fresh) {
   if (save && save.market) market.restore(save.market);
   if (save && save.nightops) nightops.restore(save.nightops);
   if (save && save.weather) weather.restore(save.weather);
+  // Attempt 5 — restore the day/night economy, safehouses and race board.
+  if (save && save.economy) economy.deserialize(save.economy);
+  if (save && save.safehouse) safehouse.deserialize(save.safehouse);
+  if (save && save.streetrace) streetrace.deserialize(save.streetrace);
   // Tutorial (attempt 2): first-time players get the three steps; a
   // returning player (or one who skipped) never sees them again.
   tutorialStep = tutorialSeen ? -1 : 0;
@@ -535,6 +579,19 @@ function stepWorld(dt) {
       inCar: !!player.inCar,
     });
   }
+  // Attempt 5 — the new systems, per frame: the economy restocks on game
+  // time (the clock runs 0.5 game-minutes per real second), the safehouse
+  // mirrors the wanted heat and only cools it while Ria hides inside
+  // (the shed heat is written back, so the HUD stars follow), and the
+  // street race runs its clock while the player is racing.
+  economy.update(dt / 120);
+  safehouse.syncHeat(wanted.heat);
+  if (safehouse.inside()) {
+    safehouse.update(dt);
+    wanted.heat = safehouse.heat;
+    wanted.level = Math.min(WORLD.maxWanted, Math.floor(wanted.heat / 20));
+  }
+  if (state === 'playing') streetrace.update(dt);
   const m = missions.current;
 
   // Mission timers and waypoint checks.
@@ -880,6 +937,47 @@ function frame(now) {
     }
     if (actions & ACT_NIGHTOPS && nightops.hasOffer) {
       nightops.acceptOffer();
+    }
+    // G starts a street race when the player is in a car near a route
+    // start (attempt 5); U slips into / out of an owned safehouse.
+    if (actions & ACT_RACE && player.inCar) {
+      const p = playerPos();
+      let best = null;
+      let bestD = 60;
+      for (const r of ROUTES) {
+        const d = Math.hypot(r.start.x - p.x, r.start.y - p.z);
+        if (d < bestD) {
+          bestD = d;
+          best = r;
+        }
+      }
+      if (best) {
+        const res = streetrace.startRace(best.id);
+        if (!res.ok) hud.showBanner('NO RACE', `Cannot start ${best.name}: ${res.reason}.`, 3000);
+      } else {
+        hud.showBanner('NO RACE', 'No race start line nearby — find a start on the map.', 3000);
+      }
+    }
+    if (actions & ACT_SAFEHOUSE) {
+      if (safehouse.inside()) {
+        safehouse.exitSafehouse();
+      } else {
+        const p = playerPos();
+        let best = null;
+        let bestD = 48;
+        for (const s of SAFEHOUSES) {
+          const d = Math.hypot(s.x - p.x, s.y - p.z);
+          if (d < bestD) {
+            bestD = d;
+            best = s;
+          }
+        }
+        if (!best) hud.showBanner('NO SAFEHOUSE', 'No safehouse door nearby.', 2500);
+        else {
+          const res = safehouse.enterSafehouse(best.id);
+          if (!res.ok) hud.showBanner('SAFEHOUSE', res.reason === 'not-owned' ? `${best.name} costs $${best.price} — buy it first.` : `Cannot hide: ${res.reason}.`, 3000);
+        }
+      }
     }
     // Digits 1-9 buy from the open shop; the digit queue holds one key.
     if (market.open) {

@@ -17,12 +17,12 @@ import { buildDossier } from './vendor/makefun-game.ts';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-// Round 4 polish attempt 4 (22 Nov 2026): three all-new systems on top
-// of attempt 3 — a dynamic weather cycle with lightning (weather.js),
-// Night Shift stealth contracts (nightops.js), and the Black Market
-// crew-reputation shop (blackmarket.js) — plus sneaking, rooftop
-// beacons, save v5, and a /healthz endpoint on the dev server.
-// See README "Round 4 — what changed, attempt 4".
+// Round 4 polish attempt 5 (22 Nov 2026): three more all-new systems on
+// top of attempt 4 — a day/night shop economy (economy.js), wanted-heat
+// persistence with buyable safehouses (safehouse.js), and street races /
+// time trials with a local leaderboard (streetrace.js) — plus G to race
+// and U to slip into a safehouse, and save v5 restores all three.
+// See README "Round 4 — what changed, attempt 5".
 const ROUND = 4;
 console.log(`Solara Nights — round ${ROUND} build, handing in game/ + screenshots/`);
 
@@ -32,7 +32,7 @@ if (!existsSync(join(here, 'game', 'index.html'))) {
 }
 // Second pass: the entry point is not the whole game — fail fast when a
 // source module is missing too, instead of handing in a broken bundle.
-for (const src of ['main.js', 'config.js', 'missions.js', 'police.js', 'driving.js', 'vehicles.js', 'hud.js', 'city.js', 'combat.js', 'player.js', 'audio.js', 'weather.js', 'nightops.js', 'blackmarket.js']) {
+for (const src of ['main.js', 'config.js', 'missions.js', 'police.js', 'driving.js', 'vehicles.js', 'hud.js', 'city.js', 'combat.js', 'player.js', 'audio.js', 'weather.js', 'nightops.js', 'blackmarket.js', 'economy.js', 'safehouse.js', 'streetrace.js']) {
   if (!existsSync(join(here, 'game', 'src', src))) {
     throw new Error(`game/src/${src} is missing — the game cannot run`);
   }

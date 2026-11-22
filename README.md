@@ -44,7 +44,27 @@ No build step, no network requests: every script, the Three.js engine
 
 Controls: **WASD** move / drive · **Mouse** look · **Shift** sprint · **E** enter / exit car ·
 **Space** jump / handbrake · **Click** shoot (left or right) · **R** reload · **P / Esc** pause · **H** horn · **M** mute ·
-**C** sneak (half speed, half noise) · **N** take a Night Shift contract · **B** open the Black Market at the docks stall · **1-9** buy.
+**C** sneak (half speed, half noise) · **N** take a Night Shift contract · **B** open the Black Market at the docks stall · **1-9** buy ·
+**G** start a street race at a start line (in a car) · **U** slip into / out of an owned safehouse.
+
+## Round 4 — what changed, attempt 5 (22 Nov 2026)
+
+All-new systems written for this attempt — no rewrites of existing code:
+
+- **Day/night economy** (`game/src/economy.js`) — six shops with their own opening hours, stock and prices:
+  Voss Garage, Marina Market, Neon Noodle (late-night only), Solara Pawn, Harbor Fuel (24h) and Luna Pharmacy.
+  Prices move with the time of day — night trade carries a risk premium — and buying pushes demand up while
+  restocks refill the shelves. The pawn shop buys loot back; illegal goods add wanted heat.
+- **Safehouses** (`game/src/safehouse.js`) — wanted heat no longer melts away just because you drive fast.
+  It only really falls when you are out of sight, and fastest inside a safehouse you own. Four to own
+  (Harbor Loft is already Ria's; Marina Apartment, Old Town Basement, Downtown Penthouse), each with a
+  stash, a bed that heals, and — for the pricier ones — a garage that repairs and faster cooling.
+- **Street races** (`game/src/streetrace.js`) — four illegal routes (Harbor Sprint, Marina Loop, Downtown GP,
+  Old Town Rally) with ordered checkpoints, laps, par times, entry fees and a local leaderboard that keeps
+  your best times. Beat par to get paid; beat your own best to move up the board. Traffic and cops still
+  play while you race.
+- Wiring only (`main.js`, `input.js`, `main.ts`): the three systems are built at boot, ticked in the frame
+  loop, saved/restored with the game (save v5), and exposed on the `__solara` debug handle.
 
 ## Round 4 — what changed, attempt 4 (22 Nov 2026)
 
