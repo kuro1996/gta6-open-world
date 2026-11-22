@@ -1,5 +1,6 @@
 // Solara Nights — arcade car physics: acceleration, steering that tightens at
 // low speed, handbrake drift, building collision and traffic bumps.
+import * as THREE from 'three';
 import { WORLD } from './config.js';
 import { clamp, dampAngle } from './random.js';
 import { syncCarMesh } from './vehicles.js';
@@ -11,6 +12,20 @@ export class Driving {
     this.effects = effects;
     this.car = null;
     this.skidTimer = 0;
+    // Night factor 0..1 (from main.js): headlights switch on past 0.25.
+    this.nightF = 0;
+    this.headlight = null;
+    this.beepTimer = 0;
+  }
+
+  /** Night factor from the day/night cycle; the beam follows the car. */
+  setNight(f) {
+    this.nightF = f;
+    if (f > WORLD.headlightNightMin && !this.headlight && this.effects && this.effects.scene) {
+      this.headlight = new THREE.SpotLight(0xfff2c8, 60, 55, 0.55, 0.5, 1.2);
+      this.effects.scene.add(this.headlight);
+      this.effects.scene.add(this.headlight.target);
+    }
   }
 
   enter(car) {
@@ -23,6 +38,7 @@ export class Driving {
   exit() {
     const car = this.car;
     this.car = null;
+    if (this.headlight) this.headlight.visible = false;
     if (this.audio) this.audio.engine(null);
     return car;
   }
@@ -78,7 +94,11 @@ export class Driving {
     // Buildings.
     const fixed = this.city.collideCircle(car.x, car.z, WORLD.carRadius);
     if (fixed.hit && Math.abs(car.speed) > 6) {
-      car.health = Math.max(0, car.health - Math.abs(car.speed) * 0.6);
+      // One graze costs at most 10 HP: at 48 m/s the raw formula would
+      // charge ~29 HP for a single wall kiss, totalling a car in two
+      // brushes during a chase (found by the round-4 headless playtest:
+      // the Comet GT reached 0 HP mid-escape in mission 2).
+      car.health = Math.max(0, car.health - Math.min(10, Math.abs(car.speed) * 0.6));
       car.speed *= 0.45;
       if (this.audio) this.audio.crash();
       if (this.effects) this.effects.burst(car.x, 1, car.z, 0xffcc66, 10, 4);
@@ -114,7 +134,7 @@ export class Driving {
           if (Math.abs(car.speed) > 5) {
             car.speed *= 0.7;
             if (this.audio) this.audio.thud();
-            if (this.effects) this.effects.burst(car.x, 1, car.z, 0xffffff, 6, 3);
+            if (this.effects) this.effects.sparks(car.x, 1, car.z);
           }
         }
       }
@@ -132,16 +152,34 @@ export class Driving {
     if (handbrake && Math.abs(car.speed) > 10 && this.skidTimer <= 0) {
       this.skidTimer = 0.12;
       if (this.effects) this.effects.smoke(car.x - Math.sin(car.heading) * 1.6, 0.4, car.z - Math.cos(car.heading) * 1.6);
+      if (this.audio) this.audio.skid();
     }
     // Burnout smoke from the rear wheels, with the engine revving high
     // even though the car barely moves.
     if (burnout && this.skidTimer <= 0) {
       this.skidTimer = 0.09;
       if (this.effects) this.effects.smoke(car.x - Math.sin(car.heading) * 1.6, 0.4, car.z - Math.cos(car.heading) * 1.6);
+      if (this.audio) this.audio.skid();
+    }
+    // Reverse warning beep, at most twice a second, while backing up.
+    this.beepTimer -= dt;
+    if (car.speed < -0.5 && this.beepTimer <= 0) {
+      this.beepTimer = 0.5;
+      if (this.audio) this.audio.beep();
     }
     if (car.health <= 40 && !car.smoke) {
       car.smoke = true;
       if (this.effects) this.effects.smoke(car.x, 1.4, car.z);
+    }
+    // Headlights: at night the beam sits at the car's nose and points down
+    // the road, so a night chase is lit by the player's own car.
+    if (this.headlight) {
+      const on = this.nightF > WORLD.headlightNightMin;
+      this.headlight.visible = on;
+      if (on) {
+        this.headlight.position.set(car.x + Math.sin(car.heading) * 2.4, 1.1, car.z + Math.cos(car.heading) * 2.4);
+        this.headlight.target.position.set(car.x + Math.sin(car.heading) * 30, 0.4, car.z + Math.cos(car.heading) * 30);
+      }
     }
     if (this.audio) this.audio.engine(burnout ? 0.7 : Math.abs(car.speed) / car.maxSpeed);
     syncCarMesh(car);

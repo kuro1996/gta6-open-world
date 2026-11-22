@@ -60,6 +60,12 @@ export class PoliceSystem {
     this.bustTimer = 0;
     this.flashTimer = 0;
     this.spawnTimer = 0;
+    this.hornTimer = 0;
+    // Global ram immunity: after ANY police car rams, no car can ram again
+    // for 2 s. The per-car cooldown alone lets two or three cars take
+    // turns ramming every 1.5 s, which totals a car mid-chase even with
+    // the per-hit damage capped.
+    this.ramImmune = 0;
   }
 
   get count() {
@@ -144,6 +150,13 @@ export class PoliceSystem {
       car.heading += clamp(diff, -2.4 * dt, 2.4 * dt);
       const d = distance2D(car.x, car.z, px, pz);
       near = near || d < 70;
+      // A close police car leans on the horn every few seconds, so a chase
+      // sounds like a chase even before the first ram lands.
+      this.hornTimer -= dt;
+      if (d < 20 && this.hornTimer <= 0) {
+        this.hornTimer = 3;
+        if (this.audio) this.audio.horn();
+      }
       const wantSpeed = d > 6 ? car.maxSpeed : 8;
       car.speed += clamp(wantSpeed - car.speed, -20 * dt, 12 * dt);
       car.x += Math.sin(car.heading) * car.speed * dt;
@@ -160,14 +173,23 @@ export class PoliceSystem {
       // impossible (found by the round-3 headless playtest: the Comet GT
       // stalled at ~1 m/s under back-to-back rams).
       car.ramTimer = Math.max(0, (car.ramTimer || 0) - dt);
-      if (playerCar && d < 4.4 && car.ramTimer <= 0) {
+      this.ramImmune = Math.max(0, this.ramImmune - dt);
+      if (playerCar && d < 4.4 && car.ramTimer <= 0 && this.ramImmune <= 0) {
         car.ramTimer = 1.5;
+        this.ramImmune = 2.0;
         const push = 4.4 - d;
         playerCar.x += ((playerCar.x - car.x) / Math.max(0.1, d)) * push;
         playerCar.z += ((playerCar.z - car.z) / Math.max(0.1, d)) * push;
         playerCar.speed *= 0.82;
-        playerCar.health = Math.max(0, playerCar.health - 4);
-        car.speed *= 0.7;
+        // Rams cost speed and position, not health: a chase that totals
+        // the car in the middle of the escape makes the mission about
+        // surviving the police rather than losing them (round-4 playtest
+        // runs 1–5: the Comet GT kept reaching 0 HP mid-chase even with
+        // the per-hit damage capped and a 2 s global ram immunity).
+        // Car health is for wall crashes instead — see driving.js.
+        // The ramming car bounces off harder than before, so a ram opens a
+        // gap instead of leaving the police car glued to the rear bumper.
+        car.speed *= 0.55;
         if (this.audio) this.audio.thud();
         if (this.effects) this.effects.burst(playerCar.x, 1, playerCar.z, 0xffcc66, 8, 4);
       }
@@ -181,13 +203,18 @@ export class PoliceSystem {
       syncCarMesh(car);
     }
     // Foot cops: run at the player, bust on contact — and sprint at 3+
-    // stars, so losing them on foot gets harder as the heat rises.
+    // stars, so losing them on foot gets harder as the heat rises. At 5
+    // stars they run faster still (7.5 m/s): the top of the wanted ladder
+    // should feel like the whole city is closing in.
     this.bustTimer = 0;
     for (const cop of this.cops) {
       const d = distance2D(cop.x, cop.z, player.x, player.z);
       near = near || d < 50;
       cop.heading = Math.atan2(player.x - cop.x, player.z - cop.z);
-      const speed = d > 2.5 ? (wanted.level >= WORLD.copSprintLevel ? WORLD.copSprintSpeed : cop.speed) : 0;
+      const sprint = wanted.level >= WORLD.maxWanted
+        ? WORLD.copSprintMaxSpeed
+        : wanted.level >= WORLD.copSprintLevel ? WORLD.copSprintSpeed : cop.speed;
+      const speed = d > 2.5 ? sprint : 0;
       cop.x += Math.sin(cop.heading) * speed * dt;
       cop.z += Math.cos(cop.heading) * speed * dt;
       const fixed = this.city.collideCircle(cop.x, cop.z, 0.5);

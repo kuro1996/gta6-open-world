@@ -124,6 +124,30 @@ export function buildCity(scene, rng) {
     dashes.setMatrixAt(i, m4);
   });
   group.add(dashes);
+  // Zebra crossings: white stripes across each road at every intersection,
+  // one InstancedMesh, so the grid reads as a walked city instead of bare asphalt.
+  const crossGeo = new THREE.BoxGeometry(0.9, 0.02, 2.6);
+  const crossMat = new THREE.MeshBasicMaterial({ color: 0xe8e8e8 });
+  const crossSpots = [];
+  for (let kx = -GRID_K; kx <= GRID_K; kx += 1) {
+    for (let kz = -GRID_K; kz <= GRID_K; kz += 1) {
+      const cx = kx * PITCH;
+      const cz = kz * PITCH;
+      for (let s = -5; s <= 5; s += 2.5) {
+        crossSpots.push([cx + s, cz - 8.5, 0]);
+        crossSpots.push([cx + s, cz + 8.5, 0]);
+        crossSpots.push([cx - 8.5, cz + s, 1]);
+        crossSpots.push([cx + 8.5, cz + s, 1]);
+      }
+    }
+  }
+  const crossings = new THREE.InstancedMesh(crossGeo, crossMat, crossSpots.length);
+  crossSpots.forEach(([x, z, rot], i) => {
+    m4.makeRotationY(rot ? Math.PI / 2 : 0);
+    m4.setPosition(x, 0.05, z);
+    crossings.setMatrixAt(i, m4);
+  });
+  group.add(crossings);
 
   // --- buildings ------------------------------------------------------------
   const facades = [
@@ -216,6 +240,33 @@ export function buildCity(scene, rng) {
   plaza.position.set(PLACES.plaza.x, 0, PLACES.plaza.z);
   group.add(plaza);
   addCollider(PLACES.plaza.x - 7.5, PLACES.plaza.x + 7.5, PLACES.plaza.z - 7.5, PLACES.plaza.z + 7.5);
+  // Plaza benches: four wooden benches facing the fountain, so the plaza
+  // reads as a place people sit instead of an empty slab with a fountain.
+  const benchMat = new THREE.MeshLambertMaterial({ color: 0x8a6a48 });
+  const benchDark = new THREE.MeshLambertMaterial({ color: 0x3a3a40 });
+  for (const [bx, bz, ry] of [
+    [PLACES.plaza.x - 13, PLACES.plaza.z, Math.PI / 2],
+    [PLACES.plaza.x + 13, PLACES.plaza.z, -Math.PI / 2],
+    [PLACES.plaza.x, PLACES.plaza.z - 13, 0],
+    [PLACES.plaza.x, PLACES.plaza.z + 13, Math.PI],
+  ]) {
+    const bench = new THREE.Group();
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(3, 0.18, 0.8), benchMat);
+    seat.position.y = 0.5;
+    const back = new THREE.Mesh(new THREE.BoxGeometry(3, 0.8, 0.14), benchMat);
+    back.position.set(0, 0.95, -0.36);
+    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.5, 0.7), benchDark);
+    legL.position.set(-1.3, 0.25, 0);
+    const legR = legL.clone();
+    legR.position.x = 1.3;
+    bench.add(seat, back, legL, legR);
+    bench.position.set(bx, 0, bz);
+    bench.rotation.y = ry;
+    group.add(bench);
+    // Benches are solid: walking through a bench looks broken, so each one
+    // gets a small collider (rotated benches use an axis-aligned box).
+    addCollider(bx - 1.6, bx + 1.6, bz - 0.6, bz + 0.6);
+  }
 
   // --- Hospital (landmark, north-east) ----------------------------------------
   const hospital = new THREE.Group();

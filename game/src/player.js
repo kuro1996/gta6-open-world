@@ -144,6 +144,20 @@ export class Player {
     camera.position.y += (height - camera.position.y) * Math.min(1, dt * 10);
     camera.position.z += (cz - camera.position.z) * Math.min(1, dt * 10);
     if (camera.position.y < 0.6) camera.position.y = 0.6;
+    // Hit shake: while the hurt timer runs, the camera jitters a little,
+    // so taking a bullet reads on screen as well as in the red vignette.
+    if (this.hurtTimer > 0) {
+      const s = this.hurtTimer * 0.35;
+      camera.position.x += (Math.random() - 0.5) * s;
+      camera.position.y += (Math.random() - 0.5) * s * 0.6;
+    }
+    // A touch of speed feel: the view widens slightly while moving, then
+    // settles back when Ria stops.
+    const wantFov = this.moving ? 66 : 62;
+    if (Math.abs(camera.fov - wantFov) > 0.05) {
+      camera.fov += (wantFov - camera.fov) * Math.min(1, dt * 6);
+      camera.updateProjectionMatrix();
+    }
     camera.lookAt(this.x, this.y + 1.6, this.z);
   }
 

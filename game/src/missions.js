@@ -11,6 +11,7 @@ export const MISSIONS = [
     briefing: 'Mara Voss: "Ria. You are back. The Crown took your brother\'s garage — drive to Voss Garage and we will talk."',
     objective: 'Drive to Voss Garage',
     reward: 200,
+    par: 120, // seconds: a brisk drive from the start to the garage
   },
   {
     id: 'hotwheels',
@@ -18,6 +19,7 @@ export const MISSIONS = [
     briefing: 'Mara Voss: "The Crown parks a Comet GT on the plaza like they own the city. Take it. Bring it home — and lose the cops first."',
     objective: 'Steal the Comet GT, lose the cops, return to the garage',
     reward: 500,
+    par: 240,
   },
   {
     id: 'thedrop',
@@ -25,6 +27,7 @@ export const MISSIONS = [
     briefing: 'Mara Voss: "A package for the marina. The cops are already tailing you — 150 seconds, no excuses."',
     objective: 'Deliver the package to the Marina before time runs out',
     reward: 800,
+    par: 180,
   },
   {
     id: 'payback',
@@ -32,6 +35,7 @@ export const MISSIONS = [
     briefing: 'Mara Voss: "Silas Crown is at the docks with his guards. Finish it, Ria. Then disappear — the whole city will be looking."',
     objective: 'Clear the docks of Crown guards, then escape to the garage',
     reward: 1500,
+    par: 300,
   },
 ];
 
@@ -50,6 +54,9 @@ export class MissionManager {
     this.diamond = null;
     this.onMissionComplete = null;
     this.onStoryComplete = null;
+    // Attempts per mission id: a retry after a fail or a timeout shows
+    // "Attempt 2" in the banner, so the player can feel the grind.
+    this.attempts = {};
     this._buildBeacon();
   }
 
@@ -90,6 +97,11 @@ export class MissionManager {
     return this.index >= MISSIONS.length;
   }
 
+  /** Attempts spent on this mission id (1 on the first try). */
+  attemptsFor(id) {
+    return this.attempts[id] || 0;
+  }
+
   start(index) {
     this.index = index;
     this.stage = 'briefing';
@@ -98,6 +110,7 @@ export class MissionManager {
     this.objective = m ? m.objective : '';
     this.timer = 0;
     this.timeLeft = 0;
+    if (m) this.attempts[m.id] = (this.attempts[m.id] || 0) + 1;
     return m;
   }
 

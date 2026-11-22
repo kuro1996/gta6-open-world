@@ -41,11 +41,17 @@ export class Enemy {
     // not six stationary targets.
     this.strafeDir = Math.random() < 0.5 ? 1 : -1;
     this.strafeTimer = 1 + Math.random() * 2;
+    // Flinch: seconds left of the stagger after taking a hit, during which
+    // the guard holds fire.
+    this.flinch = 0;
     this.mesh.position.set(x, 0, z);
   }
 
   damage(amount) {
     this.health = Math.max(0, this.health - amount);
+    // A hit staggers the guard: he holds fire briefly, so landing shots
+    // actually suppresses the docks instead of trading damage one-for-one.
+    if (this.alive) this.flinch = WORLD.guardFlinchTime;
     if (this.health <= 0 && this.alive) {
       this.alive = false;
       this.mesh.rotation.x = -Math.PI / 2;
@@ -57,7 +63,11 @@ export class Enemy {
     if (!this.alive) return null;
     const d = distance2D(this.x, this.z, player.x, player.z);
     let shot = false;
-    if (d < 45) {
+    if (this.flinch > 0) {
+      // Staggered: no movement, no shooting — the flinch timer is the only
+      // thing that ticks down.
+      this.flinch = Math.max(0, this.flinch - dt);
+    } else if (d < 45) {
       this.mesh.rotation.y = Math.atan2(player.x - this.x, player.z - this.z);
       this.shootTimer -= dt;
       if (d > 16) {
@@ -130,6 +140,7 @@ export class Combat {
     this.raycaster = new THREE.Raycaster();
     this.raycaster.far = WORLD.pistolRange;
     this.lastHit = null;
+    this.lastDamage = 0;
   }
 
   spawnEnemies(positions) {
@@ -149,6 +160,7 @@ export class Combat {
   reload() {
     if (this.reloadTimer > 0 || this.ammo === WORLD.pistolMag) return;
     this.reloadTimer = WORLD.pistolReload;
+    if (this.audio) this.audio.reloadClick();
   }
 
   update(dt) {
@@ -186,9 +198,18 @@ export class Combat {
     if (!hits.length) return 'empty';
     const point = hits[0].point;
     if (this.effects) this.effects.burst(point.x, point.y, point.z, 0xffdd88, 5, 3);
+    // Damage falls off with range: full 34 inside 25 m, 24 inside 50 m,
+    // 16 beyond — closing in pays off in the docks fight. A hit above
+    // 1.7 m is a headshot and deals 50% more.
+    const dist = origin.distanceTo(point);
+    let damage = dist < WORLD.pistolFalloffNear
+      ? WORLD.pistolDamage
+      : dist < WORLD.pistolFalloffMid ? WORLD.pistolDamageMid : WORLD.pistolDamageFar;
+    if (point.y > 1.7) damage = Math.round(damage * 1.5);
+    this.lastDamage = damage;
     for (const e of this.enemies) {
       if (e.alive && (e.mesh === hits[0].object || isDescendant(e.mesh, hits[0].object))) {
-        e.damage(WORLD.pistolDamage);
+        e.damage(damage);
         if (!e.alive) this.kills += 1;
         return 'enemy';
       }

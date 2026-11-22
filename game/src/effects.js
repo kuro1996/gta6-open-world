@@ -19,6 +19,11 @@ export class Effects {
       this.particles.push({ life: 0, max: 1, x: 0, y: -100, z: 0, vx: 0, vy: 0, vz: 0, r: 1, g: 1, b: 1, size: 1 });
     }
     this._cursor = 0;
+    // One pooled point light for muzzle flashes and crash flashes: a single
+    // light whose intensity decays, instead of a new light per shot.
+    this.flashLight = new THREE.PointLight(0xffdd88, 0, 18, 1.6);
+    this.flashLight.position.set(0, -100, 0);
+    scene.add(this.flashLight);
   }
 
   _spawn(x, y, z, vx, vy, vz, life, r, g, b) {
@@ -35,6 +40,13 @@ export class Effects {
     p.r = r;
     p.g = g;
     p.b = b;
+  }
+
+  /** Brief light pop at a point (muzzle flash, crash spark): decays in update. */
+  flash(x, y, z, colorHex, intensity) {
+    this.flashLight.position.set(x, y, z);
+    this.flashLight.color.setHex(colorHex || 0xffdd88);
+    this.flashLight.intensity = intensity || 14;
   }
 
   burst(x, y, z, colorHex, count, speed) {
@@ -55,6 +67,20 @@ export class Effects {
     }
   }
 
+  /** White-yellow metal sparks for a car-on-car bump, with a light pop. */
+  sparks(x, y, z) {
+    for (let i = 0; i < 6; i += 1) {
+      const a = Math.random() * Math.PI * 2;
+      const s = 3 + Math.random() * 4;
+      this._spawn(
+        x, y, z,
+        Math.cos(a) * s, 1.5 + Math.random() * 2, Math.sin(a) * s,
+        0.25 + Math.random() * 0.25, 1, 0.9, 0.5,
+      );
+    }
+    this.flash(x, y, z, 0xfff2c8, 8);
+  }
+
   smoke(x, y, z) {
     for (let i = 0; i < 3; i += 1) {
       this._spawn(
@@ -65,9 +91,21 @@ export class Effects {
     }
   }
 
+  /** Pale dust kicked up by sprinting feet — lighter and lower than tyre smoke. */
+  dust(x, y, z) {
+    for (let i = 0; i < 2; i += 1) {
+      this._spawn(
+        x + (Math.random() - 0.5) * 0.5, y, z + (Math.random() - 0.5) * 0.5,
+        (Math.random() - 0.5) * 0.5, 0.5 + Math.random() * 0.5, (Math.random() - 0.5) * 0.5,
+        0.5 + Math.random() * 0.3, 0.75, 0.7, 0.55,
+      );
+    }
+  }
+
   muzzle(x, y, z, dirX, dirY, dirZ) {
     this._spawn(x, y, z, dirX * 12, dirY * 12, dirZ * 12, 0.08, 1, 0.85, 0.3);
     this._spawn(x, y, z, dirX * 8, dirY * 8 + 1, dirZ * 8, 0.12, 1, 0.6, 0.2);
+    this.flash(x, y, z, 0xffdd88, 14);
   }
 
   /** Soft green motes rising off the player while health regenerates. */
@@ -107,5 +145,10 @@ export class Effects {
     }
     this.points.geometry.attributes.position.needsUpdate = true;
     this.points.geometry.attributes.color.needsUpdate = true;
+    // The flash light decays fast: a muzzle pop is gone in ~0.15 s.
+    if (this.flashLight.intensity > 0) {
+      this.flashLight.intensity = Math.max(0, this.flashLight.intensity - dt * 110);
+      if (this.flashLight.intensity === 0) this.flashLight.position.y = -100;
+    }
   }
 }

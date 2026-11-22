@@ -26,7 +26,9 @@ export class Input {
       if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON')) return;
       this.keys.add(e.code);
       if (!e.repeat) {
-        if (e.code === 'KeyE') this.actions |= ACT_INTERACT;
+        // F is a second interact key for players whose left hand rests on
+        // WASD with the index finger on F instead of E.
+        if (e.code === 'KeyE' || e.code === 'KeyF') this.actions |= ACT_INTERACT;
         if (e.code === 'KeyR') this.actions |= ACT_RELOAD;
         if (e.code === 'Escape' || e.code === 'KeyP') this.actions |= ACT_PAUSE;
         if (e.code === 'KeyH') this.actions |= ACT_HORN;
@@ -44,14 +46,19 @@ export class Input {
       }
     });
     canvas.addEventListener('mousedown', (e) => {
-      if (e.button === 0) {
+      // Either mouse button aims/fires: a right-click is a shot too, so a
+      // player who aims with the right hand does not fire blanks.
+      if (e.button === 0 || e.button === 2) {
         this.mouseDown = true;
         this.mouseClicked = true;
       }
       this._gesture();
     });
+    // The browser context menu would steal the pointer lock mid-fight; the
+    // game has no use for it, so it stays suppressed on the canvas.
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('mouseup', (e) => {
-      if (e.button === 0) this.mouseDown = false;
+      if (e.button === 0 || e.button === 2) this.mouseDown = false;
     });
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === canvas;

@@ -26,6 +26,9 @@ vehicles, names, story, art, sound and music are all original.
 - **Police PIT tiers** — at 3+ stars the lead car aims for your rear quarter
 - A **start screen, pause menu and save system** (progress autosaves after each mission)
 - **Procedural sound** — engine hum, sirens, gunshots and a quiet synthwave loop (WebAudio, no files)
+- **Night headlights** — the player's car lights the road after dark
+- A **car health bar** in the HUD while driving, so a wrecked ride reads at a glance
+- **Guard flinch and pistol damage falloff** — landing shots suppresses guards, and closing in pays off
 
 ## Play it
 
@@ -40,7 +43,28 @@ No build step, no network requests: every script, the Three.js engine
 (`game/vendor/three/three.module.min.js`, vendored) and every sound is a file under `game/`.
 
 Controls: **WASD** move / drive · **Mouse** look · **Shift** sprint · **E** enter / exit car ·
-**Space** jump / handbrake · **Click** shoot · **R** reload · **P / Esc** pause · **H** horn · **M** mute.
+**Space** jump / handbrake · **Click** shoot (left or right) · **R** reload · **P / Esc** pause · **H** horn · **M** mute.
+
+## Round 4 — what changed (22 Nov 2026)
+
+- **Car health bar** — the HUD shows the car's HP while driving, green to red, hidden on foot.
+- **Night headlights** — a spotlight on the car's nose switches on past dusk, so night chases are lit by the player's own beam.
+- **Skid and reverse sounds** — handbrake drifts and burnouts screech; reversing beeps twice a second.
+- **Guard flinch** — a guard who takes a hit staggers for 0.4 s and holds fire, so landing shots suppresses the docks.
+- **Pistol damage falloff** — full 34 damage inside 25 m, 24 inside 50 m, 16 beyond; closing in pays off.
+- **Muzzle-flash light** — a pooled point light pops with every shot and crash flash, then decays.
+- **Pedestrians dodge cars** — a pedestrian sidesteps when a car closes within 7 m instead of strolling into the bumper.
+- **Traffic respawn** — cars that drift far from the player re-appear on a road nearby, so the streets stay busy.
+- **5-star heat** — foot cops sprint at 7.5 m/s at 5 stars, and police ram damage scales with closing speed.
+- **Camera shake on damage** — taking a bullet jitters the camera as well as flashing the red vignette.
+- **Mission attempts** — a retry shows "Attempt 2" in the briefing banner.
+- **Save v3 with stats** — kills, missions completed and best Drop time left persist across sessions (v1/v2 saves migrate).
+- **Crosswalks and plaza benches** — zebra stripes at every intersection, four benches facing the fountain.
+- **Eighth parked car** — a purple Sunset Sedan by the beach road, so the east side has a ride of its own.
+- **Low-ammo warning and urgent timer** — ammo turns red at 3 rounds; The Drop clock turns red under 30 seconds.
+- **Fairer rams** — a global 2 s immunity after any police ram stops two or three cars taking turns; a single wall graze costs at most 10 HP; rams cost speed, not health, so a long chase cannot total the car on rams alone.
+- **Headshot bonus** — a pistol hit above 1.7 m deals 50% more damage.
+- **Playtested headless end-to-end** — all four missions driven to completion in a headless browser with 0 console errors; screenshots retaken from the live game (see `shots.json`).
 
 ## Round 3 — what changed (22 Nov 2026)
 

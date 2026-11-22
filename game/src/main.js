@@ -16,7 +16,7 @@ import { WantedSystem, PoliceSystem } from './police.js';
 import { Combat } from './combat.js';
 import { MissionManager, MISSIONS } from './missions.js';
 import { HUD } from './hud.js';
-import { saveGame, loadGame, clearSave, hasSave } from './save.js';
+import { saveGame, loadGame, clearSave, hasSave, emptyStats } from './save.js';
 
 const params = new URLSearchParams(window.location.search);
 const shot = params.get('shot');
@@ -72,6 +72,8 @@ let muted = false;
 let lastHurtFlash = false;
 let lastShotResult = null; // debug handle only: result of the last pistol shot
 let shotSeq = 0; // debug handle only: counts pistol shots (1 per fired round)
+// Round-4 stats (save v3): kills, missions completed, best Drop time left.
+let stats = emptyStats();
 
 // Read-only playtest handle: automated runs (and curious players in the
 // console) can watch live state without touching the simulation. It never
@@ -90,12 +92,17 @@ window.__solara = {
   get ammo() { return combat.ammo; },
   get lastShot() { return lastShotResult; },
   get lastShotPoint() { return combat.lastHit; },
+  get lastDamage() { return combat.lastDamage; },
   get shotSeq() { return shotSeq; },
   get alive() { return combat.aliveCount; },
   get kills() { return combat.kills; },
   get dayPhase() { return dayPhase; },
+  get nightF() { return nightF; },
   get clock() { return clockText(); },
   get police() { return police.cars.length + police.cops.length; },
+  get carHealth() { return player.inCar ? player.inCar.health : null; },
+  get headlight() { return !!(driving.headlight && driving.headlight.visible); },
+  get stats() { return { ...stats, kills: combat.kills }; },
   get parked() { return parked.map((c) => ({ name: c.name, x: c.x, z: c.z })); },
   get player() {
     const car = player.inCar;
@@ -155,6 +162,7 @@ const NIGHT_FOG = new THREE.Color(0x0e1626);
 const _sky = new THREE.Color();
 const _fog = new THREE.Color();
 let dayPhase = 'day';
+let nightF = 0;
 let lastNightF = -1;
 
 function applyDayNight() {
@@ -175,6 +183,7 @@ function applyDayNight() {
     phase = 'dawn';
   }
   dayPhase = phase;
+  nightF = f;
   sun.intensity = 1.6 - 1.25 * f;
   hemi.intensity = 0.9 - 0.55 * f;
   scene.background.copy(_sky.copy(DAY_SKY).lerp(NIGHT_SKY, f));
@@ -227,12 +236,18 @@ function startMission(index) {
       [-160, 250], [-132, 250], [-104, 250], [-76, 250], [-146, 268], [-90, 268],
     ]);
   }
-  hud.showBanner(m.title, m.briefing, 6000);
+  // A retry shows its attempt number, so the grind reads in the banner.
+  const attempt = missions.attemptsFor(m.id);
+  hud.showBanner(m.title, `${m.briefing}${attempt > 1 ? ` (Attempt ${attempt})` : ''}`, 6000);
   announce(`${m.title}. ${m.objective}`);
 }
 
 function completeMission() {
+  // Capture the Drop clock before complete() clears the mission state.
+  const dropLeft = missions.current && missions.current.id === 'thedrop' ? missions.timeLeft : 0;
   const finishedStory = missions.complete();
+  stats.missions += 1;
+  if (dropLeft > 0) stats.bestDrop = Math.max(stats.bestDrop, Math.ceil(dropLeft));
   if (finishedStory) {
     state = 'complete';
     hudEl.classList.add('hidden');
@@ -240,13 +255,13 @@ function completeMission() {
     showOnly('menu-complete');
     audio.engine(null);
     audio.siren(false);
-    saveGame({ missionIndex: MISSIONS.length, money });
+    saveGame({ missionIndex: MISSIONS.length, money, stats: { ...stats, kills: combat.kills } });
     announce('Story complete. Free roam continues.');
     return;
   }
   // Save AFTER missions.complete() bumped the index, so Continue resumes at
   // the next mission instead of replaying the one just finished.
-  saveGame({ missionIndex: missions.index, money });
+  saveGame({ missionIndex: missions.index, money, stats: { ...stats, kills: combat.kills } });
   nextMissionTimer = 2.5;
 }
 
@@ -267,6 +282,7 @@ function startGame(fresh) {
   clearSaveIfFresh(fresh);
   const save = fresh ? null : loadGame();
   money = save ? save.money || 0 : 0;
+  stats = save && save.stats ? { ...emptyStats(), ...save.stats } : emptyStats();
   const missionIndex = save ? Math.min(save.missionIndex || 0, MISSIONS.length - 1) : 0;
   resetMissionWorld();
   showOnly(null);
@@ -295,7 +311,7 @@ function gameOver(kind, text) {
 }
 
 function quitToTitle() {
-  saveGame({ missionIndex: Math.min(missions.index, MISSIONS.length - 1), money });
+  saveGame({ missionIndex: Math.min(missions.index, MISSIONS.length - 1), money, stats: { ...stats, kills: combat.kills } });
   state = 'title';
   hudEl.classList.add('hidden');
   audio.engine(null);
@@ -330,6 +346,7 @@ function handleInteract() {
     player.mesh.visible = true;
     player.mesh.position.set(player.x, 0, player.z);
     player.snapCamera(camera);
+    audio.doorSlam();
     audio.blip();
     return;
   }
@@ -355,6 +372,7 @@ function handleInteract() {
   driving.enter(car);
   player.inCar = car;
   player.mesh.visible = false;
+  audio.doorSlam();
   audio.blip();
 }
 
@@ -370,6 +388,7 @@ function hittables() {
 function stepWorld(dt) {
   gameMinutes += dt * 0.5;
   applyDayNight();
+  driving.setNight(nightF);
   const m = missions.current;
 
   // Mission timers and waypoint checks.
@@ -426,7 +445,13 @@ function stepWorld(dt) {
   }
 
   traffic.update(dt, player.inCar);
-  peds.update(dt);
+  // Pedestrians sidestep cars that close in: the player's car, traffic and
+  // police all count as hazards.
+  peds.update(dt, [
+    ...(player.inCar ? [player.inCar] : []),
+    ...traffic.cars,
+    ...police.cars,
+  ]);
   effects.update(dt);
 
   // Enemies shoot back.
@@ -500,6 +525,7 @@ function stepWorld(dt) {
       wanted: wanted.level,
       speed: player.inCar ? player.inCar.speed : 0,
       inCar: !!player.inCar,
+      carHealth: player.inCar ? player.inCar.health : 100,
       ammo: combat.ammo,
       reloading: combat.reloadTimer > 0,
       missionTitle: m ? m.title : 'FREE ROAM',
@@ -677,6 +703,7 @@ function runShot(name) {
       wanted: wanted.level,
       speed: comet.speed,
       inCar: true,
+      carHealth: comet.health,
       ammo: combat.ammo,
       reloading: false,
       missionTitle: '1 — Homecoming',
@@ -695,9 +722,11 @@ function runShot(name) {
     });
   } else if (name === 'chase') {
     resetMissionWorld();
-    // Stage this one at dusk (18:20) so the shot shows the day/night cycle.
-    gameMinutes = 18 * 60 + 20;
+    // Stage this one at dusk (18:45) so the shot shows the day/night cycle
+    // and the headlights, which switch on past a night factor of 0.25.
+    gameMinutes = 18 * 60 + 45;
     applyDayNight();
+    driving.setNight(nightF);
     missions.start(1);
     missions.begin();
     missionPhase = 'escape';
@@ -744,6 +773,7 @@ function runShot(name) {
       wanted: wanted.level,
       speed: comet.speed,
       inCar: true,
+      carHealth: comet.health,
       ammo: combat.ammo,
       reloading: false,
       missionTitle: '2 — Hot Wheels',

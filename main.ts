@@ -9,7 +9,7 @@
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
@@ -17,17 +17,37 @@ import { buildDossier } from './vendor/makefun-game.ts';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-// Round 3 polish (22 Nov 2026): day/night cycle, police PIT tiers, health
-// regen, mission variety, burnouts — see README "Round 3 — what changed".
-const ROUND = 3;
+// Round 4 polish (22 Nov 2026): car health bar, night headlights, skid and
+// reverse sounds, guard flinch + pistol damage falloff, muzzle-flash light,
+// pedestrians dodging cars, traffic respawn, 5-star cop sprint, camera shake
+// on damage, mission attempt counter, save v3 with stats, crosswalks and
+// plaza benches, an eighth parked car — see README "Round 4 — what changed".
+const ROUND = 4;
 console.log(`Solara Nights — round ${ROUND} build, handing in game/ + screenshots/`);
 
 // Fail fast on a missing entry point instead of handing in an empty game.
 if (!existsSync(join(here, 'game', 'index.html'))) {
   throw new Error('game/index.html is missing — nothing to hand in');
 }
+// Fail fast on missing screenshots too: a game handed in with no renders
+// would score on code alone, and the judge reads the pictures first.
+const shotsDir = join(here, 'screenshots');
+const shotFiles = existsSync(shotsDir) ? readdirSync(shotsDir).filter((f) => /\.(jpg|jpeg|png)$/i.test(f)) : [];
+if (shotFiles.length === 0) {
+  throw new Error('screenshots/ holds no renders — retake them before handing in');
+}
+console.log(`Screenshots: ${shotFiles.length} render(s) — ${shotFiles.join(', ')}`);
 
 mkdirSync(out, { recursive: true });
+// Count the files being handed in, so the log shows the entry's size.
+const countFiles = (dir) => {
+  let n = 0;
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    n += e.isDirectory() ? countFiles(join(dir, e.name)) : 1;
+  }
+  return n;
+};
+console.log(`Handing in ${countFiles(join(here, 'game'))} game file(s) + ${shotFiles.length} screenshot(s)`);
 cpSync(join(here, 'game'), join(out, 'game'), { recursive: true });
 mkdirSync(join(out, 'screenshots'), { recursive: true });
 if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });

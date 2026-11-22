@@ -22,6 +22,9 @@ export class HUD {
       vignette: document.getElementById('dmg-vignette'),
       minimap: document.getElementById('minimap'),
       clock: document.getElementById('hud-clock'),
+      car: document.getElementById('hud-car'),
+      carFill: document.getElementById('hud-car-fill'),
+      carText: document.getElementById('hud-car-text'),
     };
     this.mapCtx = this.el.minimap.getContext('2d');
     this._bannerTimer = 0;
@@ -71,13 +74,31 @@ export class HUD {
       this.el.stars.classList.toggle('hot', state.wanted > 0);
     }
     this.el.speed.textContent = state.inCar ? `${Math.round(Math.abs(state.speed) * 3.6)} km/h` : '';
+    // Low ammo reads red at a glance, so the player reloads before the
+    // magazine runs dry in the middle of the docks fight.
     this.el.ammo.textContent = state.reloading ? 'RELOADING…' : `◉ ${state.ammo} / ∞`;
+    this.el.ammo.style.color = !state.reloading && state.ammo <= 3 ? '#ff6b5e' : '#ffd23d';
+    // The car bar only exists while driving: a wrecked ride reads at a
+    // glance, and the bar vanishes on foot so it never lies about a car
+    // the player is not in.
+    if (this.el.car) {
+      this.el.car.classList.toggle('hidden', !state.inCar);
+      if (state.inCar) {
+        const ch = Math.max(0, Math.round(state.carHealth ?? 100));
+        this.el.carFill.style.width = `${ch}%`;
+        this.el.carFill.style.background = ch > 50 ? '#3aa655' : ch > 25 ? '#e8a33a' : '#c23b2e';
+        this.el.carText.textContent = `${ch}`;
+      }
+    }
     this.el.mission.textContent = state.missionTitle || 'FREE ROAM';
     this.el.objective.textContent = state.objective || '';
     this.el.distance.textContent = state.waypointDist ? `▸ ${Math.round(state.waypointDist)} m to target` : '';
     this.el.clock.textContent = state.timeLeft
       ? `⏱ ${Math.ceil(state.timeLeft)}s`
       : `${state.dayPhase === 'night' ? '☾' : state.dayPhase === 'day' ? '☀' : '◐'} ${state.clock}`;
+    // The Drop timer turns red under 30 seconds: the last half-minute of a
+    // delivery should feel urgent before the banner says it failed.
+    this.el.clock.style.color = state.timeLeft && state.timeLeft < 30 ? '#ff6b5e' : '#cfe3ff';
     this.el.vignette.style.opacity = state.hurt ? '0.85' : state.health < 30 ? '0.45' : '0';
     this._drawMinimap(state);
   }
@@ -154,5 +175,10 @@ export class HUD {
     ctx.strokeStyle = 'rgba(255,255,255,0.5)';
     ctx.lineWidth = 2;
     ctx.strokeRect(1, 1, S - 2, S - 2);
+    // A north marker, so the minimap's rotation reads at a glance.
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('N', S / 2, 13);
   }
 }

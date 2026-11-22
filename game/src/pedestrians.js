@@ -56,6 +56,9 @@ export class PedestrianSystem {
       // a shop window, wait out a crossing — instead of marching forever.
       pause: 0,
       nextPause: rng.range(8, 24),
+      // Dodge state: sidestepping a car that is about to run them over.
+      dodge: 0,
+      dodgeDir: 1,
       axis: 'x',
       line: 0,
       dir: 1,
@@ -95,7 +98,8 @@ export class PedestrianSystem {
     }
   }
 
-  update(dt) {
+  /** hazards: cars (player + traffic + police) to sidestep away from. */
+  update(dt, hazards) {
     for (const ped of this.peds) {
       let speed = ped.speed;
       let heading = ped.heading;
@@ -106,6 +110,12 @@ export class PedestrianSystem {
         speed = ped.speed * 2.6;
         const away = Math.atan2(ped.x - ped.fleeX, ped.z - ped.fleeZ);
         heading = away;
+      } else if (ped.dodge > 0) {
+        // Mid-dodge: keep sidestepping perpendicular to the road until the
+        // timer runs out, then resume the stroll.
+        ped.dodge -= dt;
+        speed = ped.speed * WORLD.pedDodgeMult;
+        heading = ped.heading + (Math.PI / 2) * ped.dodgeDir;
       } else if (ped.pause > 0) {
         ped.pause -= dt;
         speed = 0;
@@ -115,11 +125,25 @@ export class PedestrianSystem {
           ped.pause = this.rng.range(0.8, 2);
           ped.nextPause = this.rng.range(10, 26);
         }
+        // A car closing in on the sidewalk: sidestep out of its path
+        // instead of strolling into the bumper.
+        if (hazards) {
+          for (const h of hazards) {
+            if (!h) continue;
+            if (distance2D(ped.x, ped.z, h.x, h.z) < WORLD.pedDodgeDist) {
+              ped.dodge = 0.7;
+              ped.dodgeDir = this.rng.chance(0.5) ? 1 : -1;
+              heading = ped.heading + (Math.PI / 2) * ped.dodgeDir;
+              speed = ped.speed * WORLD.pedDodgeMult;
+              break;
+            }
+          }
+        }
       }
       ped.heading = heading;
       ped.x += Math.sin(heading) * speed * dt;
       ped.z += Math.cos(heading) * speed * dt;
-      if (ped.flee <= 0) {
+      if (ped.flee <= 0 && ped.dodge <= 0) {
         const along = ped.axis === 'x' ? ped.x : ped.z;
         if (Math.abs(along) > CITY_HALF - 10) {
           ped.dir *= -1;

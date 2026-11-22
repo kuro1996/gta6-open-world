@@ -37,6 +37,26 @@ export function makeRng(seed) {
     chance(p) {
       return next() < p;
     },
+    /** Fisher-Yates shuffle, in place, driven by this rng. */
+    shuffle(list) {
+      for (let i = list.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(next() * (i + 1));
+        [list[i], list[j]] = [list[j], list[i]];
+      }
+      return list;
+    },
+    /** Approximately normal value (Box-Muller), mean 0, stddev 1. */
+    gauss() {
+      let u = 0;
+      let v = 0;
+      while (u === 0) u = next();
+      while (v === 0) v = next();
+      return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    },
+    /** A die roll: an integer from 1 to sides, inclusive. */
+    dice(sides) {
+      return 1 + Math.floor(next() * sides);
+    },
   };
 }
 

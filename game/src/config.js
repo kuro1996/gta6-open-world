@@ -39,12 +39,26 @@ export const WORLD = {
   pistolMag: 12,
   pistolReload: 1.2,
   pistolRate: 0.22,
+  // Round 4 — pistol damage falls off with range: full damage inside 25 m,
+  // 24 inside 50 m, 16 beyond. Long-range pot-shots still count, but the
+  // docks fight rewards closing in instead of plinking from the pier.
+  pistolFalloffNear: 25,
+  pistolFalloffMid: 50,
+  pistolDamageMid: 24,
+  pistolDamageFar: 16,
+  // Round 4 — a guard who just took a hit flinches for 0.4 s and holds
+  // fire, so landing shots actually suppresses the docks instead of
+  // trading damage one-for-one with six rifles.
+  guardFlinchTime: 0.4,
   // Day/night: the in-game clock runs 0.5 min per real second, so a full
   // 24 h cycle takes 48 real minutes; dusk starts at 18:00, dawn at 05:30.
   duskStart: 18 * 60,
   nightStart: 19.5 * 60,
   dawnStart: 5.5 * 60,
   dayStart: 6 * 60,
+  // Round 4 — headlights switch on once the night factor passes 0.25, so
+  // a night chase is lit by the player's own beam instead of darkness.
+  headlightNightMin: 0.25,
   // Health regen: Ria recovers slowly once she has been out of danger.
   healthRegenDelay: 8, // seconds without damage before regen starts
   healthRegenRate: 2.5, // HP per second while regenerating
@@ -54,6 +68,18 @@ export const WORLD = {
   policeTopSpeed: 50,
   copSprintLevel: 3,
   copSprintSpeed: 6.5,
+  // Round 4 — at 5 stars the foot cops run faster still (7.5 m/s). Police
+  // rams cost speed, not health (see police.js): car health is for wall
+  // crashes, so a long chase cannot total the car on rams alone.
+  copSprintMaxSpeed: 7.5,
+  // Round 4 — traffic respawn: a traffic car further than this from the
+  // player is re-placed on a road near the player, so the streets around
+  // Ria stay alive instead of emptying out after a long chase.
+  trafficRespawnDist: 280,
+  // Round 4 — pedestrians sidestep a car that closes within this distance,
+  // at this multiple of their walk speed.
+  pedDodgeDist: 7,
+  pedDodgeMult: 2.2,
 };
 
 export const COLORS = {

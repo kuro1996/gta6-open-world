@@ -92,6 +92,46 @@ export class AudioEngine {
     setTimeout(() => this._tone(466, 0.22, 'square', 0.13), 140);
   }
 
+  /** Short reverse warning beep while the car backs up. */
+  beep() {
+    this._tone(880, 0.07, 'square', 0.07);
+  }
+
+  /** Tyre screech for a handbrake drift or a burnout (band-passed noise). */
+  skid() {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const len = Math.max(1, Math.floor(this.ctx.sampleRate * 0.12));
+    const buffer = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < len; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1400;
+    filter.Q.value = 2.5;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.14, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.master);
+    src.start(t);
+  }
+
+  /** Dry click when a reload starts, so R gives feedback before the mag fills. */
+  reloadClick() {
+    this._tone(1200, 0.05, 'square', 0.09);
+    setTimeout(() => this._tone(900, 0.05, 'square', 0.09), 70);
+  }
+
+  /** Car door slam when entering or leaving a car. */
+  doorSlam() {
+    this._noise(0.12, 0.35, 500);
+    this._tone(90, 0.1, 'sine', 0.25, 50);
+  }
+
   /** Siren urgency follows the wanted level: a faster wail at higher heat. */
   setSirenLevel(level) {
     if (this._sirenLfo && this.ctx) {

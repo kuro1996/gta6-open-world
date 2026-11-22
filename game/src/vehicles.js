@@ -145,6 +145,29 @@ export class TrafficSystem {
     syncCarMesh(car);
   }
 
+  /** Re-place a car on a road near the player, keeping its type and colour. */
+  _respawnNear(car, px, pz) {
+    const axis = this.rng.chance(0.5) ? 'x' : 'z';
+    const line = clamp(Math.round((axis === 'x' ? pz : px) / PITCH) * PITCH + this.rng.int(-2, 2) * PITCH, -GRID_K * PITCH, GRID_K * PITCH);
+    const along = clamp((axis === 'x' ? px : pz) + this.rng.range(-120, 120), -CITY_HALF + 20, CITY_HALF - 20);
+    const lane = this.rng.chance(0.5) ? 3.5 : -3.5;
+    const dir = this.rng.chance(0.5) ? 1 : -1;
+    if (axis === 'x') {
+      car.x = along;
+      car.z = line + lane;
+      car.heading = dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+    } else {
+      car.x = line + lane;
+      car.z = along;
+      car.heading = dir > 0 ? 0 : Math.PI;
+    }
+    car.axis = axis;
+    car.line = line;
+    car.dir = dir;
+    car.speed = this.rng.range(10, 18);
+    syncCarMesh(car);
+  }
+
   /** Pick a new road at the next intersection. */
   _turn(car) {
     const turn = this.rng.chance(0.5);
@@ -171,6 +194,12 @@ export class TrafficSystem {
 
   update(dt, playerCar) {
     for (const car of this.cars) {
+      // A car that drifted far from the player (long chase, long drive)
+      // re-appears on a road nearby: the streets around Ria stay busy
+      // instead of emptying out while the far side of the map hoards cars.
+      if (playerCar && distance2D(car.x, car.z, playerCar.x, playerCar.z) > WORLD.trafficRespawnDist) {
+        this._respawnNear(car, playerCar.x, playerCar.z);
+      }
       // Slow down for the car ahead on the same lane.
       let target = car.maxSpeed;
       for (const other of this.cars) {
@@ -215,6 +244,11 @@ export function spawnParkedCars(scene, rng) {
     { x: 174, z: 120, heading: Math.PI / 2, type: 'truck', color: 0xd4762e, name: 'Hauler' },
     { x: -120, z: -174, heading: 0, type: 'sport', color: 0xc23b2e, name: 'Comet S' },
     { x: 240, z: 58, heading: 0, type: 'van', color: 0xe8e8e8, name: 'Surfer Van' },
+    // Round 4 — an eighth ride, a purple sedan parked by the beach road,
+    // so the east side of the map has a stealable car of its own.
+    { x: 262, z: -120, heading: Math.PI, type: 'sedan', color: 0x7a4ac2, name: 'Sunset Sedan' },
+    // Round 4 — a ninth ride, a blue truck by the marina containers.
+    { x: 58, z: 250, heading: 0, type: 'truck', color: 0x2e6fc2, name: 'Marina Hauler' },
   ];
   for (const spot of spots) {
     const mesh = makeCarMesh(spot.type, spot.color);
