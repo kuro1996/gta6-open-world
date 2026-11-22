@@ -70,6 +70,17 @@ export class Effects {
     this._spawn(x, y, z, dirX * 8, dirY * 8 + 1, dirZ * 8, 0.12, 1, 0.6, 0.2);
   }
 
+  /** Soft green motes rising off the player while health regenerates. */
+  heal(x, y, z) {
+    for (let i = 0; i < 2; i += 1) {
+      this._spawn(
+        x + (Math.random() - 0.5) * 0.8, y + Math.random() * 0.5, z + (Math.random() - 0.5) * 0.8,
+        (Math.random() - 0.5) * 0.3, 1.6 + Math.random() * 0.8, (Math.random() - 0.5) * 0.3,
+        0.8 + Math.random() * 0.4, 0.35, 0.9, 0.45,
+      );
+    }
+  }
+
   update(dt) {
     const pos = this.points.geometry.attributes.position.array;
     const col = this.points.geometry.attributes.color.array;

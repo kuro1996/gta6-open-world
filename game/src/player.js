@@ -51,6 +51,8 @@ export class Player {
     this.moving = false;
     this.aiming = false;
     this.hurtTimer = 0;
+    // Seconds since the last hit: health regen only starts after a calm stretch.
+    this.calmTimer = 99;
     this.mesh.position.set(this.x, 0, this.z);
   }
 
@@ -65,6 +67,7 @@ export class Player {
     this.vy = 0;
     this.health = health === undefined ? WORLD.playerHealth : health;
     this.inCar = null;
+    this.calmTimer = 99;
     this.mesh.visible = true;
     this.mesh.position.set(x, 0, z);
   }
@@ -73,6 +76,16 @@ export class Player {
     if (this.hurtTimer > 0) return;
     this.health = Math.max(0, this.health - amount);
     this.hurtTimer = 0.5;
+    this.calmTimer = 0;
+  }
+
+  /** Slow health regen after a calm stretch out of danger (see config). */
+  regen(dt, effects) {
+    if (this.inCar || this.health <= 0 || this.health >= WORLD.playerHealth) return;
+    this.calmTimer += dt;
+    if (this.calmTimer <= WORLD.healthRegenDelay) return;
+    this.health = Math.min(WORLD.playerHealth, this.health + WORLD.healthRegenRate * dt);
+    if (effects && Math.random() < dt * 6) effects.heal(this.x, 1.2, this.z);
   }
 
   update(dt, input, city) {

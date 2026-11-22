@@ -32,6 +32,11 @@ export class Driving {
     if (!car) return;
     const axes = input.moveAxes();
     const handbrake = input.down('Space');
+    // Burnout: handbrake + throttle from a standstill spins the wheels and
+    // lays smoke without launching the car — a standing start with theatre.
+    // The handbrake's speed bleed is skipped while burning out, or the car
+    // could never build the revs to smoke.
+    const burnout = handbrake && axes.forward > 0 && Math.abs(car.speed) < 2;
     const accel = axes.forward > 0 ? WORLD.carAccel : axes.forward < 0 ? -WORLD.carBrake * 0.7 : 0;
     const maxSpeed = car.maxSpeed;
     if (axes.forward > 0) car.speed = Math.min(maxSpeed, car.speed + accel * dt);
@@ -40,7 +45,7 @@ export class Driving {
     } else {
       car.speed -= Math.sign(car.speed) * Math.min(Math.abs(car.speed), 10 * dt);
     }
-    if (handbrake) car.speed -= Math.sign(car.speed) * Math.min(Math.abs(car.speed), 22 * dt);
+    if (handbrake && !burnout) car.speed -= Math.sign(car.speed) * Math.min(Math.abs(car.speed), 22 * dt);
     // Edge governor: within edgeMargin of a world bound, cap forward speed
     // while the car points at that bound — a full-speed U-turn near the
     // sand's end then tightens instead of sweeping out past the map edge.
@@ -114,17 +119,31 @@ export class Driving {
         }
       }
     }
+    // Voss Garage repairs your ride: park by the garage door, nearly
+    // stopped, and the crew patches the car up — so a chase-wrecked Comet GT
+    // can still make it home instead of being abandoned at 0 HP.
+    const door = this.city.garageDoor;
+    if (door && car.health < 100 && Math.abs(car.speed) < 1) {
+      const d = Math.hypot(car.x - door.x, car.z - door.z);
+      if (d < 14) car.health = Math.min(100, car.health + 4 * dt);
+    }
     // Tire smoke while drifting at speed.
     this.skidTimer -= dt;
     if (handbrake && Math.abs(car.speed) > 10 && this.skidTimer <= 0) {
       this.skidTimer = 0.12;
       if (this.effects) this.effects.smoke(car.x - Math.sin(car.heading) * 1.6, 0.4, car.z - Math.cos(car.heading) * 1.6);
     }
+    // Burnout smoke from the rear wheels, with the engine revving high
+    // even though the car barely moves.
+    if (burnout && this.skidTimer <= 0) {
+      this.skidTimer = 0.09;
+      if (this.effects) this.effects.smoke(car.x - Math.sin(car.heading) * 1.6, 0.4, car.z - Math.cos(car.heading) * 1.6);
+    }
     if (car.health <= 40 && !car.smoke) {
       car.smoke = true;
       if (this.effects) this.effects.smoke(car.x, 1.4, car.z);
     }
-    if (this.audio) this.audio.engine(Math.abs(car.speed) / car.maxSpeed);
+    if (this.audio) this.audio.engine(burnout ? 0.7 : Math.abs(car.speed) / car.maxSpeed);
     syncCarMesh(car);
   }
 

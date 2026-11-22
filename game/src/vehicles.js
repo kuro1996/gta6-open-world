@@ -1,7 +1,7 @@
 // Solara Nights — cars: mesh factory plus the traffic system that drives them
 // around the road grid, and the parked cars the player can steal.
 import * as THREE from 'three';
-import { CITY_HALF, COLORS, GRID_K, PITCH, ROAD_WIDTH } from './config.js';
+import { CITY_HALF, COLORS, GRID_K, PITCH, ROAD_WIDTH, WORLD } from './config.js';
 import { clamp, distance2D } from './random.js';
 
 const BODY_GEO = new THREE.BoxGeometry(1, 1, 1);
@@ -15,7 +15,7 @@ export function makeCarMesh(type, colorHex) {
   const glass = new THREE.MeshLambertMaterial({ color: 0x1a2733 });
   const dark = new THREE.MeshLambertMaterial({ color: 0x15151a });
 
-  const dims = type === 'truck' ? { w: 2.2, l: 5.6, h: 1.0, cabH: 0.9 } : type === 'sport' ? { w: 1.9, l: 4.4, h: 0.62, cabH: 0.55 } : { w: 2.0, l: 4.6, h: 0.78, cabH: 0.7 };
+  const dims = type === 'truck' ? { w: 2.2, l: 5.6, h: 1.0, cabH: 0.9 } : type === 'sport' ? { w: 1.9, l: 4.4, h: 0.62, cabH: 0.55 } : type === 'van' ? { w: 2.1, l: 5.0, h: 1.15, cabH: 0.75 } : { w: 2.0, l: 4.6, h: 0.78, cabH: 0.7 };
   const body = new THREE.Mesh(BODY_GEO, paint);
   body.scale.set(dims.w, dims.h, dims.l);
   body.position.y = 0.55 + dims.h / 2;
@@ -110,9 +110,10 @@ export class TrafficSystem {
     this.rng = rng;
     this.city = city;
     this.cars = [];
-    const types = ['sedan', 'sedan', 'sedan', 'taxi', 'truck', 'sport'];
-    for (let i = 0; i < 14; i += 1) {
-      const type = types[i % types.length];
+    for (let i = 0; i < WORLD.trafficCount; i += 1) {
+      // Weighted mix instead of a fixed rotation: sedans dominate, sports
+      // cars and vans are rarer, so no two drives see the same street.
+      const type = this.rng.weighted([['sedan', 5], ['taxi', 2], ['truck', 2], ['sport', 1], ['van', 2]]);
       const color = COLORS.carPalette[rng.int(0, COLORS.carPalette.length - 1)];
       const mesh = makeCarMesh(type, color);
       scene.add(mesh);
@@ -204,11 +205,16 @@ export function spawnParkedCars(scene, rng) {
   const parked = [];
   const spots = [
     { x: -186, z: 190, heading: Math.PI / 2, type: 'sedan', color: 0x3aa655, name: 'Voss Sedan' },
-    { x: 33, z: 22, heading: 0, type: 'sport', color: 0xe8c33a, name: 'Comet GT' },
+    // The Comet GT parks north-east of the fountain, clear of its collider:
+    // the old spot (33, 22) sat 8 m from the fountain centre, inside the
+    // 9.4 m collision shell, so the car ground against the fountain instead
+    // of driving away (found by the round-3 headless playtest).
+    { x: 40, z: 12, heading: 0, type: 'sport', color: 0xe8c33a, name: 'Comet GT' },
     { x: 120, z: -58, heading: Math.PI, type: 'sedan', color: 0x2e6fc2, name: 'City Sedan' },
     { x: -58, z: -120, heading: -Math.PI / 2, type: 'taxi', color: 0xe8c33a, name: 'Taxi' },
     { x: 174, z: 120, heading: Math.PI / 2, type: 'truck', color: 0xd4762e, name: 'Hauler' },
     { x: -120, z: -174, heading: 0, type: 'sport', color: 0xc23b2e, name: 'Comet S' },
+    { x: 240, z: 58, heading: 0, type: 'van', color: 0xe8e8e8, name: 'Surfer Van' },
   ];
   for (const spot of spots) {
     const mesh = makeCarMesh(spot.type, spot.color);

@@ -39,6 +39,21 @@ export const WORLD = {
   pistolMag: 12,
   pistolReload: 1.2,
   pistolRate: 0.22,
+  // Day/night: the in-game clock runs 0.5 min per real second, so a full
+  // 24 h cycle takes 48 real minutes; dusk starts at 18:00, dawn at 05:30.
+  duskStart: 18 * 60,
+  nightStart: 19.5 * 60,
+  dawnStart: 5.5 * 60,
+  dayStart: 6 * 60,
+  // Health regen: Ria recovers slowly once she has been out of danger.
+  healthRegenDelay: 8, // seconds without damage before regen starts
+  healthRegenRate: 2.5, // HP per second while regenerating
+  // Police tiers: at 3+ stars the lead car tries a PIT spin instead of a
+  // plain ram, and the whole force gets faster with the heat.
+  policePitLevel: 3,
+  policeTopSpeed: 50,
+  copSprintLevel: 3,
+  copSprintSpeed: 6.5,
 };
 
 export const COLORS = {

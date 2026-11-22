@@ -367,5 +367,12 @@ export function buildCity(scene, rng) {
     colliders,
     collideCircle,
     garageDoor: { x: PLACES.garage.x, z: PLACES.garage.z - 12 },
+    // f is 0 by day and 1 at night: the streetlight bulbs go from a pale
+    // daylight white to a warm sodium glow, one shared material change
+    // for the whole city instead of per-instance work.
+    setNight(f) {
+      const c = new THREE.Color(0xffe9a8).lerp(new THREE.Color(0xffc23d), f);
+      bulbMat.color.copy(c);
+    },
   };
 }

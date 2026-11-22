@@ -70,6 +70,10 @@ export class PoliceSystem {
     const mesh = makeCarMesh('police', 0xf2f2ee);
     this.scene.add(mesh);
     const car = makeCarState(mesh, 'police', 40);
+    // Ram cooldown: a police car can only ram once per 1.5 s, so a chase
+    // stays a chase instead of a bumper glued to the player cutting speed
+    // 18% every frame until the car can never pull away.
+    car.ramTimer = 0;
     const angle = this.rng.range(0, Math.PI * 2);
     const dist = this.rng.range(55, 80);
     car.x = clamp(x + Math.sin(angle) * dist, -CITY_HALF, CITY_HALF);
@@ -123,7 +127,19 @@ export class PoliceSystem {
     }
     let near = false;
     for (const car of this.cars) {
-      const targetHeading = Math.atan2(px - car.x, pz - car.z);
+      // The force gets faster with the heat: a 5-star chase tops out at the
+      // config's policeTopSpeed instead of the flat 40 of a 1-star tail.
+      car.maxSpeed = Math.min(40 + wanted.level * 2, WORLD.policeTopSpeed);
+      // PIT tier: at 3+ stars the lead car aims at the player's rear quarter
+      // instead of dead centre, trying to spin the car rather than just ram it.
+      let tx = px;
+      let tz = pz;
+      if (playerCar && wanted.level >= WORLD.policePitLevel) {
+        const side = Math.sin(performance.now() * 0.001 + car.x) > 0 ? 1 : -1;
+        tx = px - Math.sin(playerCar.heading) * 2.5 + Math.cos(playerCar.heading) * side * 2;
+        tz = pz - Math.cos(playerCar.heading) * 2.5 - Math.sin(playerCar.heading) * side * 2;
+      }
+      const targetHeading = Math.atan2(tx - car.x, tz - car.z);
       const diff = wrapAngle(targetHeading - car.heading);
       car.heading += clamp(diff, -2.4 * dt, 2.4 * dt);
       const d = distance2D(car.x, car.z, px, pz);
@@ -139,8 +155,13 @@ export class PoliceSystem {
       // A chase onto the beach must not run the police car off the map edge.
       car.x = clamp(car.x, WORLD.boundMinX, WORLD.boundX);
       car.z = clamp(car.z, WORLD.boundMinZ, WORLD.boundZ);
-      // Ram the player's car.
-      if (playerCar && d < 4.4) {
+      // Ram the player's car — once per cooldown, so a glued-on police car
+      // cannot cut the player's speed 18% every frame until escape is
+      // impossible (found by the round-3 headless playtest: the Comet GT
+      // stalled at ~1 m/s under back-to-back rams).
+      car.ramTimer = Math.max(0, (car.ramTimer || 0) - dt);
+      if (playerCar && d < 4.4 && car.ramTimer <= 0) {
+        car.ramTimer = 1.5;
         const push = 4.4 - d;
         playerCar.x += ((playerCar.x - car.x) / Math.max(0.1, d)) * push;
         playerCar.z += ((playerCar.z - car.z) / Math.max(0.1, d)) * push;
@@ -159,13 +180,14 @@ export class PoliceSystem {
       }
       syncCarMesh(car);
     }
-    // Foot cops: run at the player, bust on contact.
+    // Foot cops: run at the player, bust on contact — and sprint at 3+
+    // stars, so losing them on foot gets harder as the heat rises.
     this.bustTimer = 0;
     for (const cop of this.cops) {
       const d = distance2D(cop.x, cop.z, player.x, player.z);
       near = near || d < 50;
       cop.heading = Math.atan2(player.x - cop.x, player.z - cop.z);
-      const speed = d > 2.5 ? cop.speed : 0;
+      const speed = d > 2.5 ? (wanted.level >= WORLD.copSprintLevel ? WORLD.copSprintSpeed : cop.speed) : 0;
       cop.x += Math.sin(cop.heading) * speed * dt;
       cop.z += Math.cos(cop.heading) * speed * dt;
       const fixed = this.city.collideCircle(cop.x, cop.z, 0.5);
@@ -181,7 +203,10 @@ export class PoliceSystem {
       cop.mesh.rotation.y = cop.heading;
       if (d < 2.6) this.bustTimer += dt;
     }
-    if (this.audio) this.audio.siren(wanted.level > 0);
+    if (this.audio) {
+      this.audio.setSirenLevel(wanted.level);
+      this.audio.siren(wanted.level > 0);
+    }
     return near;
   }
 

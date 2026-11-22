@@ -2,7 +2,7 @@
 // and the Crown Syndicate guards who shoot back during the docks mission.
 import * as THREE from 'three';
 import { WORLD } from './config.js';
-import { distance2D } from './random.js';
+import { clamp, distance2D } from './random.js';
 
 function makeGuardMesh() {
   const group = new THREE.Group();
@@ -37,6 +37,10 @@ export class Enemy {
     this.alive = true;
     this.shootTimer = 1 + Math.random();
     this.walkPhase = 0;
+    // Strafe state: guards sidestep while shooting so the docks fight is
+    // not six stationary targets.
+    this.strafeDir = Math.random() < 0.5 ? 1 : -1;
+    this.strafeTimer = 1 + Math.random() * 2;
     this.mesh.position.set(x, 0, z);
   }
 
@@ -69,6 +73,21 @@ export class Enemy {
         const swing = Math.sin(this.walkPhase) * 0.45;
         this.mesh.userData.legL.rotation.x = swing;
         this.mesh.userData.legR.rotation.x = -swing;
+      } else {
+        // In range: sidestep perpendicular to the player and flip direction
+        // every second or two, so the guard is a moving target while firing.
+        this.strafeTimer -= dt;
+        if (this.strafeTimer <= 0) {
+          this.strafeTimer = 1 + Math.random() * 1.5;
+          this.strafeDir *= -1;
+        }
+        const strafe = 2.2 * this.strafeDir * dt;
+        this.x += Math.cos(this.mesh.rotation.y) * strafe;
+        this.z -= Math.sin(this.mesh.rotation.y) * strafe;
+        this.walkPhase += dt * 8;
+        const swing = Math.sin(this.walkPhase) * 0.45;
+        this.mesh.userData.legL.rotation.x = swing;
+        this.mesh.userData.legR.rotation.x = -swing;
       }
       if (this.shootTimer <= 0) {
         // 1.5-2.1 s between shots: the old 1.1-1.6 s let six guards stack
@@ -84,6 +103,10 @@ export class Enemy {
         }
       }
     }
+    // Strafing has no building collision: keep the guard inside the map so
+    // a sidestep can never carry one through a wall or into the ocean.
+    this.x = clamp(this.x, WORLD.boundMinX, WORLD.boundX);
+    this.z = clamp(this.z, WORLD.boundMinZ, WORLD.boundZ);
     this.mesh.position.set(this.x, 0, this.z);
     return shot ? { damage: d < 18 ? 14 : d < 32 ? 9 : 5, distance: d } : null;
   }
@@ -103,6 +126,7 @@ export class Combat {
     this.reloadTimer = 0;
     this.shotCooldown = 0;
     this.enemies = [];
+    this.kills = 0;
     this.raycaster = new THREE.Raycaster();
     this.raycaster.far = WORLD.pistolRange;
     this.lastHit = null;
@@ -165,6 +189,7 @@ export class Combat {
     for (const e of this.enemies) {
       if (e.alive && (e.mesh === hits[0].object || isDescendant(e.mesh, hits[0].object))) {
         e.damage(WORLD.pistolDamage);
+        if (!e.alive) this.kills += 1;
         return 'enemy';
       }
     }

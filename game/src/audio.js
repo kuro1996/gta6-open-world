@@ -86,6 +86,19 @@ export class AudioEngine {
     this._tone(660, 0.08, 'square', 0.12);
   }
 
+  /** Two-tone car horn (H while driving). */
+  horn() {
+    this._tone(370, 0.16, 'square', 0.13);
+    setTimeout(() => this._tone(466, 0.22, 'square', 0.13), 140);
+  }
+
+  /** Siren urgency follows the wanted level: a faster wail at higher heat. */
+  setSirenLevel(level) {
+    if (this._sirenLfo && this.ctx) {
+      this._sirenLfo.frequency.setTargetAtTime(0.9 + level * 0.35, this.ctx.currentTime, 0.2);
+    }
+  }
+
   pickup() {
     this._tone(523, 0.09, 'sine', 0.18);
     setTimeout(() => this._tone(784, 0.12, 'sine', 0.18), 90);

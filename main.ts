@@ -17,6 +17,11 @@ import { buildDossier } from './vendor/makefun-game.ts';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
+// Round 3 polish (22 Nov 2026): day/night cycle, police PIT tiers, health
+// regen, mission variety, burnouts — see README "Round 3 — what changed".
+const ROUND = 3;
+console.log(`Solara Nights — round ${ROUND} build, handing in game/ + screenshots/`);
+
 // Fail fast on a missing entry point instead of handing in an empty game.
 if (!existsSync(join(here, 'game', 'index.html'))) {
   throw new Error('game/index.html is missing — nothing to hand in');

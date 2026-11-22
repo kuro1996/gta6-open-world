@@ -52,6 +52,10 @@ export class PedestrianSystem {
       flee: 0,
       fleeX: 0,
       fleeZ: 0,
+      // Idle pauses: a pedestrian sometimes stops for a moment — to check
+      // a shop window, wait out a crossing — instead of marching forever.
+      pause: 0,
+      nextPause: rng.range(8, 24),
       axis: 'x',
       line: 0,
       dir: 1,
@@ -97,9 +101,20 @@ export class PedestrianSystem {
       let heading = ped.heading;
       if (ped.flee > 0) {
         ped.flee -= dt;
-        speed = 5.5;
+        // Fleeing pace follows the pedestrian's own walk speed, so a slow
+        // stroller does not suddenly sprint like an athlete.
+        speed = ped.speed * 2.6;
         const away = Math.atan2(ped.x - ped.fleeX, ped.z - ped.fleeZ);
         heading = away;
+      } else if (ped.pause > 0) {
+        ped.pause -= dt;
+        speed = 0;
+      } else {
+        ped.nextPause -= dt;
+        if (ped.nextPause <= 0) {
+          ped.pause = this.rng.range(0.8, 2);
+          ped.nextPause = this.rng.range(10, 26);
+        }
       }
       ped.heading = heading;
       ped.x += Math.sin(heading) * speed * dt;

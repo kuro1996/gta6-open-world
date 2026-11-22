@@ -106,10 +106,12 @@ export class MissionManager {
     const m = this.current;
     if (!m) return;
     if (m.id === 'homecoming') this.setWaypoint(PLACES.garage.x, PLACES.garage.z - 14);
-    else if (m.id === 'hotwheels') this.setWaypoint(PLACES.plaza.x + 4, PLACES.plaza.z - 7);
+    else if (m.id === 'hotwheels') this.setWaypoint(PLACES.plaza.x + 11, PLACES.plaza.z - 17);
     else if (m.id === 'thedrop') {
       this.setWaypoint(PLACES.marina.x, PLACES.marina.z - 8);
-      this.timeLeft = 150;
+      // The deadline is a fresh roll every run — 120, 150 or 180 seconds —
+      // so the same delivery never plays the same twice.
+      this.timeLeft = [120, 150, 180][Math.floor(Math.random() * 3)];
     } else if (m.id === 'payback') this.setWaypoint(PLACES.docks.x, PLACES.docks.z - 6);
   }
 
@@ -117,6 +119,9 @@ export class MissionManager {
     const m = this.current;
     this.stage = 'done';
     this.clearWaypoint();
+    // Speed bonus: The Drop pays $200 extra when the package lands with
+    // more than 30 seconds to spare.
+    if (m) m.bonus = m.id === 'thedrop' && this.timeLeft > 30 ? 200 : 0;
     // Clear the briefing text: until the next mission starts, the HUD would
     // otherwise show the next mission's title above the old briefing.
     this.message = '';
@@ -145,6 +150,11 @@ export class MissionManager {
     if (this.diamond.visible) {
       this.diamond.rotation.y += dt * 2;
       this.diamond.position.y = 10 + Math.sin(performance.now() * 0.003) * 1.2;
+    }
+    // The beacon breathes so the waypoint reads at a glance, even in the
+    // middle of a chase at night.
+    if (this.beacon.visible) {
+      this.beacon.material.opacity = 0.12 + Math.sin(performance.now() * 0.004) * 0.06;
     }
     if (this.stage === 'active' && this.current && this.current.id === 'thedrop') {
       this.timeLeft -= dt;

@@ -23,6 +23,17 @@ export function makeRng(seed) {
     pick(list) {
       return list[Math.floor(next() * list.length)];
     },
+    /** Pick a [value, weight] entry with probability proportional to weight. */
+    weighted(entries) {
+      let total = 0;
+      for (const [, w] of entries) total += w;
+      let roll = next() * total;
+      for (const [value, w] of entries) {
+        roll -= w;
+        if (roll <= 0) return value;
+      }
+      return entries[entries.length - 1][0];
+    },
     chance(p) {
       return next() < p;
     },

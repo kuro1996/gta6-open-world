@@ -75,7 +75,9 @@ export class HUD {
     this.el.mission.textContent = state.missionTitle || 'FREE ROAM';
     this.el.objective.textContent = state.objective || '';
     this.el.distance.textContent = state.waypointDist ? `▸ ${Math.round(state.waypointDist)} m to target` : '';
-    this.el.clock.textContent = state.timeLeft ? `⏱ ${Math.ceil(state.timeLeft)}s` : state.clock;
+    this.el.clock.textContent = state.timeLeft
+      ? `⏱ ${Math.ceil(state.timeLeft)}s`
+      : `${state.dayPhase === 'night' ? '☾' : state.dayPhase === 'day' ? '☀' : '◐'} ${state.clock}`;
     this.el.vignette.style.opacity = state.hurt ? '0.85' : state.health < 30 ? '0.45' : '0';
     this._drawMinimap(state);
   }
@@ -125,6 +127,13 @@ export class HUD {
       const [cx, cy] = toMap(c.x, c.z);
       ctx.fillStyle = c.police ? (Math.floor(performance.now() / 250) % 2 ? '#ff2222' : '#2244ff') : '#c8c8c8';
       ctx.fillRect(cx - 2, cy - 2, 4, 4);
+    }
+    // Stealable parked cars read as gold dots, so the player can spot the
+    // next ride without driving past every kerb.
+    for (const p of state.parked || []) {
+      const [gx, gy] = toMap(p.x, p.z);
+      ctx.fillStyle = '#ffd23d';
+      ctx.fillRect(gx - 2, gy - 2, 4, 4);
     }
     // Player arrow, clamped inside the map so it never vanishes when the
     // player drives out to the world bounds.

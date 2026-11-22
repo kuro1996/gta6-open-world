@@ -7,6 +7,7 @@ export const ACT_INTERACT = 1;
 export const ACT_RELOAD = 2;
 export const ACT_PAUSE = 4;
 export const ACT_HORN = 8;
+export const ACT_MUTE = 16;
 
 export class Input {
   constructor(canvas) {
@@ -29,6 +30,7 @@ export class Input {
         if (e.code === 'KeyR') this.actions |= ACT_RELOAD;
         if (e.code === 'Escape' || e.code === 'KeyP') this.actions |= ACT_PAUSE;
         if (e.code === 'KeyH') this.actions |= ACT_HORN;
+        if (e.code === 'KeyM') this.actions |= ACT_MUTE;
       }
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
       this._gesture();

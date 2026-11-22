@@ -7,7 +7,7 @@ import { makeRng, clamp } from './random.js';
 import { buildCity } from './city.js';
 import { AudioEngine } from './audio.js';
 import { Effects } from './effects.js';
-import { Input, ACT_INTERACT, ACT_PAUSE, ACT_RELOAD } from './input.js';
+import { Input, ACT_INTERACT, ACT_PAUSE, ACT_RELOAD, ACT_HORN, ACT_MUTE } from './input.js';
 import { Player } from './player.js';
 import { Driving } from './driving.js';
 import { TrafficSystem, spawnParkedCars, syncCarMesh } from './vehicles.js';
@@ -92,6 +92,9 @@ window.__solara = {
   get lastShotPoint() { return combat.lastHit; },
   get shotSeq() { return shotSeq; },
   get alive() { return combat.aliveCount; },
+  get kills() { return combat.kills; },
+  get dayPhase() { return dayPhase; },
+  get clock() { return clockText(); },
   get police() { return police.cars.length + police.cops.length; },
   get parked() { return parked.map((c) => ({ name: c.name, x: c.x, z: c.z })); },
   get player() {
@@ -140,6 +143,46 @@ function clockText() {
   const h = Math.floor(gameMinutes / 60) % 24;
   const m = Math.floor(gameMinutes % 60);
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+// Day/night cycle: the clock drives sun, sky, fog and the streetlight glow,
+// so a chase at 19:00 feels different from one at noon. gameMinutes runs
+// 0.5 min per real second; dusk 18:00–19:30, night 19:30–05:30, dawn 05:30–06:00.
+const DAY_SKY = new THREE.Color(0x87bfe8);
+const NIGHT_SKY = new THREE.Color(0x0e1626);
+const DAY_FOG = new THREE.Color(0x9fc6e8);
+const NIGHT_FOG = new THREE.Color(0x0e1626);
+const _sky = new THREE.Color();
+const _fog = new THREE.Color();
+let dayPhase = 'day';
+let lastNightF = -1;
+
+function applyDayNight() {
+  const mins = gameMinutes % 1440;
+  let f;
+  let phase;
+  if (mins >= WORLD.dayStart && mins < WORLD.duskStart) {
+    f = 0;
+    phase = 'day';
+  } else if (mins >= WORLD.duskStart && mins < WORLD.nightStart) {
+    f = (mins - WORLD.duskStart) / (WORLD.nightStart - WORLD.duskStart);
+    phase = 'dusk';
+  } else if (mins >= WORLD.nightStart || mins < WORLD.dawnStart) {
+    f = 1;
+    phase = 'night';
+  } else {
+    f = 1 - (mins - WORLD.dawnStart) / (WORLD.dayStart - WORLD.dawnStart);
+    phase = 'dawn';
+  }
+  dayPhase = phase;
+  sun.intensity = 1.6 - 1.25 * f;
+  hemi.intensity = 0.9 - 0.55 * f;
+  scene.background.copy(_sky.copy(DAY_SKY).lerp(NIGHT_SKY, f));
+  scene.fog.color.copy(_fog.copy(DAY_FOG).lerp(NIGHT_FOG, f));
+  if (Math.abs(f - lastNightF) > 0.02) {
+    lastNightF = f;
+    city.setNight(f);
+  }
 }
 
 function playerPos() {
@@ -215,8 +258,8 @@ function failMission(reason) {
 }
 
 missions.onMissionComplete = (m) => {
-  money += m.reward;
-  hud.showBanner('MISSION COMPLETE', `${m.title} — +$${m.reward}`, 3500);
+  money += m.reward + (m.bonus || 0);
+  hud.showBanner('MISSION COMPLETE', `${m.title} — +$${m.reward}${m.bonus ? ` (+$${m.bonus} speed bonus)` : ''}`, 3500);
   // No save here: completeMission() saves after the index has advanced.
 };
 
@@ -326,6 +369,7 @@ function hittables() {
 // --- per-frame simulation -------------------------------------------------------
 function stepWorld(dt) {
   gameMinutes += dt * 0.5;
+  applyDayNight();
   const m = missions.current;
 
   // Mission timers and waypoint checks.
@@ -361,6 +405,8 @@ function stepWorld(dt) {
   if (state === 'playing') {
     if (player.inCar) driving.update(dt, input, traffic);
     else player.update(dt, input, city);
+    // Health comes back slowly once Ria has been out of danger a while.
+    player.regen(dt, effects);
     combat.update(dt);
     // Shooting.
     if (!player.inCar && input.mouseDown) {
@@ -461,12 +507,14 @@ function stepWorld(dt) {
       waypointDist: missions.waypoint ? Math.hypot(missions.waypoint.x - px, missions.waypoint.z - pz) : 0,
       timeLeft: m && m.id === 'thedrop' && missions.stage === 'active' ? missions.timeLeft : 0,
       clock: clockText(),
+      dayPhase,
       hurt: player.hurtTimer > 0,
       px,
       pz,
       heading: player.inCar ? player.inCar.heading : player.heading,
       waypoint: missions.waypoint,
       cars: mapCars,
+      parked: parked.map((c) => ({ x: c.x, z: c.z })),
     });
   }
   lastHurtFlash = false;
@@ -549,6 +597,12 @@ function frame(now) {
     // consumed the queue, so R never reloaded anything (found by playtest:
     // the pistol could only reload by firing the magazine dry).
     if (actions & ACT_RELOAD) combat.reload();
+    if (actions & ACT_HORN && player.inCar) audio.horn();
+    if (actions & ACT_MUTE) {
+      muted = !muted;
+      audio.setMuted(muted);
+      $('btn-mute').textContent = `Mute: ${muted ? 'On' : 'Off'}`;
+    }
     stepWorld(dt);
   } else if (state === 'title') {
     orbitAngle += dt * 0.045;
@@ -630,15 +684,20 @@ function runShot(name) {
       waypointDist: missions.waypoint ? Math.hypot(missions.waypoint.x - comet.x, missions.waypoint.z - comet.z) : 0,
       timeLeft: 0,
       clock: clockText(),
+      dayPhase,
       hurt: false,
       px: comet.x,
       pz: comet.z,
       heading: comet.heading,
       waypoint: missions.waypoint,
       cars: [...traffic.cars.map((c) => ({ x: c.x, z: c.z, police: false })), ...police.cars.map((c) => ({ x: c.x, z: c.z, police: true }))],
+      parked: parked.map((c) => ({ x: c.x, z: c.z })),
     });
   } else if (name === 'chase') {
     resetMissionWorld();
+    // Stage this one at dusk (18:20) so the shot shows the day/night cycle.
+    gameMinutes = 18 * 60 + 20;
+    applyDayNight();
     missions.start(1);
     missions.begin();
     missionPhase = 'escape';
@@ -692,12 +751,14 @@ function runShot(name) {
       waypointDist: missions.waypoint ? Math.hypot(missions.waypoint.x - comet.x, missions.waypoint.z - comet.z) : 0,
       timeLeft: 0,
       clock: clockText(),
+      dayPhase,
       hurt: false,
       px: comet.x,
       pz: comet.z,
       heading: comet.heading,
       waypoint: missions.waypoint,
       cars: [...traffic.cars.map((c) => ({ x: c.x, z: c.z, police: false })), ...police.cars.map((c) => ({ x: c.x, z: c.z, police: true }))],
+      parked: parked.map((c) => ({ x: c.x, z: c.z })),
     });
   }
   let painted = 0;
