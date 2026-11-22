@@ -23,12 +23,51 @@ export class PedestrianSystem {
       this.peds.push(ped);
       scene.add(ped.group);
     }
+    // Night-shift walkers: the extra pedestrians Night Shift adds after
+    // dark — couriers and late workers who walk slow, never idle-pause,
+    // and keep to the lit streets. They are the city's night pulse.
+    this.nightWalkers = [];
+  }
+
+  /** Add one night-shift walker at (x, z): a slow, purposeful pedestrian
+   * who never pauses to window-shop. Returns the ped, or null when the
+   * night crowd is already full (six walkers is a crowd at 2 a.m.). */
+  addNightWalker(x, z) {
+    if (this.nightWalkers.length >= 6) return null;
+    const ped = this._makePed();
+    ped.x = x;
+    ped.z = z;
+    ped.heading = this.rng.range(0, Math.PI * 2);
+    ped.speed = this.rng.range(0.9, 1.4);
+    ped.nightWalker = true;
+    ped.pause = 0;
+    ped.nextPause = 999;
+    ped.group.position.set(x, 0, z);
+    this.peds.push(ped);
+    this.nightWalkers.push(ped);
+    this.scene.add(ped.group);
+    return ped;
+  }
+
+  /** How many night-shift walkers are out right now. */
+  get nightWalkerCount() {
+    return this.nightWalkers.length;
+  }
+
+  /** Send the night crowd home: removes every night walker the shift
+   * added, so dawn starts with the ordinary daytime crowd again. */
+  clearNightWalkers() {
+    for (const ped of this.nightWalkers) {
+      const i = this.peds.indexOf(ped);
+      if (i >= 0) this.peds.splice(i, 1);
+      this.scene.remove(ped.group);
+    }
+    this.nightWalkers = [];
   }
 
   _makePed() {
     const rng = this.rng;
-    const group = new THREE.Group();
-    const shirt = new THREE.MeshLambertMaterial({ color: SHIRTS[rng.int(0, SHIRTS.length - 1)] });
+    const group = new THREE.Group();    const shirt = new THREE.MeshLambertMaterial({ color: SHIRTS[rng.int(0, SHIRTS.length - 1)] });
     const pants = new THREE.MeshLambertMaterial({ color: PANTS[rng.int(0, PANTS.length - 1)] });
     const skin = new THREE.MeshLambertMaterial({ color: [0xe8b98a, 0xc98a5a, 0x8a5a3a][rng.int(0, 2)] });
     const body = new THREE.Mesh(BODY_GEO, shirt);

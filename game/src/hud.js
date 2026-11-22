@@ -37,6 +37,10 @@ export class HUD {
       drift: document.getElementById('hud-drift'),
       heli: document.getElementById('hud-heli'),
       chain: document.getElementById('hud-chain'),
+      // Round 4 attempt 4 — night economy: one line for the weather
+      // outlook + night contract status, one for the Black Market.
+      nightops: document.getElementById('hud-nightops'),
+      market: document.getElementById('hud-market'),
     };
     this.mapCtx = this.el.minimap.getContext('2d');
     this._bannerTimer = 0;
@@ -147,6 +151,22 @@ export class HUD {
       const on = !!state.heli;
       this.el.heli.textContent = on ? '🚁 HELI OVERHEAD — heat will not cool' : '';
       this.el.heli.classList.toggle('hidden', !on);
+    }
+    // Night economy (attempt 4): the weather outlook shares the line
+    // with the active night contract (or the burner-phone offer), and
+    // the market line shows the stall prompt or the open catalogue.
+    // Both hide when there is nothing to say, so the HUD stays quiet
+    // on an ordinary sunny drive.
+    if (this.el.nightops) {
+      const outlook = state.outlook ? `${state.outlook}  ` : '';
+      const line = `${outlook}${state.nightops || ''}`.trim();
+      this.el.nightops.textContent = line;
+      this.el.nightops.classList.toggle('hidden', !line);
+    }
+    if (this.el.market) {
+      const line = state.market || '';
+      this.el.market.textContent = line;
+      this.el.market.classList.toggle('hidden', !line);
     }
     // Drift meter (attempt 3): live chain points while sliding, and a
     // short flash of the banked total when a chain pays out. The meter

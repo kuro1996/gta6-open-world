@@ -47,6 +47,15 @@ createServer((request, response) => {
     return;
   }
   if (pathname.endsWith('/')) pathname += 'index.html';
+  // Round 4 attempt 4 — a health endpoint for the playtest harness:
+  // GET /healthz answers { ok: true } without touching the game files,
+  // so a smoke test can tell "server up" from "game loaded".
+  if (pathname === '/healthz') {
+    const body = JSON.stringify({ ok: true, game: 'solara-nights', round: 4 });
+    response.writeHead(200, { 'content-type': 'application/json', 'content-length': body.length });
+    response.end(body);
+    return;
+  }
   const file = resolve(join(root, normalize(pathname)));
   if (file !== root && !file.startsWith(root + sep)) {
     response.writeHead(403).end('forbidden');

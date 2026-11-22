@@ -153,6 +153,38 @@ export class Effects {
     }
   }
 
+  /** Rain rings: a few pale droplets kicked up where rain hits a full
+   * puddle. Called by the weather system, a couple of times a second. */
+  puddleSplash(x, y, z) {
+    for (let i = 0; i < 3; i += 1) {
+      this._spawn(
+        x + (Math.random() - 0.5) * 0.6, y, z + (Math.random() - 0.5) * 0.6,
+        (Math.random() - 0.5) * 0.4, 1.2 + Math.random() * 0.8, (Math.random() - 0.5) * 0.4,
+        0.35 + Math.random() * 0.2, 0.65, 0.75, 0.9,
+      );
+    }
+  }
+
+  /** Dark violet motes that puff out when Ria slips into a shadow
+   * pocket during a night contract — a visual whisper, not an alarm. */
+  shadowPuff(x, y, z) {
+    for (let i = 0; i < 5; i += 1) {
+      this._spawn(
+        x + (Math.random() - 0.5) * 0.7, y + Math.random() * 0.6, z + (Math.random() - 0.5) * 0.7,
+        (Math.random() - 0.5) * 0.3, 0.4 + Math.random() * 0.5, (Math.random() - 0.5) * 0.3,
+        0.9 + Math.random() * 0.5, 0.35, 0.2, 0.55,
+      );
+    }
+  }
+
+  /** A neon sign flicker: one bright spark at the stall when its sign
+   * buzzes back on after dark. */
+  neonSpark(x, y, z) {
+    this._spawn(x, y, z, 0, 0.6, 0, 0.25, 0.75, 0.5, 1);
+    this._spawn(x, y, z, 0.4, 0.4, 0, 0.2, 0.85, 0.6, 1);
+    this.flash(x, y, z, 0xc07dff, 6);
+  }
+
   muzzle(x, y, z, dirX, dirY, dirZ) {
     this._spawn(x, y, z, dirX * 12, dirY * 12, dirZ * 12, 0.08, 1, 0.85, 0.3);
     this._spawn(x, y, z, dirX * 8, dirY * 8 + 1, dirZ * 8, 0.12, 1, 0.6, 0.2);

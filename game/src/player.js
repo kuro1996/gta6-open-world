@@ -57,7 +57,24 @@ export class Player {
     // Ria drops back to a walk until it recovers. Sprinting is a resource
     // now, not a toggle you hold forever.
     this.stamina = WORLD.sprintStaminaMax;
+    // Round 4 attempt 4 — sneaking: hold C to crouch-walk. Sneaking is
+    // slow (half walk speed) but halves every noise gain and shrinks
+    // watcher sight — the Night Shift way to move. The main loop sets
+    // it from the C key; the player model dips a little while sneaking.
+    this.sneaking = false;
+    this.noiseLevel = 0;
     this.mesh.position.set(this.x, 0, this.z);
+  }
+
+  /** Turn sneaking on/off. Returns the new state. */
+  setSneak(on) {
+    this.sneaking = !!on;
+    return this.sneaking;
+  }
+
+  /** Current sneak speed factor: half speed while sneaking, full else. */
+  get sneakFactor() {
+    return this.sneaking ? 0.5 : 1;
   }
 
   /** Sprint stamina 0..1 for the HUD (and the playtest handle). */

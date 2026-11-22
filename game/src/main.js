@@ -4,10 +4,13 @@
 import * as THREE from 'three';
 import { CITY_HALF, PLACES, WORLD } from './config.js';
 import { makeRng, clamp } from './random.js';
-import { buildCity } from './city.js';
+import { buildCity, buildRooftopBeacons } from './city.js';
 import { AudioEngine } from './audio.js';
 import { Effects } from './effects.js';
-import { Input, ACT_INTERACT, ACT_PAUSE, ACT_RELOAD, ACT_HORN, ACT_MUTE, ACT_SIDEJOB, ACT_TUTORIAL } from './input.js';
+import { Input, ACT_INTERACT, ACT_PAUSE, ACT_RELOAD, ACT_HORN, ACT_MUTE, ACT_SIDEJOB, ACT_TUTORIAL, ACT_MARKET, ACT_NIGHTOPS } from './input.js';
+import { WeatherSystem } from './weather.js';
+import { NightOps } from './nightops.js';
+import { BlackMarket, MARKET_ITEMS } from './blackmarket.js';
 import { Player } from './player.js';
 import { Driving } from './driving.js';
 import { TrafficSystem, spawnParkedCars, syncCarMesh, setCarGlow } from './vehicles.js';
@@ -59,6 +62,42 @@ const missions = new MissionManager(scene, audio);
 const sideJobs = new SideJobs(scene, audio);
 const driving = new Driving(city, audio, effects);
 const hud = new HUD();
+// Round 4 attempt 4 — the night economy: a weather system that owns the
+// sky, Night Shift contracts that only open after dark, and the Black
+// Market stall by the docks. All three are built once, here, and the
+// frame loop below drives them.
+const beacons = buildRooftopBeacons(scene, rng);
+const weather = new WeatherSystem(scene, rng, audio, effects);
+let rep = 0;
+const market = new BlackMarket(scene, rng, audio, {
+  announce,
+  onBuy: (item, price) => {
+    stats.marketDeals += 1;
+    hud.showBanner('DEAL CLOSED', `${item.name} — $${price}. ${item.blurb}`, 3500);
+    announce(`Bought ${item.name} for $${price}.`);
+  },
+});
+const nightops = new NightOps(scene, rng, audio, effects, {
+  announce,
+  reward: (pay, repGain, label) => {
+    const bonus = Math.round(pay * market.upgrades.nightPay);
+    money += pay + bonus;
+    rep += repGain;
+    stats.nightOps += 1;
+    stats.rep = rep;
+    market.addRep(Math.ceil(repGain / 4), 'owls');
+    hud.showBanner('NIGHT SHIFT PAID', `${label} — +$${pay}${bonus ? ` (+$${bonus} Owl cut)` : ''} · +${repGain} rep`, 4000);
+    saveGame({ missionIndex: missions.index, money, rep, stats: { ...stats, kills: combat.kills }, tutorialSeen });
+  },
+  fail: (reason) => {
+    stats.nightBurned += 1;
+    hud.showBanner('CONTRACT BURNED', reason, 4000);
+  },
+  onSpotted: () => {
+    wanted.addHeat(15);
+    hud.showBanner('SPOTTED', 'A watcher made you — the cops got a tip.', 3000);
+  },
+});
 // Round 4 attempt 2 — weather: rain rolls in on a timer (game-minutes of
 // play), lasts 40–90 s, then clears. rainF eases in/out over ~5 s so the
 // shower never pops in or out in a single frame.
@@ -66,6 +105,10 @@ let rainF = 0;
 let rainTarget = 0;
 let rainTimer = 90 + rng.range(0, 60); // first shower ~2–3 min in
 let rainLeft = 0;
+// Attempt 4 — latest weather summary (refreshed every stepWorld) and
+// the shot counter Night Shift last saw, so a fired shot counts once.
+let wxSummary = { condition: 'clear', rain: 0, fog: 0, visibility: 320 };
+let nightShotSeq = 0;
 // Round 4 attempt 2 — tutorial: three short steps for a first-time player
 // (move, enter a car, follow the beacon). Done once, remembered in the save.
 let tutorialStep = -1; // -1 = off (returning player or skipped)
@@ -133,6 +176,12 @@ window.__solara = {
   get raining() { return rainF > 0.3; },
   get sideJob() { return sideJobs.active ? { id: sideJobs.active.id, stage: sideJobs.stage, objective: sideJobs.objective } : null; },
   get sideOffer() { return sideJobs.offered ? sideJobs.offered.id : null; },
+  // Round 4 attempt 4 handles: weather, Night Shift, Black Market, rep.
+  get weather() { return { condition: weather.condition, rain: weather.rainLevel, fog: weather.fogLevel, storms: weather.stormsSeen, strikes: weather.strikesSeen }; },
+  get nightops() { return { active: nightops.active, offer: nightops.offer, noise: nightops.noise, eyes: nightops.eyes, done: nightops.contractsDone, burned: nightops.contractsBurned }; },
+  get market() { return { near: market.nearStall, open: market.open, standing: { ...market.standing }, upgrades: { ...market.upgrades }, deals: market.deals }; },
+  get rep() { return rep; },
+  get sneaking() { return player.sneaking; },
   get tutorial() { return tutorialStep; },
   get stamina() { return player.stamina01; },
   get player() {
@@ -290,7 +339,7 @@ function completeMission() {
     showOnly('menu-complete');
     audio.engine(null);
     audio.siren(false);
-    saveGame({ missionIndex: MISSIONS.length, money, stats: { ...stats, kills: combat.kills } });
+    saveGame({ missionIndex: MISSIONS.length, money, rep, stats: { ...stats, kills: combat.kills }, market: market.serialize(), nightops: nightops.serialize(), weather: weather.serialize() });
     announce('Story complete. Free roam continues.');
     return;
   }
@@ -319,6 +368,12 @@ function startGame(fresh) {
   money = save ? save.money || 0 : 0;
   stats = save && save.stats ? { ...emptyStats(), ...save.stats } : emptyStats();
   tutorialSeen = save ? !!save.tutorialSeen : false;
+  // Attempt 4 — restore the night economy: crew reputation, market
+  // upgrades and standing, night contracts, and the weather record.
+  rep = save && typeof save.rep === 'number' ? save.rep : (stats.rep || 0);
+  if (save && save.market) market.restore(save.market);
+  if (save && save.nightops) nightops.restore(save.nightops);
+  if (save && save.weather) weather.restore(save.weather);
   // Tutorial (attempt 2): first-time players get the three steps; a
   // returning player (or one who skipped) never sees them again.
   tutorialStep = tutorialSeen ? -1 : 0;
@@ -445,15 +500,41 @@ function stepWorld(dt) {
   }
   rainF += clamp(rainTarget - rainF, -dt / 5, dt / 5);
   const pos = playerPos();
-  effects.setRain(rainF, pos.x, pos.z);
-  city.setWet(rainF);
-  driving.setRain(rainF);
-  traffic.setRain(rainF);
+  // Attempt 4 — dynamic weather: the storm cycle owns the sky now, and
+  // the old timer shower just feeds the same rain level. The weather's
+  // own rain wins when it is heavier; storms dim the streets too.
+  wxSummary = weather.update(dt, pos.x, pos.z);
+  const effRain = Math.max(rainF, wxSummary.rain);
+  city.setStorm(wxSummary.condition === 'storm' ? 1 : wxSummary.condition === 'drizzle' ? 0.4 : 0);
+  effects.setRain(effRain, pos.x, pos.z);
+  city.setWet(effRain);
+  driving.setRain(effRain);
+  traffic.setRain(effRain);
   // Attempt 3 — night underglow: the fast cars' neon brightens with the
   // night factor, traffic and parked alike.
   traffic.setNight(nightF);
   for (const c of parked) setCarGlow(c.mesh, nightF);
-  audio.setRainLevel(rainF);
+  audio.setRainLevel(effRain);
+  // Attempt 4 — night economy, per frame: rooftop beacons blink, the
+  // market stall watches for the player, and Night Shift runs its
+  // noise/eyes meters. A shot fired this frame counts as noise.
+  beacons.update(dt);
+  market.update(dt, pos.x, pos.z, nightF);
+  const shotFired = shotSeq !== nightShotSeq;
+  nightShotSeq = shotSeq;
+  if (state === 'playing') {
+    const speedNow = player.inCar ? Math.abs(player.inCar.speed) : (player.moving ? 3 : 0);
+    nightops.update(dt, {
+      playerX: pos.x,
+      playerZ: pos.z,
+      speed: speedNow,
+      sneaking: player.sneaking,
+      nightF,
+      visibility: wxSummary.visibility,
+      shotFired,
+      inCar: !!player.inCar,
+    });
+  }
   const m = missions.current;
 
   // Mission timers and waypoint checks.
@@ -673,6 +754,11 @@ function stepWorld(dt) {
       parked: parked.map((c) => ({ x: c.x, z: c.z })),
       // Attempt 2 HUD state: rain icon, side-job diamond, named places.
       raining: rainF > 0.3,
+      // Attempt 4 HUD state: weather outlook, night contract line, and
+      // the Black Market line (stall prompt or open catalogue).
+      outlook: weather.outlook(),
+      nightops: nightops.statusLine(),
+      market: market.open ? market.statusLine(money, rep) : (market.nearStall ? market.statusLine(money, rep) : ''),
       sideWaypoint: sideJobs.waypoint,
       // Attempt 3 HUD state: drift meter, heli warning, roadblocks and
       // heli on the minimap, chain progress, worst damage zone.
@@ -787,6 +873,33 @@ function frame(now) {
       hud.setTutorial('');
       saveGame({ missionIndex: missions.index, money, stats: { ...stats, kills: combat.kills }, tutorialSeen: true });
     }
+    // B opens/closes the Black Market while standing at the stall; N
+    // takes the burner-phone contract when one is offered at night.
+    if (actions & ACT_MARKET) {
+      if (market.toggleShop()) hud.showBanner('BLACK MARKET', 'Press 1-9 to buy, B to leave. Prices move with crew standing.', 4000);
+    }
+    if (actions & ACT_NIGHTOPS && nightops.hasOffer) {
+      nightops.acceptOffer();
+    }
+    // Digits 1-9 buy from the open shop; the digit queue holds one key.
+    if (market.open) {
+      const digit = input.takeDigit();
+      if (digit >= 1 && digit <= 9) {
+        const item = MARKET_ITEMS[digit - 1];
+        if (item) {
+          const result = market.buy(item.id, money, rep);
+          if (result.ok) {
+            money -= result.price;
+            saveGame({ missionIndex: missions.index, money, rep, stats: { ...stats, kills: combat.kills }, tutorialSeen });
+          } else {
+            hud.showBanner('NO DEAL', `${item.name}: ${result.reason}.`, 3000);
+          }
+        }
+      }
+    }
+    // C is sneak (attempt 4): crouch-walk on foot, half speed, half
+    // noise — the Night Shift way to move. Driving never sneaks.
+    player.setSneak(!player.inCar && input.down('KeyC'));
     if (actions & ACT_HORN && player.inCar) audio.horn();
     if (actions & ACT_MUTE) {
       muted = !muted;

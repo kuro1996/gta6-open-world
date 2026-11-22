@@ -236,6 +236,39 @@ export class Combat {
     if (this.audio) this.audio.reloadClick();
   }
 
+  /** Silent takedown: drop a single enemy from behind without a shot.
+   * Only works inside takedown range and only while the enemy is not
+   * already alerted — a loud gunfight is not a stealth kill. The kill
+   * is quiet (no shot, no heat spike), counts separately in stats, and
+   * feeds the Night Shift noise meter nothing at all. */
+  silentTakedown(playerX, playerZ, playerHeading) {
+    let best = null;
+    let bestDist = WORLD.takedownRange || 2.2;
+    for (const e of this.enemies) {
+      if (!e.alive || e.alerted) continue;
+      const d = distance2D(playerX, playerZ, e.x, e.z);
+      if (d >= bestDist) continue;
+      // Behind means: the enemy's facing is roughly away from the player.
+      const toPlayer = Math.atan2(playerX - e.x, playerZ - e.z);
+      let diff = Math.abs(toPlayer - (e.heading || 0));
+      if (diff > Math.PI) diff = Math.PI * 2 - diff;
+      if (diff < Math.PI * 0.6) continue;
+      best = e;
+      bestDist = d;
+    }
+    if (!best) return null;
+    best.alive = false;
+    best.remove(this.scene);
+    this.kills += 1;
+    this.silencedKills = (this.silencedKills || 0) + 1;
+    if (this.effects) {
+      this.effects.shadowPuff(best.x, 1.2, best.z);
+      this.effects.smoke(best.x, 1, best.z);
+    }
+    if (this.audio && this.audio.thud) this.audio.thud();
+    return best;
+  }
+
   update(dt) {
     this.shotCooldown = Math.max(0, this.shotCooldown - dt);
     if (this.reloadTimer > 0) {

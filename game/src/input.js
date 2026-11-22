@@ -11,6 +11,11 @@ export const ACT_MUTE = 16;
 // Round 4 attempt 2 — Q accepts an offered side job; T skips the tutorial.
 export const ACT_SIDEJOB = 32;
 export const ACT_TUTORIAL = 64;
+// Round 4 attempt 4 — B opens the Black Market stall; N takes a Night
+// Shift contract from the burner phone. Digits 1-9 buy while the shop
+// is open (queued as this.digit, taken once).
+export const ACT_MARKET = 128;
+export const ACT_NIGHTOPS = 256;
 
 export class Input {
   constructor(canvas) {
@@ -21,6 +26,8 @@ export class Input {
     this.mouseDY = 0;
     this.mouseDown = false;
     this.mouseClicked = false;
+    // Queued shop digit (1-9) for the Black Market; 0 means none.
+    this.digit = 0;
     this.locked = false;
     this.onFirstGesture = null;
     this._gestured = false;
@@ -38,6 +45,11 @@ export class Input {
         if (e.code === 'KeyM') this.actions |= ACT_MUTE;
         if (e.code === 'KeyQ') this.actions |= ACT_SIDEJOB;
         if (e.code === 'KeyT') this.actions |= ACT_TUTORIAL;
+        if (e.code === 'KeyB') this.actions |= ACT_MARKET;
+        if (e.code === 'KeyN') this.actions |= ACT_NIGHTOPS;
+        // Shop digits: 1-9 queue a single buy key, taken once by the
+        // main loop while the Black Market is open.
+        if (/^Digit[1-9]$/.test(e.code)) this.digit = Number(e.code.slice(5));
       }
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
       this._gesture();
@@ -102,6 +114,13 @@ export class Input {
     const taken = this.actions;
     this.actions = 0;
     return taken;
+  }
+
+  /** Take the queued shop digit (1-9), or 0 when none was pressed. */
+  takeDigit() {
+    const d = this.digit;
+    this.digit = 0;
+    return d;
   }
 
   takeClick() {

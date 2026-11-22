@@ -107,6 +107,59 @@ export class AudioEngine {
     setTimeout(() => this._tone(1318, 0.16, 'sine', 0.1), 110);
   }
 
+  /** Thunder that arrives late on purpose: the caller passes the delay
+   * (distance / speed of sound) so a far strike rumbles seconds after
+   * its flash, like real thunder. Volume falls with distance too. */
+  thunder(delayMs, volume) {
+    const delay = Math.max(0, delayMs || 0) * 1000;
+    const vol = Math.max(0.05, Math.min(0.5, volume || 0.3));
+    setTimeout(() => {
+      if (!this.ctx) return;
+      // A thunderclap is filtered noise with a long tail, not a tone:
+      // low-pass it hard and let the gain decay over two seconds.
+      const len = this.ctx.sampleRate * 2;
+      const buffer = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < len; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      const src = this.ctx.createBufferSource();
+      src.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 220;
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 2);
+      src.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.master);
+      src.start();
+    }, delay);
+  }
+
+  /** Cash-register arpeggio when a Black Market deal closes. */
+  marketChime() {
+    this._tone(1046, 0.09, 'triangle', 0.14);
+    setTimeout(() => this._tone(1318, 0.09, 'triangle', 0.14), 90);
+    setTimeout(() => this._tone(1568, 0.14, 'triangle', 0.14), 180);
+  }
+
+  /** Single metallic tick for the lockpick minigame's tumbler. */
+  lockpickTick() {
+    this._tone(1900, 0.03, 'square', 0.08);
+  }
+
+  /** Camera shutter click for the Night Shift photo contract. */
+  cameraShutter() {
+    this._tone(2400, 0.04, 'square', 0.1);
+    setTimeout(() => this._tone(1500, 0.05, 'square', 0.08), 70);
+  }
+
+  /** Short storm-wind swell that rides under a lightning strike. */
+  stormGust() {
+    if (!this.ctx) return;
+    this._tone(110, 0.7, 'sawtooth', 0.05, 70);
+  }
+
   /** Looping rain patter (filtered noise). level 0..1; call every frame
    * or with 0 to stop. The loop reuses one buffer source, so rain costs
    * no allocation while it falls. */

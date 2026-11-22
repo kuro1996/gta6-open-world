@@ -5,12 +5,16 @@ import { SAVE_KEY } from './config.js';
 // instead of choking on a shape it no longer writes.
 // v3 (round 4): adds a stats block — kills, missions completed, best Drop
 // time left — so Continue can show the player what they have done.
-// v4 (round 4 attempt 2): adds side-job earnings and whether the tutorial
-// was finished or skipped, so a returning player is not taught twice.
-export const SAVE_VERSION = 4;
+// v5 (round 4 attempt 4): adds the night economy — crew reputation,
+// night contracts completed, and storms weathered — so a returning
+// player keeps their standing with the crews and their night record.
+export const SAVE_VERSION = 5;
 
 export function emptyStats() {
-  return { kills: 0, missions: 0, bestDrop: 0, sideJobs: 0, sideEarned: 0 };
+  return {
+    kills: 0, missions: 0, bestDrop: 0, sideJobs: 0, sideEarned: 0,
+    rep: 0, nightOps: 0, nightBurned: 0, storms: 0, marketDeals: 0,
+  };
 }
 
 export function saveGame(data) {
@@ -49,6 +53,13 @@ export function loadGame() {
       // v4 fields: side jobs done and cash earned from them.
       if (typeof data.stats.sideJobs !== 'number') data.stats.sideJobs = 0;
       if (typeof data.stats.sideEarned !== 'number') data.stats.sideEarned = 0;
+      // v5 fields: crew reputation, night contracts done/burned, storms
+      // weathered, Black Market deals closed.
+      if (typeof data.stats.rep !== 'number') data.stats.rep = 0;
+      if (typeof data.stats.nightOps !== 'number') data.stats.nightOps = 0;
+      if (typeof data.stats.nightBurned !== 'number') data.stats.nightBurned = 0;
+      if (typeof data.stats.storms !== 'number') data.stats.storms = 0;
+      if (typeof data.stats.marketDeals !== 'number') data.stats.marketDeals = 0;
     }
     // v4: tutorialSeen is a plain boolean; anything else means "not seen".
     if (typeof data.tutorialSeen !== 'boolean') data.tutorialSeen = false;

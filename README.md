@@ -43,7 +43,26 @@ No build step, no network requests: every script, the Three.js engine
 (`game/vendor/three/three.module.min.js`, vendored) and every sound is a file under `game/`.
 
 Controls: **WASD** move / drive · **Mouse** look · **Shift** sprint · **E** enter / exit car ·
-**Space** jump / handbrake · **Click** shoot (left or right) · **R** reload · **P / Esc** pause · **H** horn · **M** mute.
+**Space** jump / handbrake · **Click** shoot (left or right) · **R** reload · **P / Esc** pause · **H** horn · **M** mute ·
+**C** sneak (half speed, half noise) · **N** take a Night Shift contract · **B** open the Black Market at the docks stall · **1-9** buy.
+
+## Round 4 — what changed, attempt 4 (22 Nov 2026)
+
+All-new systems written for this attempt — no rewrites of existing code:
+
+- **Dynamic weather** (`game/src/weather.js`) — a full storm cycle: clear → overcast → drizzle → storm → fog,
+  with lightning strikes (flash, rebuilt bolt, thunder delayed by distance), wind gusts, and puddles that
+  grow in the rain and dry out after it. Storms dim the streets and cut visibility.
+- **Night Shift** (`game/src/nightops.js`) — stealth contracts that only open after dark: Silent Drop, Cold Photo,
+  Long Tail. Two live meters — NOISE and EYES — plus watcher sight cones on the ground, a tailing courier,
+  and fog/rain that shrink every watcher's sight. Burn a contract and the mark bolts.
+- **Black Market** (`game/src/blackmarket.js`) — three crews (Vipers / Harbor Kings / Night Owls) with a standing
+  ledger, a neon stall by the docks that only lights after dark, and 9 upgrades (nitro, top speed, armor,
+  quiet feet, night pay…). Prices move with standing: love a crew and they sell cheap; offend one and they charge double.
+- **Rooftop beacons** (`city.js`) — blinking red aircraft-warning lights on the tallest roofs, the night skyline's heartbeat.
+- **Sneaking** (`player.js` + `input.js`) — hold C to crouch-walk; silent takedowns (`combat.js`) for unalerted guards
+  from behind. New sounds (`audio.js`): thunder, market chime, lockpick tick, camera shutter. New effects
+  (`effects.js`): puddle splashes, shadow puffs, neon sparks. Save v5 keeps rep, night record and market deals.
 
 ## Round 4 — what changed, attempt 3 (22 Nov 2026)
 

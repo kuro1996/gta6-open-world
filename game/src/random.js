@@ -108,3 +108,43 @@ export function distance2D(ax, az, bx, bz) {
   const dz = az - bz;
   return Math.sqrt(dx * dx + dz * dz);
 }
+
+/** Pick one entry from [{ item, weight }] by weight. A zero total
+ * weight falls back to a uniform pick instead of returning nothing. */
+export function weightedChoice(rng, entries) {
+  let total = 0;
+  for (const e of entries) total += Math.max(0, e.weight || 0);
+  if (total <= 0) return entries[Math.floor(rng.range(0, entries.length))].item;
+  let roll = rng.range(0, total);
+  for (const e of entries) {
+    roll -= Math.max(0, e.weight || 0);
+    if (roll <= 0) return e.item;
+  }
+  return entries[entries.length - 1].item;
+}
+
+/** Fisher–Yates shuffle that returns a new array, leaving the input
+ * untouched — the caller's deck stays in order for the next draw. */
+export function shuffleBag(array, rng) {
+  const out = [...array];
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng.range(0, i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/** Draw n distinct items from an array without replacement. Asking for
+ * more than the array holds just returns the whole array, shuffled. */
+export function pickN(rng, array, n) {
+  return shuffleBag(array, rng).slice(0, Math.max(0, Math.min(n, array.length)));
+}
+
+/** A random point on a ring: radius between inner and outer, angle
+ * anywhere. Used to scatter watchers, puddles and stalls around a spot
+ * without ever landing on top of it. */
+export function ringPoint(rng, cx, cz, inner, outer) {
+  const angle = rng.range(0, Math.PI * 2);
+  const radius = rng.range(inner, outer);
+  return { x: cx + Math.sin(angle) * radius, z: cz + Math.cos(angle) * radius, angle };
+}

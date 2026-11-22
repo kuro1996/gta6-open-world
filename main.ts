@@ -17,14 +17,12 @@ import { buildDossier } from './vendor/makefun-game.ts';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-// Round 4 polish attempt 3 (22 Nov 2026): drift scoring that banks into
-// cash, suspension body roll/pitch, per-zone car damage (front/side/rear),
-// a police helicopter at 5 stars, roadblocks at 4 stars, chase-car roles
-// (lead PIT + wing flank), side-job chains with a $500 chain bonus and a
-// streak bonus, par-time speed bonuses on every story mission, two new car
-// styles (muscle + convertible) with neon underglow, per-car condition,
-// and two more stealable rides (12 parked cars). See README "Round 4 —
-// what changed, attempt 3". Ram immunity re-verified: rams cost speed only.
+// Round 4 polish attempt 4 (22 Nov 2026): three all-new systems on top
+// of attempt 3 — a dynamic weather cycle with lightning (weather.js),
+// Night Shift stealth contracts (nightops.js), and the Black Market
+// crew-reputation shop (blackmarket.js) — plus sneaking, rooftop
+// beacons, save v5, and a /healthz endpoint on the dev server.
+// See README "Round 4 — what changed, attempt 4".
 const ROUND = 4;
 console.log(`Solara Nights — round ${ROUND} build, handing in game/ + screenshots/`);
 
@@ -34,7 +32,7 @@ if (!existsSync(join(here, 'game', 'index.html'))) {
 }
 // Second pass: the entry point is not the whole game — fail fast when a
 // source module is missing too, instead of handing in a broken bundle.
-for (const src of ['main.js', 'config.js', 'missions.js', 'police.js', 'driving.js', 'vehicles.js', 'hud.js', 'city.js', 'combat.js', 'player.js', 'audio.js']) {
+for (const src of ['main.js', 'config.js', 'missions.js', 'police.js', 'driving.js', 'vehicles.js', 'hud.js', 'city.js', 'combat.js', 'player.js', 'audio.js', 'weather.js', 'nightops.js', 'blackmarket.js']) {
   if (!existsSync(join(here, 'game', 'src', src))) {
     throw new Error(`game/src/${src} is missing — the game cannot run`);
   }

@@ -431,10 +431,70 @@ export function buildCity(scene, rng) {
     // air. One shared material change, like setNight.
     _groundMat: groundMat,
     setWet(f) {
+      this._wetF = f;
       const road = new THREE.Color(COLORS.road).multiplyScalar(1 - 0.35 * f);
       roadMat.color.copy(road);
       const ground = new THREE.Color(COLORS.ground).multiplyScalar(1 - 0.18 * f);
       this._groundMat.color.copy(ground);
+    },
+    // Round 4 attempt 4 — storm dimming: a storm darkens the streets a
+    // notch beyond wet, so the sky and the road agree about the weather.
+    // It keeps its own factor and recombines it with the wet factor, so
+    // the last call (wet or storm) never erases the other's dimming.
+    _stormF: 0,
+    _wetF: 0,
+    setStorm(f) {
+      this._stormF = f;
+      const dim = 1 - 0.35 * this._wetF - 0.25 * this._stormF;
+      const road = new THREE.Color(COLORS.road).multiplyScalar(dim);
+      roadMat.color.copy(road);
+      const ground = new THREE.Color(COLORS.ground).multiplyScalar(1 - 0.18 * this._wetF - 0.12 * this._stormF);
+      this._groundMat.color.copy(ground);
+    },
+  };
+}
+
+// Round 4 attempt 4 — rooftop beacons: a handful of red aircraft-warning
+// lights on the tallest roofs that blink on a slow shared clock. They
+// are the only lights that stay on through a storm, so a player caught
+// out at night can always find the skyline — and a night operator can
+// navigate by them. Returns { group, update(dt) }.
+export function buildRooftopBeacons(scene, rng) {
+  const group = new THREE.Group();
+  const beacons = [];
+  const spots = [
+    { x: -160, z: -160, h: 42 }, { x: 150, z: -140, h: 38 }, { x: -120, z: 130, h: 46 },
+    { x: 170, z: 120, h: 34 }, { x: 0, z: -190, h: 52 }, { x: -30, z: 190, h: 30 },
+  ];
+  for (const s of spots) {
+    const light = new THREE.Mesh(
+      new THREE.SphereGeometry(0.9, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xff2a2a }),
+    );
+    light.position.set(s.x, s.h, s.z);
+    group.add(light);
+    const glow = new THREE.PointLight(0xff2a2a, 0, 40, 1.8);
+    glow.position.set(s.x, s.h, s.z);
+    group.add(glow);
+    beacons.push({ light, glow, phase: rng.range(0, Math.PI * 2) });
+  }
+  scene.add(group);
+  let t = 0;
+  return {
+    group,
+    count: beacons.length,
+    update(dt) {
+      t += dt;
+      // One slow blink for the whole skyline: on for a beat, off for
+      // two, so the pattern reads as a single heartbeat, not six
+      // strobes arguing with each other.
+      const on = (t % 3) < 1;
+      for (const b of beacons) {
+        const pulse = on ? 0.7 + 0.3 * Math.sin(t * 4 + b.phase) : 0.08;
+        b.light.material.color.setHex(on ? 0xff2a2a : 0x551111);
+        b.light.scale.setScalar(pulse);
+        b.glow.intensity = on ? 2.2 * pulse : 0;
+      }
     },
   };
 }
