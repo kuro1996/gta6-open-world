@@ -28,6 +28,10 @@ const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 // (arcade.js), bank-heist planning with vault cracking (bank.js), and the
 // Voss Garage tuning shop (tuning.js). See README "Round 4 — what changed,
 // attempt 7".
+// Round 6 attempt 8 (23 Nov 2026): five more — nightclubs (nightclub.js),
+// bounty hunting (bounty.js), car meets (carmeet.js), real estate
+// (realestate.js) and the fight club (fightclub.js). See README "Round 6 —
+// what changed, attempt 8".
 const ROUND = 4;
 console.log(`Solara Nights — round ${ROUND} build, handing in game/ + screenshots/`);
 
@@ -37,7 +41,7 @@ if (!existsSync(join(here, 'game', 'index.html'))) {
 }
 // Second pass: the entry point is not the whole game — fail fast when a
 // source module is missing too, instead of handing in a broken bundle.
-for (const src of ['main.js', 'config.js', 'missions.js', 'police.js', 'driving.js', 'vehicles.js', 'hud.js', 'city.js', 'combat.js', 'player.js', 'audio.js', 'weather.js', 'nightops.js', 'blackmarket.js', 'economy.js', 'safehouse.js', 'streetrace.js', 'fishing.js', 'casino.js', 'businesses.js', 'delivery.js', 'stunt.js', 'radio.js', 'photo.js', 'smuggling.js', 'gym.js', 'chopshop.js', 'taxi.js', 'arcade.js', 'bank.js', 'tuning.js']) {
+for (const src of ['main.js', 'config.js', 'missions.js', 'police.js', 'driving.js', 'vehicles.js', 'hud.js', 'city.js', 'combat.js', 'player.js', 'audio.js', 'weather.js', 'nightops.js', 'blackmarket.js', 'economy.js', 'safehouse.js', 'streetrace.js', 'fishing.js', 'casino.js', 'businesses.js', 'delivery.js', 'stunt.js', 'radio.js', 'photo.js', 'smuggling.js', 'gym.js', 'chopshop.js', 'taxi.js', 'arcade.js', 'bank.js', 'tuning.js', 'nightclub.js', 'bounty.js', 'carmeet.js', 'realestate.js', 'fightclub.js']) {
   if (!existsSync(join(here, 'game', 'src', src))) {
     throw new Error(`game/src/${src} is missing — the game cannot run`);
   }

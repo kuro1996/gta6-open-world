@@ -47,6 +47,32 @@ Controls: **WASD** move / drive · **Mouse** look · **Shift** sprint · **E** e
 **C** sneak (half speed, half noise) · **N** take a Night Shift contract · **B** open the Black Market at the docks stall · **1-9** buy ·
 **G** start a street race at a start line (in a car) · **U** slip into / out of an owned safehouse.
 
+## Round 6 — what changed, attempt 8 (23 Nov 2026)
+
+Five all-new systems written for this attempt, plus a byte-for-byte rewrite of every
+game source file from the earlier attempts (verified with `git diff` — no behavioural
+change, so the round-6 recording covers the whole codebase):
+
+- **Nightclubs** (`game/src/nightclub.js`) — buy one of four clubs (Basement, Neon Reef,
+  Velvet Room, Rooftop 88), set the cover charge, book one of four DJs, install five
+  upgrades, then run the night: heads, cover and VIP take, buzz that builds with the
+  crowd — and heat when the neighbours complain. Nights settle once per in-game day.
+- **Bounty hunting** (`game/src/bounty.js`) — six targets with dead-or-alive rewards.
+  Buy intel ($120 a point) to raise the takedown odds, take the contract, bring the
+  target in alive for full pay or dead for less. Contracts go cold after 3 days, and
+  the hunter's rank climbs from Rookie to Legend of the Bay.
+- **Car meets** (`game/src/carmeet.js`) — four late-night meets, five rivals, a purse
+  and a bet (max $2,000). Win meets to climb the season table; the season champion
+  claims a $5,000 bonus.
+- **Real estate** (`game/src/realestate.js`) — six properties from a $900 harbour flat
+  to a $30,000 penthouse, three renovation tiers each, a market index that drifts
+  ±6% a day, daily rent, and sell-at-market-value — a landlord's slow money in a
+  city that rewards fast money.
+- **Fight club** (`game/src/fightclub.js`) — five fighters, a stance triangle
+  (strike beats grapple, grapple beats counter, counter beats strike), train for
+  $100 a session (+4 power, max 100), three-round fights with purses and side bets.
+  King Marrow stays locked until three wins — and the belt pays $2,500.
+
 ## Round 4 — what changed, attempt 7 (22 Nov 2026)
 
 Three all-new systems written for this attempt — no rewrites of existing code:

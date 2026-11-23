@@ -36,6 +36,13 @@ import { createTaxiSystem } from './taxi.js';
 import { createArcadeSystem, ARCADE_CABINETS } from './arcade.js';
 import { createBankSystem, HEIST_TARGETS } from './bank.js';
 import { createTuningSystem, TUNING_CATEGORIES } from './tuning.js';
+// Round 6 attempt 8 — five more all-new systems: nightclubs, bounty
+// hunting, car meets, real estate, and the fight club.
+import { createNightclubSystem, NIGHTCLUBS } from './nightclub.js';
+import { createBountySystem, BOUNTY_TARGETS } from './bounty.js';
+import { createCarMeetSystem, CAR_MEETS } from './carmeet.js';
+import { createRealEstateSystem, PROPERTIES } from './realestate.js';
+import { createFightClubSystem, FIGHTERS } from './fightclub.js';
 import { Player } from './player.js';
 import { Driving } from './driving.js';
 import { TrafficSystem, spawnParkedCars, syncCarMesh, setCarGlow } from './vehicles.js';
@@ -222,10 +229,38 @@ const bank = createBankSystem({
 const tuning = createTuningSystem({
   rng: () => rng.next(), getCash: () => money, addCash: (d) => { money += d; }, log: announce,
 });
-const NEW_SYSTEMS = { fishing, casino, businesses, delivery, stunt, radio, photo, smuggling, gym, chopshop, taxi, arcade, bank, tuning };
+// Round 6 attempt 8 — nightclubs, bounty hunting, car meets, real estate
+// and the fight club, same factory pattern as the attempt-7 systems.
+const nightclub = createNightclubSystem({
+  rng: () => rng.next(), getHour: hourFloat, getDay: dayCount,
+  getCash: () => money, addCash: (d) => { money += d; },
+  addHeat: (n) => wanted.addHeat(n), log: announce,
+});
+const bounty = createBountySystem({
+  rng: () => rng.next(), getDay: dayCount,
+  getCash: () => money, addCash: (d) => { money += d; },
+  addHeat: (n) => wanted.addHeat(n), log: announce,
+});
+const carmeet = createCarMeetSystem({
+  rng: () => rng.next(), getHour: hourFloat, getDay: dayCount,
+  getCash: () => money, addCash: (d) => { money += d; },
+  addHeat: (n) => wanted.addHeat(n), log: announce,
+});
+const realestate = createRealEstateSystem({
+  rng: () => rng.next(), getDay: dayCount,
+  getCash: () => money, addCash: (d) => { money += d; }, log: announce,
+});
+const fightclub = createFightClubSystem({
+  rng: () => rng.next(), getCash: () => money, addCash: (d) => { money += d; },
+  addHeat: (n) => wanted.addHeat(n), log: announce,
+});
+const NEW_SYSTEMS = { fishing, casino, businesses, delivery, stunt, radio, photo, smuggling, gym, chopshop, taxi, arcade, bank, tuning, nightclub, bounty, carmeet, realestate, fightclub };
 // NOTE: gameMinutes is declared below (17:40 start); mirror its initial
 // hour here instead of reading it, or the TDZ throws at boot.
 let lastGameHour = Math.floor((17 * 60 + 40) / 60);
+// Round 6 attempt 8 — the game starts on day 1; the day-change hook below
+// settles clubs, property rent and bounty contracts once per day.
+let lastDay = 1;
 function systemsHudLine() {
   const lines = [];
   for (const s of Object.values(NEW_SYSTEMS)) {
@@ -353,7 +388,10 @@ window.__solara = {
       && STUNT_RAMPS.length === 6 && STATIONS.length === 5
       && EXERCISES.length === 6 && CAR_VALUES.length === 10
       && ARCADE_CABINETS.length === 4 && HEIST_TARGETS.length === 3
-      && TUNING_CATEGORIES.length === 5;
+      && TUNING_CATEGORIES.length === 5
+      && NIGHTCLUBS.length === 4 && BOUNTY_TARGETS.length === 6
+      && CAR_MEETS.length === 4 && PROPERTIES.length === 6
+      && FIGHTERS.length === 5;
   },
   get fishingSpots() { return FISHING_SPOTS.map((s) => s.id); },
   get businessTypes() { return BUSINESS_TYPES.map((b) => b.id); },
@@ -771,6 +809,17 @@ function stepWorld(dt) {
       lastGameHour = hourNow;
       businesses.tickHour(hourFloat());
       chopshop.tickHour();
+      // Round 6 attempt 8 — once per in-game day: settle the nightclubs,
+      // drift the property market and pay rent, and let bounty contracts
+      // go cold. (settleDay/tickDay are idempotent per day, so a double
+      // call on a save-load boundary is harmless.)
+      const dayNow = dayCount();
+      if (dayNow !== lastDay) {
+        lastDay = dayNow;
+        nightclub.settleDay(dayNow);
+        realestate.tickDay(dayNow);
+        bounty.tickDay(dayNow);
+      }
     }
   }
   const m = missions.current;

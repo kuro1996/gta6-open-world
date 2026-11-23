@@ -1,1 +1,30 @@
-[{"name": "1-start.jpg", "notes": "Retaken round 4 attempt 7", "query": "?shot=start&seed=7", "round": 4, "scene": "Title screen over Solara Bay"}, {"name": "2-onfoot.jpg", "notes": "Retaken round 4 attempt 7, weather outlook line visible (CLEAR)", "query": "?shot=onfoot&seed=7", "round": 4, "scene": "Mission 1 briefing banner, Ria on foot, named places on minimap"}, {"name": "3-drive.jpg", "notes": "Retaken round 4 attempt 7 with car health bar + minimap place labels + neon underglow", "query": "?shot=drive&seed=7", "round": 4, "scene": "Driving the Comet GT through the city, gold minimap dots on stealable cars, car health bar visible, named places on minimap"}, {"name": "4-chase.jpg", "notes": "Retaken round 4 attempt 7 with headlights", "query": "?shot=chase&seed=7", "round": 4, "scene": "Mission 2 police chase at dusk, PIT maneuver at 3 stars, headlights on"}]
+[
+ {
+  "name": "1-start.jpg",
+  "notes": "Retaken round 6 attempt 8",
+  "query": "?shot=start&seed=7",
+  "round": 4,
+  "scene": "Title screen over Solara Bay"
+ },
+ {
+  "name": "2-onfoot.jpg",
+  "notes": "Retaken round 6 attempt 8, weather outlook line visible (CLEAR)",
+  "query": "?shot=onfoot&seed=7",
+  "round": 4,
+  "scene": "Mission 1 briefing banner, Ria on foot, named places on minimap"
+ },
+ {
+  "name": "3-drive.jpg",
+  "notes": "Retaken round 6 attempt 8 with car health bar + minimap place labels + neon underglow",
+  "query": "?shot=drive&seed=7",
+  "round": 4,
+  "scene": "Driving the Comet GT through the city, gold minimap dots on stealable cars, car health bar visible, named places on minimap"
+ },
+ {
+  "name": "4-chase.jpg",
+  "notes": "Retaken round 6 attempt 8 with headlights",
+  "query": "?shot=chase&seed=7",
+  "round": 4,
+  "scene": "Mission 2 police chase at dusk, PIT maneuver at 3 stars, headlights on"
+ }
+]
