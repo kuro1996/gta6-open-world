@@ -43,6 +43,15 @@ import { createBountySystem, BOUNTY_TARGETS } from './bounty.js';
 import { createCarMeetSystem, CAR_MEETS } from './carmeet.js';
 import { createRealEstateSystem, PROPERTIES } from './realestate.js';
 import { createFightClubSystem, FIGHTERS } from './fightclub.js';
+// Round 6 attempt 9 — six more all-new systems: street graffiti crews,
+// the night market, the recording studio, private-eye cases, the
+// courtroom lawyer, and film-studio stunt shoots.
+import { createGraffitiSystem, GRAFFITI_DISTRICTS, SPRAY_BRANDS, RIVAL_CREWS } from './graffiti.js';
+import { createNightMarketSystem, MARKET_GOODS } from './nightmarket.js';
+import { createStudioSystem, STUDIO_GENRES, STUDIO_FEATURES, STUDIO_VENUES } from './studio.js';
+import { createDetectiveSystem, EYE_CASES, TAIL_TARGETS } from './detective.js';
+import { createLawyerSystem, LAWYERS, CHARGES } from './lawyer.js';
+import { createFilmSystem, FILMS, STUNT_SCRIPTS, FILM_DRIVERS } from './film.js';
 import { Player } from './player.js';
 import { Driving } from './driving.js';
 import { TrafficSystem, spawnParkedCars, syncCarMesh, setCarGlow } from './vehicles.js';
@@ -254,7 +263,35 @@ const fightclub = createFightClubSystem({
   rng: () => rng.next(), getCash: () => money, addCash: (d) => { money += d; },
   addHeat: (n) => wanted.addHeat(n), log: announce,
 });
-const NEW_SYSTEMS = { fishing, casino, businesses, delivery, stunt, radio, photo, smuggling, gym, chopshop, taxi, arcade, bank, tuning, nightclub, bounty, carmeet, realestate, fightclub };
+// Round 6 attempt 9 — graffiti crews, night market, studio, detective,
+// lawyer and film shoots, same factory pattern as the attempt-8 systems.
+const graffiti = createGraffitiSystem({
+  getHour: hourFloat, getDay: dayCount, rng: () => rng.next(),
+  addCash: (d) => { money += d; }, getCash: () => money,
+  log: announce, addHeat: (n) => wanted.addHeat(n),
+});
+const nightmarket = createNightMarketSystem({
+  getDay: dayCount, getCash: () => money, rng: () => rng.next(),
+  log: announce, addCash: (d) => { money += d; },
+});
+const studio = createStudioSystem({
+  rng: () => rng.next(), getCash: () => money, log: announce,
+  getDay: dayCount, addCash: (d) => { money += d; },
+});
+const detective = createDetectiveSystem({
+  rng: () => rng.next(), addHeat: (n) => wanted.addHeat(n), getDay: dayCount,
+  log: announce, getCash: () => money, addCash: (d) => { money += d; },
+});
+const lawyer = createLawyerSystem({
+  getHeatLevel: () => wanted.level, log: announce, rng: () => rng.next(),
+  getDay: dayCount, getCash: () => money,
+  addHeat: (n) => wanted.addHeat(n), addCash: (d) => { money += d; },
+});
+const film = createFilmSystem({
+  getDay: dayCount, addHeat: (n) => wanted.addHeat(n), rng: () => rng.next(),
+  addCash: (d) => { money += d; }, log: announce, getCash: () => money,
+});
+const NEW_SYSTEMS = { fishing, casino, businesses, delivery, stunt, radio, photo, smuggling, gym, chopshop, taxi, arcade, bank, tuning, nightclub, bounty, carmeet, realestate, fightclub, graffiti, nightmarket, studio, detective, lawyer, film };
 // NOTE: gameMinutes is declared below (17:40 start); mirror its initial
 // hour here instead of reading it, or the TDZ throws at boot.
 let lastGameHour = Math.floor((17 * 60 + 40) / 60);
@@ -391,7 +428,14 @@ window.__solara = {
       && TUNING_CATEGORIES.length === 5
       && NIGHTCLUBS.length === 4 && BOUNTY_TARGETS.length === 6
       && CAR_MEETS.length === 4 && PROPERTIES.length === 6
-      && FIGHTERS.length === 5;
+      && FIGHTERS.length === 5
+      && GRAFFITI_DISTRICTS.length === 8 && SPRAY_BRANDS.length === 4
+      && RIVAL_CREWS.length === 4 && MARKET_GOODS.length === 10
+      && STUDIO_GENRES.length === 5 && STUDIO_FEATURES.length === 6
+      && STUDIO_VENUES.length === 4 && EYE_CASES.length === 6
+      && TAIL_TARGETS.length === 6 && LAWYERS.length === 3
+      && CHARGES.length === 6 && FILMS.length === 4
+      && STUNT_SCRIPTS.length === 6 && FILM_DRIVERS.length === 4;
   },
   get fishingSpots() { return FISHING_SPOTS.map((s) => s.id); },
   get businessTypes() { return BUSINESS_TYPES.map((b) => b.id); },
@@ -819,6 +863,14 @@ function stepWorld(dt) {
         nightclub.settleDay(dayNow);
         realestate.tickDay(dayNow);
         bounty.tickDay(dayNow);
+        // Attempt 9 — graffiti turf, market stalls, studio royalties,
+        // eye cases, court dates and film shoots settle once a day too.
+        graffiti.settleDay(dayNow);
+        nightmarket.tickDay(dayNow);
+        studio.tickDay(dayNow);
+        detective.tickDay(dayNow);
+        lawyer.tickDay(dayNow);
+        film.tickDay(dayNow);
       }
     }
   }

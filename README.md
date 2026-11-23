@@ -286,3 +286,13 @@ recording) and adding the depth the first pass did not reach:
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Round 6 — what changed, attempt 9 (23 Nov 2026)
+
+- **Street graffiti** — buy spray cans, tag eight districts, and challenge four rival crews for turf and style (graffiti.js).
+- **Night market** — trade ten goods at daily prices, haggle, and rent a stall that boosts sell prices (nightmarket.js).
+- **Recording studio** — record tracks across five genres, release them onto the chart, play gigs at four venues, and sign a deal (studio.js).
+- **Private eye** — take six cases, tail six targets, snap evidence, and blackmail or close the case (detective.js).
+- **Courtroom lawyer** — hire one of three lawyers, face six charges, plead, bribe witnesses, and file motions (lawyer.js).
+- **Film studio** — sign onto four films, shoot six stunt scripts, hire drivers, and premiere (film.js).
+- **Tests** — 312 new-system logic checks pass (93 + 128 + 91), and the 91 round-6 checks still pass; the headless playtest boots with 0 console errors, mission 1 completes, and all six new systems run live.
