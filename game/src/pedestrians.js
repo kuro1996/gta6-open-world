@@ -1,14 +1,14 @@
-// Solara Nights — pedestrians strolling the sidewalks, fleeing from gunfire.
-import * as THREE from 'three';
-import { CITY_HALF, GRID_K, PITCH, WORLD } from './config.js';
+import * as THREE from '../vendor/three/three.module.min.js';
+import { WORLD, PITCH, GRID_K, CITY_HALF } from './config.js';
 import { clamp, distance2D } from './random.js';
 
-const BODY_GEO = new THREE.CylinderGeometry(0.32, 0.38, 1.1, 8);
-const HEAD_GEO = new THREE.SphereGeometry(0.26, 10, 8);
-const LEG_GEO = new THREE.BoxGeometry(0.16, 0.55, 0.16);
+const SHIRTS = [0xd03030, 0x3060d0, 0xe0c020, 0x30b060, 0x9030b0, 0xe0e0e0, 0xd07020, 0x40c0c0];
+const PANTS = [0x222831, 0x3a2a1a, 0x2a3a5a, 0x555555];
+const SKINS = [0xc98d64, 0x8a5a3a, 0xe8b890];
 
-const SHIRTS = [0xd4762e, 0x2e6fc2, 0x3aa655, 0xc23b2e, 0xe8c33a, 0x7a4ac2, 0xe8e8e8, 0x222226];
-const PANTS = [0x222226, 0x3a4a5a, 0x5a3a2a, 0x2a2a2a];
+function skinTone(rng) {
+  return SKINS[Math.floor(rng.next() * SKINS.length)];
+}
 
 export class PedestrianSystem {
   constructor(scene, rng, city) {
@@ -16,32 +16,87 @@ export class PedestrianSystem {
     this.rng = rng;
     this.city = city;
     this.peds = [];
-    // The count lives in config (WORLD.pedCount); the old hardcoded 22 here
-    // silently ignored any tuning done there.
-    for (let i = 0; i < WORLD.pedCount; i += 1) {
-      const ped = this._makePed();
+    this.nightWalkers = [];
+    for (let i = 0; i < WORLD.pedCount; i++) {
+      const ped = this._buildPed(false);
       this.peds.push(ped);
       scene.add(ped.group);
     }
-    // Night-shift walkers: the extra pedestrians Night Shift adds after
-    // dark — couriers and late workers who walk slow, never idle-pause,
-    // and keep to the lit streets. They are the city's night pulse.
-    this.nightWalkers = [];
   }
 
-  /** Add one night-shift walker at (x, z): a slow, purposeful pedestrian
-   * who never pauses to window-shop. Returns the ped, or null when the
-   * night crowd is already full (six walkers is a crowd at 2 a.m.). */
+  _buildPed(isNight) {
+    const group = new THREE.Group();
+    const shirt = new THREE.MeshStandardMaterial({ color: SHIRTS[Math.floor(this.rng.next() * SHIRTS.length)] });
+    const pants = new THREE.MeshStandardMaterial({ color: PANTS[Math.floor(this.rng.next() * PANTS.length)] });
+    const skin = new THREE.MeshStandardMaterial({ color: skinTone(this.rng) });
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.3, 0.7, 8), shirt);
+    torso.position.y = 0.95;
+    group.add(torso);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), skin);
+    head.position.y = 1.5;
+    group.add(head);
+    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.55, 0.13), pants);
+    legL.position.set(-0.11, 0.28, 0);
+    group.add(legL);
+    const legR = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.55, 0.13), pants);
+    legR.position.set(0.11, 0.28, 0);
+    group.add(legR);
+    const ped = {
+      group,
+      legL,
+      legR,
+      x: 0,
+      z: 0,
+      heading: this.rng.next() * Math.PI * 2,
+      speed: isNight ? 0.9 + this.rng.next() * 0.5 : 1.2 + this.rng.next() * 1.0,
+      walkPhase: this.rng.next() * Math.PI * 2,
+      fleeTimer: 0,
+      fleeX: 0,
+      fleeZ: 0,
+      pauseTimer: 0,
+      nextPause: 8 + this.rng.next() * 16,
+      rainFactor: 0,
+      dodgeTimer: 0,
+      dodgeDir: 1,
+      axis: 'x',
+      line: 0,
+      direction: 1,
+      isNight: !!isNight,
+    };
+    this._placeOnSidewalk(ped);
+    group.position.set(ped.x, 0, ped.z);
+    group.rotation.y = ped.heading;
+    return ped;
+  }
+
+  _placeOnSidewalk(ped) {
+    const axis = this.rng.next() < 0.5 ? 'x' : 'z';
+    const block = Math.floor(this.rng.next() * (GRID_K * 2 + 1)) - GRID_K;
+    const edge = (this.rng.next() < 0.5 ? -1 : 1) * (PITCH / 2 + 2.5);
+    const along = (this.rng.next() * 2 - 1) * CITY_HALF;
+    ped.axis = axis;
+    ped.line = block * PITCH + edge;
+    ped.direction = this.rng.next() < 0.5 ? -1 : 1;
+    if (axis === 'x') {
+      ped.z = ped.line;
+      ped.x = along;
+      ped.heading = ped.direction > 0 ? Math.PI / 2 : -Math.PI / 2;
+    } else {
+      ped.x = ped.line;
+      ped.z = along;
+      ped.heading = ped.direction > 0 ? 0 : Math.PI;
+    }
+  }
+
   addNightWalker(x, z) {
     if (this.nightWalkers.length >= 6) return null;
-    const ped = this._makePed();
+    const ped = this._buildPed(true);
     ped.x = x;
     ped.z = z;
-    ped.heading = this.rng.range(0, Math.PI * 2);
-    ped.speed = this.rng.range(0.9, 1.4);
-    ped.nightWalker = true;
-    ped.pause = 0;
-    ped.nextPause = 999;
+    ped.heading = this.rng.next() * Math.PI * 2;
+    ped.speed = 0.9 + this.rng.next() * 0.5;
+    ped.nextPause = Infinity;
+    ped.isNight = true;
     ped.group.position.set(x, 0, z);
     this.peds.push(ped);
     this.nightWalkers.push(ped);
@@ -49,165 +104,107 @@ export class PedestrianSystem {
     return ped;
   }
 
-  /** How many night-shift walkers are out right now. */
   get nightWalkerCount() {
     return this.nightWalkers.length;
   }
 
-  /** Send the night crowd home: removes every night walker the shift
-   * added, so dawn starts with the ordinary daytime crowd again. */
   clearNightWalkers() {
     for (const ped of this.nightWalkers) {
-      const i = this.peds.indexOf(ped);
-      if (i >= 0) this.peds.splice(i, 1);
+      const idx = this.peds.indexOf(ped);
+      if (idx >= 0) this.peds.splice(idx, 1);
       this.scene.remove(ped.group);
     }
     this.nightWalkers = [];
   }
 
-  _makePed() {
-    const rng = this.rng;
-    const group = new THREE.Group();    const shirt = new THREE.MeshLambertMaterial({ color: SHIRTS[rng.int(0, SHIRTS.length - 1)] });
-    const pants = new THREE.MeshLambertMaterial({ color: PANTS[rng.int(0, PANTS.length - 1)] });
-    const skin = new THREE.MeshLambertMaterial({ color: [0xe8b98a, 0xc98a5a, 0x8a5a3a][rng.int(0, 2)] });
-    const body = new THREE.Mesh(BODY_GEO, shirt);
-    body.position.y = 1.15;
-    const head = new THREE.Mesh(HEAD_GEO, skin);
-    head.position.y = 1.95;
-    const legL = new THREE.Mesh(LEG_GEO, pants);
-    legL.position.set(-0.14, 0.32, 0);
-    const legR = new THREE.Mesh(LEG_GEO, pants);
-    legR.position.set(0.14, 0.32, 0);
-    group.add(body, head, legL, legR);
-    const ped = {
-      group,
-      legL,
-      legR,
-      x: 0,
-      z: 0,
-      heading: 0,
-      speed: rng.range(1.2, 2.2),
-      walkPhase: rng.range(0, 6),
-      flee: 0,
-      fleeX: 0,
-      fleeZ: 0,
-      // Idle pauses: a pedestrian sometimes stops for a moment — to check
-      // a shop window, wait out a crossing — instead of marching forever.
-      pause: 0,
-      nextPause: rng.range(8, 24),
-      // Rain hurry (attempt 2): set by update() from the weather — in a
-      // shower pedestrians walk faster and never idle-pause, hurrying for
-      // cover like everyone does when the rain starts.
-      rainF: 0,
-      // Dodge state: sidestepping a car that is about to run them over.
-      dodge: 0,
-      dodgeDir: 1,
-      axis: 'x',
-      line: 0,
-      dir: 1,
-    };
-    this._placeOnSidewalk(ped);
-    return ped;
-  }
-
-  _placeOnSidewalk(ped) {
-    const axis = this.rng.chance(0.5) ? 'x' : 'z';
-    const block = this.rng.int(-GRID_K, GRID_K - 1);
-    const edge = (block + 0.5) * PITCH + (this.rng.chance(0.5) ? 1 : -1) * (22 + 3);
-    const along = this.rng.range(-CITY_HALF + 20, CITY_HALF - 20);
-    ped.axis = axis;
-    ped.line = edge;
-    ped.dir = this.rng.chance(0.5) ? 1 : -1;
-    if (axis === 'x') {
-      ped.x = along;
-      ped.z = edge;
-      ped.heading = ped.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
-    } else {
-      ped.x = edge;
-      ped.z = along;
-      ped.heading = ped.dir > 0 ? 0 : Math.PI;
-    }
-    ped.group.position.set(ped.x, 0, ped.z);
-    ped.group.rotation.y = ped.heading;
-  }
-
   scare(x, z, radius) {
     for (const ped of this.peds) {
-      if (distance2D(ped.x, ped.z, x, z) < radius) {
-        ped.flee = 4;
+      if (distance2D(ped.x, ped.z, x, z) <= radius) {
+        ped.fleeTimer = 4;
         ped.fleeX = x;
         ped.fleeZ = z;
       }
     }
   }
 
-  /** hazards: cars (player + traffic + police) to sidestep away from. */
-  update(dt, hazards, rainF) {
+  update(dt, hazards, rainFactor) {
+    const rain = rainFactor || 0;
+    const hurry = 1 + rain * (WORLD.rainPedHurry - 1);
+    const hazardList = Array.isArray(hazards)
+      ? hazards
+      : [
+          ...(hazards && hazards.car ? [hazards.car] : []),
+          ...((hazards && hazards.traffic) || []),
+          ...((hazards && hazards.police) || []),
+        ];
     for (const ped of this.peds) {
-      // Rain hurry (attempt 2): in a shower everyone walks faster and no
-      // one stops to window-shop — the street empties toward cover.
-      const hurry = 1 + (WORLD.rainPedHurry - 1) * (rainF || 0);
-      let speed = ped.speed * hurry;
-      let heading = ped.heading;
-      if (ped.flee > 0) {
-        ped.flee -= dt;
-        // Fleeing pace follows the pedestrian's own walk speed, so a slow
-        // stroller does not suddenly sprint like an athlete.
-        speed = ped.speed * 2.6 * hurry;
+      ped.rainFactor = rain;
+      let vx = 0;
+      let vz = 0;
+      if (ped.fleeTimer > 0) {
+        ped.fleeTimer -= dt;
         const away = Math.atan2(ped.x - ped.fleeX, ped.z - ped.fleeZ);
-        heading = away;
-      } else if (ped.dodge > 0) {
-        // Mid-dodge: keep sidestepping perpendicular to the road until the
-        // timer runs out, then resume the stroll.
-        ped.dodge -= dt;
-        speed = ped.speed * WORLD.pedDodgeMult * hurry;
-        heading = ped.heading + (Math.PI / 2) * ped.dodgeDir;
-      } else if (ped.pause > 0 && !(rainF > 0.3)) {
-        ped.pause -= dt;
-        speed = 0;
+        const sp = ped.speed * 2.6 * hurry;
+        vx = Math.sin(away) * sp;
+        vz = Math.cos(away) * sp;
+        ped.heading = away;
+      } else if (ped.dodgeTimer > 0) {
+        ped.dodgeTimer -= dt;
+        const side = ped.axis === 'x' ? Math.PI / 2 : 0;
+        const dir = ped.heading + side * ped.dodgeDir;
+        const sp = ped.speed * WORLD.pedDodgeMult;
+        vx = Math.sin(dir) * sp;
+        vz = Math.cos(dir) * sp;
+      } else if (ped.pauseTimer > 0) {
+        ped.pauseTimer -= dt;
       } else {
         ped.nextPause -= dt;
-        if (ped.nextPause <= 0 && !(rainF > 0.3)) {
-          ped.pause = this.rng.range(0.8, 2);
-          ped.nextPause = this.rng.range(10, 26);
-        }
-        // A car closing in on the sidewalk: sidestep out of its path
-        // instead of strolling into the bumper.
-        if (hazards) {
-          for (const h of hazards) {
-            if (!h) continue;
-            if (distance2D(ped.x, ped.z, h.x, h.z) < WORLD.pedDodgeDist) {
-              ped.dodge = 0.7;
-              ped.dodgeDir = this.rng.chance(0.5) ? 1 : -1;
-              heading = ped.heading + (Math.PI / 2) * ped.dodgeDir;
-              speed = ped.speed * WORLD.pedDodgeMult;
-              break;
+        if (ped.nextPause <= 0 && !ped.isNight && rain <= 0.3) {
+          ped.pauseTimer = 2 + this.rng.next() * 3;
+          ped.nextPause = 8 + this.rng.next() * 16;
+        } else {
+          let dodged = false;
+          if (hazardList.length) {
+            for (const hz of hazardList) {
+              if (distance2D(ped.x, ped.z, hz.x, hz.z) < WORLD.pedDodgeDist) {
+                ped.dodgeTimer = 0.7;
+                ped.dodgeDir = this.rng.next() < 0.5 ? -1 : 1;
+                dodged = true;
+                break;
+              }
             }
+          }
+          if (!dodged) {
+            const sp = ped.speed * hurry;
+            vx = Math.sin(ped.heading) * sp;
+            vz = Math.cos(ped.heading) * sp;
           }
         }
       }
-      ped.heading = heading;
-      ped.x += Math.sin(heading) * speed * dt;
-      ped.z += Math.cos(heading) * speed * dt;
-      if (ped.flee <= 0 && ped.dodge <= 0) {
-        const along = ped.axis === 'x' ? ped.x : ped.z;
-        if (Math.abs(along) > CITY_HALF - 10) {
-          ped.dir *= -1;
-          ped.heading += Math.PI;
-        }
+      ped.x += vx * dt;
+      ped.z += vz * dt;
+      if (Math.abs(ped.x) > CITY_HALF || Math.abs(ped.z) > CITY_HALF) {
+        ped.direction *= -1;
+        ped.heading += Math.PI;
+        ped.x = clamp(ped.x, -CITY_HALF, CITY_HALF);
+        ped.z = clamp(ped.z, -CITY_HALF, CITY_HALF);
+      }
+      if (ped.fleeTimer <= 0 && ped.dodgeTimer <= 0) {
         if (ped.axis === 'x') ped.z = ped.line;
         else ped.x = ped.line;
       }
-      const fixed = this.city.collideCircle(ped.x, ped.z, 0.5);
-      ped.x = fixed.x;
-      ped.z = fixed.z;
-      ped.walkPhase += dt * speed * 3.2;
-      const swing = Math.sin(ped.walkPhase) * 0.5;
+      if (this.city && typeof this.city.resolveCircle === 'function') {
+        const fixed = this.city.resolveCircle(ped.x, ped.z, 0.4);
+        ped.x = fixed.x;
+        ped.z = fixed.z;
+      }
+      const moving = Math.abs(vx) + Math.abs(vz) > 0.01;
+      if (moving) ped.walkPhase += dt * 8;
+      const swing = moving ? Math.sin(ped.walkPhase) * 0.5 : 0;
       ped.legL.rotation.x = swing;
       ped.legR.rotation.x = -swing;
       ped.group.position.set(ped.x, 0, ped.z);
       ped.group.rotation.y = ped.heading;
-      ped.group.position.y = Math.abs(Math.sin(ped.walkPhase)) * 0.04;
     }
   }
 }

@@ -1,6 +1,3 @@
-// Solara Nights — keyboard + mouse input with pointer lock.
-// Held keys are read every frame; one-shot presses (interact, reload, pause) are queued
-// as flags and taken once, so a press between frames is never lost or counted twice.
 import { clamp } from './random.js';
 
 export const ACT_INTERACT = 1;
@@ -8,147 +5,170 @@ export const ACT_RELOAD = 2;
 export const ACT_PAUSE = 4;
 export const ACT_HORN = 8;
 export const ACT_MUTE = 16;
-// Round 4 attempt 2 — Q accepts an offered side job; T skips the tutorial.
 export const ACT_SIDEJOB = 32;
 export const ACT_TUTORIAL = 64;
-// Round 4 attempt 4 — B opens the Black Market stall; N takes a Night
-// Shift contract from the burner phone. Digits 1-9 buy while the shop
-// is open (queued as this.digit, taken once).
 export const ACT_MARKET = 128;
 export const ACT_NIGHTOPS = 256;
-// Round 4 attempt 5 — G starts a street race at the start line; U slips
-// into / out of an owned safehouse.
 export const ACT_RACE = 512;
 export const ACT_SAFEHOUSE = 1024;
-// Round 4 attempt 6 — J casts / strikes while fishing; V toggles photo mode.
 export const ACT_FISH = 2048;
 export const ACT_PHOTO = 8192;
+
+const ONE_SHOT = {
+  KeyE: ACT_INTERACT,
+  KeyF: ACT_INTERACT,
+  KeyR: ACT_RELOAD,
+  Escape: ACT_PAUSE,
+  KeyP: ACT_PAUSE,
+  KeyH: ACT_HORN,
+  KeyM: ACT_MUTE,
+  KeyQ: ACT_SIDEJOB,
+  KeyT: ACT_TUTORIAL,
+  KeyB: ACT_MARKET,
+  KeyN: ACT_NIGHTOPS,
+  KeyG: ACT_RACE,
+  KeyU: ACT_SAFEHOUSE,
+  KeyJ: ACT_FISH,
+  KeyV: ACT_PHOTO,
+};
 
 export class Input {
   constructor(canvas) {
     this.canvas = canvas;
-    this.keys = new Set();
-    this.actions = 0;
-    this.mouseDX = 0;
-    this.mouseDY = 0;
+    this.held = new Set();
+    this.flags = 0;
+    this.dx = 0;
+    this.dy = 0;
     this.mouseDown = false;
-    this.mouseClicked = false;
-    // Queued shop digit (1-9) for the Black Market; 0 means none.
+    this.clicked = false;
     this.digit = 0;
     this.locked = false;
     this.onFirstGesture = null;
     this._gestured = false;
 
-    window.addEventListener('keydown', (e) => {
-      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON')) return;
-      this.keys.add(e.code);
-      if (!e.repeat) {
-        // F is a second interact key for players whose left hand rests on
-        // WASD with the index finger on F instead of E.
-        if (e.code === 'KeyE' || e.code === 'KeyF') this.actions |= ACT_INTERACT;
-        if (e.code === 'KeyR') this.actions |= ACT_RELOAD;
-        if (e.code === 'Escape' || e.code === 'KeyP') this.actions |= ACT_PAUSE;
-        if (e.code === 'KeyH') this.actions |= ACT_HORN;
-        if (e.code === 'KeyM') this.actions |= ACT_MUTE;
-        if (e.code === 'KeyQ') this.actions |= ACT_SIDEJOB;
-        if (e.code === 'KeyT') this.actions |= ACT_TUTORIAL;
-        if (e.code === 'KeyB') this.actions |= ACT_MARKET;
-        if (e.code === 'KeyN') this.actions |= ACT_NIGHTOPS;
-        if (e.code === 'KeyG') this.actions |= ACT_RACE;
-        if (e.code === 'KeyU') this.actions |= ACT_SAFEHOUSE;
-        if (e.code === 'KeyJ') this.actions |= ACT_FISH;
-        if (e.code === 'KeyV') this.actions |= ACT_PHOTO;
-        // Shop digits: 1-9 queue a single buy key, taken once by the
-        // main loop while the Black Market is open.
-        if (/^Digit[1-9]$/.test(e.code)) this.digit = Number(e.code.slice(5));
-      }
-      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
-      this._gesture();
-    });
-    window.addEventListener('keyup', (e) => this.keys.delete(e.code));
-    window.addEventListener('blur', () => this.keys.clear());
-    document.addEventListener('mousemove', (e) => {
-      if (this.locked) {
-        this.mouseDX += e.movementX;
-        this.mouseDY += e.movementY;
-      }
-    });
-    canvas.addEventListener('mousedown', (e) => {
-      // Either mouse button aims/fires: a right-click is a shot too, so a
-      // player who aims with the right hand does not fire blanks.
-      if (e.button === 0 || e.button === 2) {
-        this.mouseDown = true;
-        this.mouseClicked = true;
-      }
-      this._gesture();
-    });
-    // The browser context menu would steal the pointer lock mid-fight; the
-    // game has no use for it, so it stays suppressed on the canvas.
-    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-    window.addEventListener('mouseup', (e) => {
-      if (e.button === 0 || e.button === 2) this.mouseDown = false;
-    });
+    window.addEventListener('keydown', (ev) => this._onKeyDown(ev));
+    window.addEventListener('keyup', (ev) => this._onKeyUp(ev));
+    window.addEventListener('blur', () => this.held.clear());
+    document.addEventListener('mousemove', (ev) => this._onMouseMove(ev));
+    canvas.addEventListener('mousedown', (ev) => this._onMouseDown(ev));
+    canvas.addEventListener('mouseup', (ev) => this._onMouseUp(ev));
+    canvas.addEventListener('contextmenu', (ev) => ev.preventDefault());
     document.addEventListener('pointerlockchange', () => {
-      this.locked = document.pointerLockElement === canvas;
+      this.locked = document.pointerLockElement === this.canvas;
     });
   }
 
   _gesture() {
-    if (!this._gestured) {
-      this._gestured = true;
-      if (this.onFirstGesture) this.onFirstGesture();
+    if (this._gestured) return;
+    this._gestured = true;
+    if (typeof this.onFirstGesture === 'function') this.onFirstGesture();
+  }
+
+  _onKeyDown(ev) {
+    const tag = ev.target && ev.target.tagName;
+    if (tag === 'INPUT' || tag === 'BUTTON') return;
+    this._gesture();
+    if (ev.code === 'Space' || ev.code.indexOf('Arrow') === 0) ev.preventDefault();
+    this.held.add(ev.code);
+    if (ev.repeat) return;
+    const flag = ONE_SHOT[ev.code];
+    if (flag !== undefined) this.flags |= flag;
+    if (ev.code.length === 6 && ev.code.slice(0, 5) === 'Digit') {
+      const n = Number(ev.code.slice(5));
+      if (n >= 1 && n <= 9) this.digit = n;
     }
   }
 
-  down(code) {
-    return this.keys.has(code);
+  _onKeyUp(ev) {
+    this.held.delete(ev.code);
   }
 
-  /** Forward/back/strafe as -1..1, from WASD or arrows. */
+  _onMouseMove(ev) {
+    if (!this.locked) return;
+    this.dx += ev.movementX || 0;
+    this.dy += ev.movementY || 0;
+  }
+
+  _onMouseDown(ev) {
+    this._gesture();
+    if (ev.button === 0 || ev.button === 2) {
+      this.mouseDown = true;
+      this.clicked = true;
+    }
+  }
+
+  _onMouseUp(ev) {
+    if (ev.button === 0 || ev.button === 2) this.mouseDown = false;
+  }
+
+  down(code) {
+    return this.held.has(code);
+  }
+
   moveAxes() {
-    const f = (this.down('KeyW') || this.down('ArrowUp') ? 1 : 0) - (this.down('KeyS') || this.down('ArrowDown') ? 1 : 0);
-    const s = (this.down('KeyD') || this.down('ArrowRight') ? 1 : 0) - (this.down('KeyA') || this.down('ArrowLeft') ? 1 : 0);
-    return { forward: f, strafe: s };
+    let fwd = 0;
+    let strafe = 0;
+    if (this.held.has('KeyW') || this.held.has('ArrowUp')) fwd += 1;
+    if (this.held.has('KeyS') || this.held.has('ArrowDown')) fwd -= 1;
+    if (this.held.has('KeyD') || this.held.has('ArrowRight')) strafe += 1;
+    if (this.held.has('KeyA') || this.held.has('ArrowLeft')) strafe -= 1;
+    return { forward: fwd, strafe };
   }
 
   takeMouseDelta() {
-    // Clamp the accumulated delta: after a tab switch a huge backlog would
-    // otherwise spin the camera a full turn in one frame.
-    const dx = clamp(this.mouseDX, -300, 300);
-    const dy = clamp(this.mouseDY, -300, 300);
-    this.mouseDX = 0;
-    this.mouseDY = 0;
-    return { dx, dy };
+    const out = { dx: clamp(this.dx, -300, 300), dy: clamp(this.dy, -300, 300) };
+    this.dx = 0;
+    this.dy = 0;
+    return out;
   }
 
   takeActions() {
-    const taken = this.actions;
-    this.actions = 0;
-    return taken;
+    const out = this.flags;
+    this.flags = 0;
+    return out;
   }
 
-  /** Take the queued shop digit (1-9), or 0 when none was pressed. */
+  consumeActions() {
+    const flags = this.takeActions();
+    return {
+      pause: !!(flags & ACT_PAUSE),
+      interact: !!(flags & ACT_INTERACT),
+      reload: !!(flags & ACT_RELOAD),
+      acceptJob: !!(flags & ACT_SIDEJOB),
+      skipTutorial: !!(flags & ACT_TUTORIAL),
+      toggleMarket: !!(flags & ACT_MARKET),
+      acceptNightOps: !!(flags & ACT_NIGHTOPS),
+      fish: !!(flags & ACT_FISH),
+      togglePhoto: !!(flags & ACT_PHOTO),
+      startRace: !!(flags & ACT_RACE),
+      safehouse: !!(flags & ACT_SAFEHOUSE),
+      digit: this.takeDigit(),
+      sneak: this.held.has('KeyC'),
+      horn: !!(flags & ACT_HORN),
+      mute: !!(flags & ACT_MUTE),
+      space: this.held.has('Space'),
+      mouse: this.mouseDown,
+    };
+  }
+
   takeDigit() {
-    const d = this.digit;
+    const out = this.digit;
     this.digit = 0;
-    return d;
+    return out;
   }
 
   takeClick() {
-    const c = this.mouseClicked;
-    this.mouseClicked = false;
-    return c;
+    const out = this.clicked;
+    this.clicked = false;
+    return out;
   }
 
   lockPointer() {
     try {
-      // requestPointerLock returns a promise in current Chrome; a denial
-      // (headless, iframe without permission) rejects it, so swallow the
-      // rejection instead of letting it surface as an uncaught error.
       const p = this.canvas.requestPointerLock();
       if (p && typeof p.catch === 'function') p.catch(() => {});
-    } catch {
-      // Pointer lock can fail in headless runs; mouse look then stays off.
+    } catch (err) {
+      // headless or denied lock; ignore
     }
   }
 

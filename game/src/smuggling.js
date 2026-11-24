@@ -1,21 +1,3 @@
-// Solara Nights — Smuggling (round 4 attempt 6, NEW module).
-// The dark side of the bay: move contraband for the crew and get paid
-// like it. Smuggling runs pay five to ten times a courier job, but every
-// run raises the player's heat, and getting busted mid-run loses the
-// cargo, the payout, and a chunk of reputation with the crew. Runs come
-// in three flavours — a quiet boat drop at the pier, a fast car run
-// across the city, and a dead drop in a back alley — each with its own
-// risk profile, deadline and payout curve. The crew only trusts couriers
-// who have already proven themselves (delivery reputation), and the
-// biggest runs unlock only after the player owns the Neon Palms Bar,
-// where the contacts drink.
-//
-// Heat is the core resource here: high heat makes the run harder (more
-// police attention, tighter deadlines) but the crew pays a danger bonus
-// for it. The module is self-contained and talks to the game only
-// through the optional `ctx` hooks: cash, heat, position, and the
-// business check for the bar.
-
 export const SMUGGLING_VERSION = 1;
 
 export const CONTRABAND = [
@@ -28,19 +10,19 @@ export const CONTRABAND = [
 ];
 
 export const RUN_TYPES = [
-  { id: 'boat', name: 'Boat Drop', desc: 'Pick up at the pier, deliver to the marina. Slow, quiet, wet.', mult: 1.0, deadlineMult: 1.4, detect: 0.6 },
-  { id: 'car', name: 'Fast Car Run', desc: 'Across the city, fast. The cops love a fast car.', mult: 1.35, deadlineMult: 0.8, detect: 1.2 },
-  { id: 'dead-drop', name: 'Dead Drop', desc: 'Leave it in the alley, walk away. No face, no case.', mult: 0.85, deadlineMult: 1.2, detect: 0.5 },
+  { id: 'boat', name: 'Boat Drop', description: 'Quiet water, slow and steady.', mult: 1.0, deadlineMult: 1.4, detection: 0.6 },
+  { id: 'car', name: 'Fast Car Run', description: 'Speed over stealth.', mult: 1.35, deadlineMult: 0.8, detection: 1.2 },
+  { id: 'dead-drop', name: 'Dead Drop', description: 'Leave it and walk away.', mult: 0.85, deadlineMult: 1.2, detection: 0.5 },
 ];
 
 export const SMUGGLE_SPOTS = [
   { id: 'pier', name: 'Old Pier', x: 312, z: -40 },
-  { id: 'marina', name: 'Marina Steps', x: 310, z: 60 },
+  { id: 'marina-steps', name: 'Marina Steps', x: 310, z: 60 },
   { id: 'canal', name: 'Canal Mouth', x: 300, z: 170 },
   { id: 'alley', name: 'Back Alley', x: -80, z: 120 },
   { id: 'warehouse', name: 'Warehouse Row', x: -240, z: -160 },
   { id: 'airfield', name: 'Bay Airfield', x: -280, z: 240 },
-  { id: 'beach', name: 'South Beach', x: 306, z: 260 },
+  { id: 'south-beach', name: 'South Beach', x: 306, z: 260 },
   { id: 'plaza', name: 'Central Plaza', x: 0, z: 0 },
 ];
 
@@ -53,35 +35,44 @@ export const CREW_RANKS = [
 ];
 
 export function rankForRep(rep) {
-  let current = CREW_RANKS[0];
-  for (const r of CREW_RANKS) if (rep >= r.minRep) current = r;
-  return current;
+  let best = CREW_RANKS[0];
+  for (const r of CREW_RANKS) {
+    if (rep >= r.minRep) best = r;
+  }
+  return best;
 }
 
 export function cargoAllowed(rank, cargoId) {
-  const order = CONTRABAND.map((c) => c.id);
-  const maxIdx = order.indexOf(rank.maxCargo);
-  return order.indexOf(cargoId) <= maxIdx;
+  const maxIdx = CONTRABAND.findIndex((c) => c.id === rank.maxCargo);
+  const idx = CONTRABAND.findIndex((c) => c.id === cargoId);
+  if (idx < 0 || maxIdx < 0) return false;
+  if (idx <= maxIdx) return true;
+  return rank.maxCargo === 'diamonds' && cargoId === 'cash';
 }
 
 export function payForRun(cargo, runType, heatLevel, rep) {
-  const dangerBonus = 1 + heatLevel * 0.08;
+  const danger = 1 + heatLevel * 0.08;
   const repBonus = 1 + Math.min(0.5, rep / 2000);
-  return Math.round(cargo.base * runType.mult * dangerBonus * repBonus);
+  return Math.round(cargo.base * runType.mult * danger * repBonus);
 }
 
 export function bustChance(cargo, runType, heatLevel, wanted) {
-  // Per-second detection probability while the run is active.
-  const base = 0.0012 * cargo.risk * runType.detect;
-  return base * (1 + heatLevel * 0.25 + wanted * 0.35);
+  return 0.0012 * cargo.risk * runType.detection * (1 + heatLevel * 0.25 + wanted * 0.35);
 }
 
-export function createSmugglingSystem(ctx = {}) {
-  const rng = ctx.rng || Math.random;
+function findCargo(id) {
+  return CONTRABAND.find((c) => c.id === id) || null;
+}
+function findRunType(id) {
+  return RUN_TYPES.find((r) => r.id === id) || null;
+}
+
+export function createSmugglingSystem(ctx) {
+  const c = ctx || {};
   const state = {
     version: SMUGGLING_VERSION,
     rep: 0,
-    run: null, // { id, cargo, runType, from, to, deadline, timeLeft, pay, phase }
+    run: null,
     offered: null,
     completed: 0,
     busted: 0,
@@ -91,201 +82,217 @@ export function createSmugglingSystem(ctx = {}) {
     log: [],
   };
 
-  function note(msg) {
+  function say(msg) {
     state.log.push(msg);
     if (state.log.length > 40) state.log.shift();
-    if (typeof ctx.log === 'function') ctx.log(msg);
+    if (typeof c.log === 'function') c.log(msg);
   }
-
-  function addCash(amount) {
-    if (typeof ctx.addCash === 'function') ctx.addCash(amount);
-    else if (typeof ctx.cash === 'number') ctx.cash += amount;
+  function roll() {
+    return typeof c.rng === 'function' ? c.rng() : Math.random();
   }
-
+  function cashIn(amount) {
+    if (typeof c.addCash === 'function') c.addCash(amount);
+    else if (typeof c.cash === 'number') c.cash += amount;
+  }
   function addHeat(amount) {
-    if (typeof ctx.addHeat === 'function') ctx.addHeat(amount);
+    if (typeof c.addHeat === 'function') c.addHeat(amount);
   }
-
   function heatLevel() {
-    if (typeof ctx.getHeatLevel === 'function') return ctx.getHeatLevel();
-    return typeof ctx.heat === 'number' ? ctx.heat : 0;
+    if (typeof c.getHeatLevel === 'function') return c.getHeatLevel();
+    return typeof c.heat === 'number' ? c.heat : 0;
   }
-
   function wantedLevel() {
-    if (typeof ctx.getWanted === 'function') return ctx.getWanted();
-    return 0;
+    return typeof c.getWanted === 'function' ? c.getWanted() : 0;
   }
-
   function hasBar() {
-    if (typeof ctx.hasBusiness === 'function') return ctx.hasBusiness('bar');
-    return true; // standalone: contacts available
+    if (typeof c.hasBusiness === 'function') return c.hasBusiness('bar');
+    return true;
   }
-
   function deliveryRep() {
-    if (typeof ctx.getDeliveryRep === 'function') return ctx.getDeliveryRep();
-    return 999; // standalone: assume proven
+    if (typeof c.getDeliveryRep === 'function') return c.getDeliveryRep();
+    return 999;
   }
-
   function pickSpot(excludeId) {
     const pool = SMUGGLE_SPOTS.filter((s) => s.id !== excludeId);
-    return pool[Math.floor(rng() * pool.length)];
+    return pool[Math.floor(roll() * pool.length)];
   }
-
-  function offerRun() {
-    if (deliveryRep() < 50 && state.rep < 50) {
-      state.offered = null;
-      return { ok: false, reason: 'prove-yourself-first', need: 'delivery rep 50' };
-    }
-    const rank = rankForRep(state.rep);
-    const allowed = CONTRABAND.filter((c) => cargoAllowed(rank, c.id));
-    const cargo = allowed[Math.floor(rng() * allowed.length)];
-    const runType = RUN_TYPES[Math.floor(rng() * RUN_TYPES.length)];
-    const from = pickSpot(null);
-    const to = pickSpot(from.id);
-    const dist = Math.hypot(from.x - to.x, from.z - to.z);
-    const deadline = Math.round((30 + dist / 11) * runType.deadlineMult);
-    const pay = payForRun(cargo, runType, heatLevel(), state.rep);
-    state.offered = { id: `run-${state.completed + state.busted + state.failed + 1}`, cargo, runType, from, to, dist: Math.round(dist), deadline, pay };
-    return { ok: true, offered: state.offered };
-  }
-
-  function acceptRun() {
-    if (!state.offered) return { ok: false, reason: 'no-offer' };
-    if (state.run) return { ok: false, reason: 'run-active' };
-    if (state.offered.cargo.id === 'diamonds' && !hasBar()) {
-      return { ok: false, reason: 'needs-bar', need: 'own the Neon Palms Bar' };
-    }
-    state.run = { ...state.offered, timeLeft: state.offered.deadline, phase: 'pickup' };
-    state.offered = null;
-    addHeat(state.run.cargo.heat * 0.4);
-    note(`🤫 Smuggling: ${state.run.cargo.name} (${state.run.runType.name}) — ${state.run.from.name} → ${state.run.to.name}, ${state.run.deadline}s, pays $${state.run.pay}. Stay quiet.`);
-    return { ok: true, run: state.run };
-  }
-
-  function declineRun() {
-    state.offered = null;
-    return offerRun();
-  }
-
-  function nearSpot(spot, radius = 8) {
-    if (typeof ctx.getPlayerPos !== 'function') return false;
-    const p = ctx.getPlayerPos();
-    return Math.hypot(p.x - spot.x, p.z - spot.z) <= radius;
-  }
-
-  function tick(dt) {
-    const run = state.run;
-    if (!run) return;
-    run.timeLeft -= dt;
-    if (run.phase === 'pickup' && nearSpot(run.from)) {
-      run.phase = 'deliver';
-      note(`🤫 Cargo loaded. Deliver to ${run.to.name} — ${Math.ceil(run.timeLeft)}s left.`);
-    } else if (run.phase === 'deliver' && nearSpot(run.to)) {
-      completeRun();
-      return;
-    }
-    // Detection roll: the longer the run, the likelier a bust.
-    if (rng() < bustChance(run.cargo, run.runType, heatLevel(), wantedLevel()) * dt * 60) {
-      bustRun('spotted');
-      return;
-    }
-    if (run.timeLeft <= 0) {
-      failRun('too-slow');
-    }
+  function nearSpot(spot, radius) {
+    const r = radius === undefined ? 8 : radius;
+    if (typeof c.getPlayerPos !== 'function') return false;
+    const p = c.getPlayerPos();
+    return Math.hypot(p.x - spot.x, p.z - spot.z) <= r;
   }
 
   function completeRun() {
     const run = state.run;
     state.run = null;
+    const cargo = findCargo(run.cargo);
+    const repGain = Math.round(40 + cargo.risk * 40);
     state.completed += 1;
-    state.rep += 40 + Math.round(run.cargo.risk * 40);
+    state.rep += repGain;
     state.earned += run.pay;
-    addCash(run.pay);
-    addHeat(run.cargo.heat * 0.3);
-    note(`🤫 Run complete — $${run.pay} in dirty money. Crew rep +${40 + Math.round(run.cargo.risk * 40)}.`);
-    if (typeof ctx.onSmuggleComplete === 'function') ctx.onSmuggleComplete(run, run.pay);
-    offerRun();
-    return { ok: true, pay: run.pay, rep: state.rep };
+    cashIn(run.pay);
+    addHeat(Math.round(cargo.heat * 0.3));
+    say('Smuggling run done: $' + run.pay + ' for ' + cargo.name + '.');
+    if (typeof c.onSmuggleComplete === 'function') c.onSmuggleComplete(run);
+    sys.offerRun();
+    return { ok: true, pay: run.pay, rep: repGain };
   }
 
   function bustRun(reason) {
-    const run = state.run;
     state.run = null;
     state.busted += 1;
     state.lostCargo += 1;
     state.rep = Math.max(0, state.rep - 60);
     addHeat(25);
-    note(`🚨 BUSTED (${reason})! Cargo seized, crew rep -60, heat +25.`);
-    if (typeof ctx.onBust === 'function') ctx.onBust(run, reason);
-    offerRun();
+    say('Busted! ' + reason + ' — cargo lost.');
+    if (typeof c.onBust === 'function') c.onBust(reason);
+    sys.offerRun();
     return { ok: false, reason };
   }
 
   function failRun(reason) {
-    const run = state.run;
     state.run = null;
     state.failed += 1;
     state.rep = Math.max(0, state.rep - 20);
-    note(`🤫 Run failed (${reason}). The crew is not pleased. Rep -20.`);
-    offerRun();
+    say('Smuggling run failed: ' + reason + '.');
+    sys.offerRun();
     return { ok: false, reason };
   }
 
-  function abandonRun() {
-    if (!state.run) return { ok: false, reason: 'no-run' };
-    return failRun('abandoned');
-  }
-
-  function stats() {
-    return {
-      rep: state.rep,
-      rank: rankForRep(state.rep),
-      completed: state.completed,
-      busted: state.busted,
-      failed: state.failed,
-      earned: state.earned,
-      lostCargo: state.lostCargo,
-      active: !!state.run,
-    };
-  }
-
-  function serialize() {
-    return JSON.parse(JSON.stringify(state));
-  }
-
-  function deserialize(data) {
-    if (!data || data.version !== SMUGGLING_VERSION) return false;
-    Object.assign(state, data);
-    return true;
-  }
-
-  function hudLine() {
-    if (state.run) {
-      const r = state.run;
-      const target = r.phase === 'pickup' ? r.from.name : r.to.name;
-      return `🤫 ${r.phase === 'pickup' ? 'PICKUP' : 'DELIVER'} ${r.cargo.name} → ${target} — ${Math.max(0, Math.ceil(r.timeLeft))}s — $${r.pay}`;
-    }
-    if (state.offered) return `🤫 Run offered: ${state.offered.cargo.name} — $${state.offered.pay}`;
-    return '';
-  }
-
-  return {
+  const sys = {
     name: 'smuggling',
     version: SMUGGLING_VERSION,
     state,
     contraband: CONTRABAND,
     runTypes: RUN_TYPES,
     spots: SMUGGLE_SPOTS,
-    offerRun,
-    acceptRun,
-    declineRun,
-    tick,
-    abandonRun,
-    stats,
-    serialize,
-    deserialize,
-    hudLine,
+
+    offerRun() {
+      const dRep = deliveryRep();
+      if (dRep < 50 && state.rep < 50) {
+        state.offered = null;
+        return { ok: false, reason: 'prove-yourself-first', need: 50 };
+      }
+      const rank = rankForRep(state.rep);
+      const allowed = CONTRABAND.filter((cargo) => cargoAllowed(rank, cargo.id));
+      const cargo = allowed[Math.floor(roll() * allowed.length)];
+      const runType = RUN_TYPES[Math.floor(roll() * RUN_TYPES.length)];
+      const from = pickSpot(null);
+      const to = pickSpot(from.id);
+      const distance = Math.hypot(to.x - from.x, to.z - from.z);
+      const deadline = Math.round((25 + distance / 13) * runType.deadlineMult);
+      const pay = payForRun(cargo, runType, heatLevel(), state.rep);
+      const offer = {
+        id: 'run-' + (state.completed + state.busted + state.failed + 1),
+        cargo: cargo.id,
+        runType: runType.id,
+        from,
+        to,
+        distance,
+        deadline,
+        pay,
+      };
+      state.offered = offer;
+      return { ok: true, offer };
+    },
+
+    acceptRun() {
+      if (!state.offered) return { ok: false, reason: 'no-offer' };
+      if (state.run) return { ok: false, reason: 'run-active' };
+      if (state.offered.cargo === 'diamonds' && !hasBar()) {
+        return { ok: false, reason: 'needs-bar', need: 'Neon Palms Bar' };
+      }
+      const offer = state.offered;
+      const cargo = findCargo(offer.cargo);
+      state.run = {
+        id: offer.id,
+        cargo: offer.cargo,
+        runType: offer.runType,
+        from: offer.from,
+        to: offer.to,
+        deadline: offer.deadline,
+        timeLeft: offer.deadline,
+        pay: offer.pay,
+        phase: 'pickup',
+      };
+      state.offered = null;
+      addHeat(Math.round(cargo.heat * 0.4));
+      say('Smuggling run started: ' + cargo.name + ' to ' + state.run.to.name + '.');
+      return { ok: true, run: state.run };
+    },
+
+    declineRun() {
+      state.offered = null;
+      return sys.offerRun();
+    },
+
+    tick(dt) {
+      if (!state.run) return;
+      const run = state.run;
+      run.timeLeft -= dt;
+      if (run.phase === 'pickup' && nearSpot(run.from)) {
+        run.phase = 'deliver';
+        say('Cargo picked up. Deliver to ' + run.to.name + '.');
+      } else if (run.phase === 'deliver' && nearSpot(run.to)) {
+        completeRun();
+        return;
+      }
+      const cargo = findCargo(run.cargo);
+      const runType = findRunType(run.runType);
+      const chance = bustChance(cargo, runType, heatLevel(), wantedLevel());
+      if (roll() < chance * dt * 60) {
+        bustRun('spotted');
+        return;
+      }
+      if (run.timeLeft <= 0) failRun('too-slow');
+    },
+
+    abandonRun() {
+      if (!state.run) return { ok: false, reason: 'no-run' };
+      return failRun('abandoned');
+    },
+
+    stats() {
+      return {
+        rep: state.rep,
+        rank: rankForRep(state.rep),
+        completed: state.completed,
+        busted: state.busted,
+        failed: state.failed,
+        earned: state.earned,
+        lostCargo: state.lostCargo,
+        active: !!state.run,
+      };
+    },
+
+    serialize() {
+      return JSON.parse(JSON.stringify(state));
+    },
+
+    deserialize(data) {
+      if (!data || data.version !== SMUGGLING_VERSION) return false;
+      const copy = JSON.parse(JSON.stringify(data));
+      for (const k of Object.keys(state)) delete state[k];
+      Object.assign(state, copy);
+      return true;
+    },
+
+    hudLine() {
+      if (state.run) {
+        const cargo = findCargo(state.run.cargo);
+        const word = state.run.phase === 'pickup' ? 'PICKUP' : 'DELIVER';
+        const target = state.run.phase === 'pickup' ? state.run.from : state.run.to;
+        return word + ' ' + (cargo ? cargo.name : state.run.cargo) + ' → ' + target.name + ' | ' + Math.ceil(state.run.timeLeft) + 's | $' + state.run.pay;
+      }
+      if (state.offered) {
+        const cargo = findCargo(state.offered.cargo);
+        return 'SMUGGLE ' + (cargo ? cargo.name : state.offered.cargo) + ' | $' + state.offered.pay;
+      }
+      return '';
+    },
   };
+  return sys;
 }
 
 export default createSmugglingSystem;

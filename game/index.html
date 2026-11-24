@@ -1,169 +1,126 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0b1220">
-<meta name="description" content="Solara Nights — an original open-world crime game in Solara Bay: steal cars, outrun the Solara PD, run four story missions for fixer Mara Voss.">
-<title>Solara Nights — Open-World Crime in Solara Bay</title>
+<meta name="theme-color" content="#0b1020">
+<meta name="description" content="Solara Nights — an original open-world crime game with car theft, police chases, and four story missions for fixer Mara Voss.">
+<title>Solara Nights</title>
 <link rel="icon" href="data:,">
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #0b1220; font-family: 'Segoe UI', system-ui, sans-serif; color: #eef2f7; }
-  canvas.game { display: block; width: 100%; height: 100%; }
-  .hidden { display: none !important; }
-  button { font-family: inherit; cursor: pointer; }
-
-  /* ---------- overlays ---------- */
-  #dmg-vignette { position: fixed; inset: 0; pointer-events: none; z-index: 6; opacity: 0; transition: opacity .2s; background: radial-gradient(ellipse at center, transparent 42%, rgba(220,40,30,0.6) 100%); }
-
-  /* ---------- HUD ---------- */
-  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
-  #hud-top { position: absolute; top: 12px; left: 14px; display: flex; flex-direction: column; gap: 4px; text-shadow: 0 1px 3px #000; }
-  #hud-money { font-size: 26px; font-weight: 800; color: #7dff9a; }
-  #hud-mission { font-size: 15px; font-weight: 700; color: #ffd23d; letter-spacing: .5px; }
-  #hud-objective { font-size: 14px; color: #fff; max-width: 420px; }
-  #hud-distance { font-size: 13px; font-weight: 700; color: #ffd23d; }
-  #hud-clock { font-size: 14px; color: #cfe3ff; }
-  #hud-stars { position: absolute; top: 12px; right: 208px; font-size: 26px; letter-spacing: 3px; color: #8899aa; text-shadow: 0 1px 3px #000; }
-  #hud-stars.hot { color: #ffd23d; }
-  #minimap { position: absolute; top: 12px; right: 14px; width: 180px; height: 180px; border: 2px solid rgba(255,255,255,.35); border-radius: 6px; background: rgba(8,14,26,.8); }
-  #hud-bottom-left { position: absolute; left: 14px; bottom: 14px; width: 240px; text-shadow: 0 1px 3px #000; }
-  #hud-health-label { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
-  #hud-health-bar { height: 14px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.35); border-radius: 7px; overflow: hidden; }
-  #hud-health-fill { height: 100%; width: 100%; background: #3aa655; }
-  #hud-bottom-right { position: absolute; right: 14px; bottom: 14px; text-align: right; text-shadow: 0 1px 3px #000; }
-  #hud-speed { font-size: 26px; font-weight: 800; }
-  #hud-ammo { font-size: 16px; font-weight: 700; color: #ffd23d; }
-  #hud-car { margin-top: 6px; text-align: left; }
-  #hud-car-label { font-size: 12px; font-weight: 700; margin-bottom: 3px; }
-  #hud-car-bar { height: 10px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.35); border-radius: 5px; overflow: hidden; }
-  #hud-car-fill { height: 100%; width: 100%; background: #3aa655; }
-  #crosshair { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
-  #crosshair i { position: absolute; background: #fff; box-shadow: 0 0 3px #000; }
-  #crosshair .t { left: -1px; top: -11px; width: 2px; height: 8px; }
-  #crosshair .b { left: -1px; top: 3px; width: 2px; height: 8px; }
-  #crosshair .l { top: -1px; left: -11px; width: 8px; height: 2px; }
-  #crosshair .r { top: -1px; left: 3px; width: 8px; height: 2px; }
-  #hud-prompt { position: absolute; left: 50%; bottom: 110px; transform: translateX(-50%); background: rgba(8,14,26,.8); border: 1px solid rgba(255,255,255,.3); border-radius: 8px; padding: 8px 16px; font-size: 16px; font-weight: 700; white-space: nowrap; }
-  /* Round 4 attempt 2 — tutorial toast above the prompt, weather line under the clock. */
-  #hud-tutorial { position: absolute; left: 50%; bottom: 160px; transform: translateX(-50%); background: rgba(18,40,60,.9); border: 1px solid rgba(61,216,255,.6); border-radius: 8px; padding: 8px 16px; font-size: 15px; font-weight: 700; white-space: nowrap; color: #bfefff; }
-  #hud-weather { font-size: 13px; font-weight: 700; color: #9fc6e8; }
-  /* Round 4 attempt 3 — helicopter warning under the weather line, chain
-     progress under the objective, drift meter under the speed readout. */
-  #hud-heli { font-size: 13px; font-weight: 800; color: #ff8a7a; }
-  #hud-chain { font-size: 13px; font-weight: 700; color: #3dd8ff; }
-  #hud-drift { font-size: 18px; font-weight: 800; color: #ffd23d; }
-  #hud-banner { position: absolute; left: 50%; top: 34%; transform: translateX(-50%); text-align: center; text-shadow: 0 2px 6px #000; background: rgba(8,14,26,.45); padding: 10px 28px 12px; border-radius: 12px; max-width: min(640px, 90vw); }
-  #hud-banner-title { font-size: 40px; font-weight: 900; color: #ffd23d; letter-spacing: 1px; }
-  #hud-banner-sub { font-size: 17px; margin-top: 6px; max-width: 560px; }
-
-  /* ---------- menus ---------- */
-  .menu { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, rgba(8,14,26,.55) 0%, rgba(8,14,26,.82) 100%); text-align: center; padding: 20px; }
-  .menu h1 { font-size: 64px; font-weight: 900; letter-spacing: 3px; color: #ffd23d; text-shadow: 0 4px 18px rgba(0,0,0,.7); }
-  .menu h1 span { color: #fff; }
-  .menu h2 { font-size: 30px; font-weight: 800; color: #ffd23d; margin-bottom: 8px; }
-  .menu p { font-size: 16px; color: #dfe8f2; max-width: 560px; line-height: 1.55; margin: 10px 0; }
-  .menu .sub { font-size: 15px; color: #ffd23d; font-weight: 700; letter-spacing: 2px; }
-  .menu button { pointer-events: auto; margin-top: 12px; min-width: 260px; padding: 12px 22px; font-size: 17px; font-weight: 700; color: #111; background: #ffd23d; border: none; border-radius: 9px; }
-  .menu button.secondary { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.4); }
-  .menu button:hover { filter: brightness(1.1); }
-  .controls { margin-top: 18px; font-size: 13.5px; color: #b9c6d4; line-height: 1.7; text-align: left; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.18); border-radius: 10px; padding: 12px 18px; }
-  .controls b { color: #ffd23d; }
-  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; background: #0b1020; color: #f2f2f2; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+canvas.game { display: block; width: 100vw; height: 100vh; }
+.hidden { display: none !important; }
+button { font: inherit; cursor: pointer; }
+#vignette { position: fixed; inset: 0; pointer-events: none; z-index: 6; opacity: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(200, 0, 0, 0.55) 100%); transition: opacity 0.25s; }
+#hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+#hudTop { position: absolute; top: 12px; left: 14px; font-size: 15px; line-height: 1.5; text-shadow: 0 1px 3px #000; }
+#money { color: #4ade80; font-weight: 700; font-size: 19px; }
+#mission { color: #facc15; font-weight: 700; }
+#objective, #chain, #distance, #clock, #weather, #heli, #nightops, #market { display: block; }
+#stars { position: absolute; top: 12px; right: 14px; font-size: 26px; letter-spacing: 3px; color: #555; text-shadow: 0 1px 3px #000; }
+#stars .hot { color: #facc15; }
+#minimap { position: absolute; top: 52px; right: 14px; width: 180px; height: 180px; background: rgba(0, 0, 0, 0.55); border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 4px; }
+#hudBottomLeft { position: absolute; left: 14px; bottom: 14px; font-size: 14px; text-shadow: 0 1px 3px #000; }
+#healthBar { width: 220px; height: 12px; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.5); margin-top: 4px; }
+#health-fill { height: 100%; width: 100%; background: #4ade80; }
+#hudBottomRight { position: absolute; right: 14px; bottom: 14px; text-align: right; font-size: 15px; text-shadow: 0 1px 3px #000; }
+#speed { font-size: 26px; font-weight: 700; }
+#drift { color: #facc15; }
+#car { width: 180px; height: 8px; background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.5); margin-top: 4px; margin-left: auto; }
+#car-fill { height: 100%; width: 100%; background: #38bdf8; }
+#crosshair { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; }
+#crosshair::before, #crosshair::after { content: ""; position: absolute; background: #fff; }
+#crosshair::before { left: 10px; top: 0; width: 2px; height: 22px; }
+#crosshair::after { top: 10px; left: 0; width: 22px; height: 2px; }
+#prompt { position: absolute; left: 50%; top: 62%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.65); padding: 8px 16px; border-radius: 6px; font-size: 15px; }
+#tutorial { position: absolute; left: 50%; top: 54%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.55); padding: 6px 14px; border-radius: 6px; font-size: 14px; color: #facc15; }
+#banner { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); text-align: center; text-shadow: 0 2px 8px #000; }
+#banner-title { font-size: 44px; font-weight: 800; color: #facc15; }
+#banner-sub { font-size: 18px; }
+.menu { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: linear-gradient(160deg, rgba(11, 16, 32, 0.95), rgba(40, 10, 50, 0.9)); text-align: center; padding: 24px; }
+.menu h1 { font-size: 54px; color: #facc15; letter-spacing: 2px; }
+.menu h2 { font-size: 40px; color: #facc15; }
+.menu p { max-width: 560px; line-height: 1.6; color: #ddd; }
+.menu .round { color: #facc15; font-weight: 700; }
+.menu button { padding: 12px 28px; font-size: 17px; border-radius: 8px; border: none; background: #facc15; color: #111; font-weight: 700; }
+.menu button.secondary { background: rgba(255, 255, 255, 0.15); color: #fff; }
+#howto { background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 8px; padding: 14px 22px; text-align: left; line-height: 1.8; font-size: 14px; }
+#status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 <script type="importmap">
 { "imports": { "three": "./vendor/three/three.module.min.js" } }
 </script>
 </head>
 <body>
-<canvas id="game" class="game" aria-label="Solara Nights: open-world crime game in Solara Bay"></canvas>
-<div id="dmg-vignette"></div>
-
+<canvas id="game" class="game" aria-label="Solara Nights game view"></canvas>
+<div id="vignette"></div>
 <div id="hud" class="hidden">
-  <div id="hud-top">
-    <div id="hud-money">$0</div>
-    <div id="hud-mission">FREE ROAM</div>
-    <div id="hud-objective"></div>
-    <div id="hud-chain" class="hidden"></div>
-    <div id="hud-distance"></div>
-    <div id="hud-clock"></div>
-    <div id="hud-weather" class="hidden"></div>
-    <div id="hud-heli" class="hidden"></div>
-    <div id="hud-nightops" class="hidden"></div>
-    <div id="hud-market" class="hidden"></div>
+  <div id="hudTop">
+    <span id="money">$0</span>
+    <span id="mission"></span>
+    <span id="objective"></span>
+    <span id="chain"></span>
+    <span id="distance"></span>
+    <span id="clock"></span>
+    <span id="weather"></span>
+    <span id="heli"></span>
+    <span id="nightops"></span>
+    <span id="market"></span>
   </div>
-  <div id="hud-stars">☆☆☆☆☆</div>
+  <div id="stars"><span>&#9734;</span><span>&#9734;</span><span>&#9734;</span><span>&#9734;</span><span>&#9734;</span></div>
   <canvas id="minimap" width="180" height="180"></canvas>
-  <div id="hud-bottom-left">
-    <div id="hud-health-label">HEALTH <span id="hud-health-text">100</span></div>
-    <div id="hud-health-bar"><div id="hud-health-fill"></div></div>
+  <div id="hudBottomLeft">
+    <div>HEALTH <span id="health-text">100</span></div>
+    <div id="healthBar"><div id="health-fill"></div></div>
   </div>
-  <div id="hud-bottom-right">
-    <div id="hud-speed"></div>
-    <div id="hud-drift" class="hidden"></div>
-    <div id="hud-ammo">◉ 12 / ∞</div>
-    <div id="hud-car" class="hidden">
-      <div id="hud-car-label">CAR <span id="hud-car-text">100</span></div>
-      <div id="hud-car-bar"><div id="hud-car-fill"></div></div>
-    </div>
+  <div id="hudBottomRight">
+    <div id="speed">0</div>
+    <div id="drift"></div>
+    <div id="ammo"></div>
+    <div id="car" class="hidden"><div id="car-fill"></div><div id="car-text"></div></div>
   </div>
-  <div id="crosshair" class="hidden"><i class="t"></i><i class="b"></i><i class="l"></i><i class="r"></i></div>
-  <div id="hud-prompt" class="hidden"></div>
-  <div id="hud-tutorial" class="hidden"></div>
-  <div id="hud-banner" class="hidden">
-    <div id="hud-banner-title"></div>
-    <div id="hud-banner-sub"></div>
-  </div>
+  <div id="crosshair" class="hidden"></div>
+  <div id="prompt" class="hidden"></div>
+  <div id="tutorial" class="hidden"></div>
+  <div id="banner" class="hidden"><div id="banner-title"></div><div id="banner-sub"></div></div>
 </div>
-
 <div id="menu-title" class="menu">
-  <h1>SOLARA <span>NIGHTS</span></h1>
-  <div class="sub">AN OPEN-WORLD CRIME STORY IN SOLARA BAY</div>
-  <p>Ria Santos is back in Solara Bay — and the Crown Syndicate took her brother's garage.
-  Take jobs from fixer Mara Voss, steal what you need, outrun the Solara PD, and take the
-  city back, one mission at a time.</p>
-  <div class="sub">ROUND 4 — DRIFT FOR CASH · POLICE HELI · ROADBLOCKS · JOB CHAINS</div>
+  <h1>SOLARA NIGHTS</h1>
+  <p>An Open-World Crime Story in Solara Bay</p>
+  <p>Ria Santos returns to Solara Bay and finds the Crown Syndicate has taken her brother's garage. She takes jobs from fixer Mara Voss, steals what she needs, outruns the Solara PD, and takes the city back one mission at a time.</p>
+  <p class="round">Round 4 with drift for cash, police heli, roadblocks, and job chains</p>
   <button id="btn-continue">Continue</button>
   <button id="btn-new">New Game</button>
   <button id="btn-how" class="secondary">How to Play</button>
-  <div id="howto" class="controls hidden">
-    <b>W A S D</b> move / drive &nbsp;·&nbsp; <b>Mouse</b> look &nbsp;·&nbsp; <b>Shift</b> sprint<br>
-    <b>E</b> enter / exit car &nbsp;·&nbsp; <b>Space</b> jump / handbrake<br>
-    <b>Click</b> shoot (left or right) &nbsp;·&nbsp; <b>R</b> reload &nbsp;·&nbsp; <b>P / Esc</b> pause<br>
-    <b>H</b> horn &nbsp;·&nbsp; <b>M</b> mute &nbsp;·&nbsp; <b>Space + W</b> burnout (in car)<br>
-    <b>Q</b> accept a side job when Mara offers one &nbsp;·&nbsp; <b>T</b> skip the tutorial tips<br>
-    <b>Space + steer at speed</b> drift — chain slides for cash, but a wall hit kills the chain.<br>
-    Rain makes roads wet and cars slower — watch the rain icon by the clock.
-    Follow the yellow beacon. Stealing cars and shooting raise your wanted level — lay low and the heat cools off.
-    At 4 stars the PD sets roadblocks ahead of you; at 5 stars the helicopter keeps you lit and the heat never cools.
+  <div id="howto" class="hidden">
+    <div>W A S D — move / drive &nbsp; Mouse — look</div>
+    <div>Shift — sprint &nbsp; Space — jump / handbrake</div>
+    <div>E — enter or exit a car &nbsp; Click — shoot</div>
+    <div>R — reload &nbsp; P / Esc — pause</div>
+    <div>H — horn &nbsp; M — mute &nbsp; C — sneak</div>
   </div>
 </div>
-
 <div id="menu-pause" class="menu hidden">
   <h2>PAUSED</h2>
-  <p>Solara Bay waits for no one. Well — right now it does.</p>
   <button id="btn-resume">Resume</button>
   <button id="btn-restart" class="secondary">Restart Mission</button>
-  <button id="btn-mute" class="secondary">Mute: Off</button>
-  <button id="btn-quit" class="secondary">Save &amp; Quit to Title</button>
+  <button id="btn-mute" class="secondary">Mute</button>
+  <button id="btn-quit" class="secondary">Save and Quit to Title</button>
 </div>
-
 <div id="menu-over" class="menu hidden">
   <h2 id="over-title">WASTED</h2>
-  <p id="over-text">Ria went down. The city keeps moving.</p>
-  <button id="btn-retry">Retry Mission</button>
+  <p id="over-text"></p>
+  <button id="btn-retry">Retry</button>
   <button id="btn-over-title" class="secondary">Quit to Title</button>
 </div>
-
 <div id="menu-complete" class="menu hidden">
   <h2>STORY COMPLETE</h2>
-  <p>Silas Crown is finished, the garage is yours again, and Solara Bay is wide open.
-  Free roam continues — keep the money coming.</p>
-  <button id="btn-freeroam">Keep Playing — Free Roam</button>
+  <p>The city is yours, Ria. Solara Bay is free tonight.</p>
+  <button id="btn-freeroam">Keep Playing Free Roam</button>
 </div>
-
-<p id="status" role="status" aria-live="polite"></p>
+<p id="status" aria-live="polite"></p>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

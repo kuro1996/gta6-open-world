@@ -1,888 +1,229 @@
-// Solara Nights — Paleontology / Bone Beds (Round 7, written fresh).
-// Ria digs the fossil beds around Solara: the river cut, the chalk
-// cliffs, the old tar seeps and the bone cave. Brush, pick and chisel
-// fossils out of the rock, clean them in the lab, and assemble whole
-// skeletons for the museum — a complete specimen pays a fortune, and
-// the university pays a research grant for rare finds. A careless dig
-// shatters a priceless skull; a patient one finds the missing jaw.
-// Permits, brushes, sieves and a proper lab gate the deeper beds, and
-// the black market in Old Town pays cash for anything — at a cost.
-// Pure logic: no rendering, no imports. The game wires it through the
-// standard ctx { rng, getDay, getHour, getCash, addCash, addHeat, log,
-// getPlayerPos, getWeather } and drives tick/tickDay from the main loop.
-
 export const FOSSIL_SITES = [
-  { id: 'river', name: 'River Cut', value: 30, difficulty: 1, rarity: 0.3, depth: 1, era: 'Pleistocene', desc: 'The river eats the bank and drops bones.' },
-  { id: 'chalk', name: 'Chalk Cliffs', value: 55, difficulty: 2, rarity: 0.2, depth: 1, era: 'Cretaceous', desc: 'White cliffs full of sea creatures.' },
-  { id: 'tar', name: 'Tar Seeps', value: 80, difficulty: 2, rarity: 0.14, depth: 2, era: 'Pleistocene', desc: 'Black tar that traps everything that steps in.' },
-  { id: 'cave', name: 'Bone Cave', value: 95, difficulty: 3, rarity: 0.1, depth: 2, era: 'Pleistocene', desc: 'A dark cave floored with ancient bones.' },
-  { id: 'badlands', name: 'Badlands', value: 120, difficulty: 3, rarity: 0.09, depth: 3, era: 'Jurassic', desc: 'Striped hills where dinosaurs sleep.' },
-  { id: 'lakebed', name: 'Dry Lakebed', value: 70, difficulty: 2, rarity: 0.13, depth: 2, era: 'Miocene', desc: 'Cracked mud that hides fish and birds.' },
-  { id: 'quarry', name: 'Old Quarry', value: 60, difficulty: 2, rarity: 0.16, depth: 1, era: 'Cretaceous', desc: 'Blasted rock, broken fossils, quick finds.' },
-  { id: 'volcano', name: 'Ash Beds', value: 150, difficulty: 4, rarity: 0.05, depth: 3, era: 'Jurassic', desc: 'Volcanic ash that froze a forest in time.' },
-  { id: 'glacier', name: 'Glacier Moraine', value: 140, difficulty: 4, rarity: 0.04, depth: 3, era: 'Pleistocene', desc: 'Ice-dropped boulders with mammoth bones.' },
-  { id: 'reef', name: 'Fossil Reef', value: 110, difficulty: 3, rarity: 0.07, depth: 2, era: 'Devonian', desc: 'An ancient reef, now high and dry.' },
+  { id: 'river', name: 'River Bank', value: 30, difficulty: 1, rarity: 0.3, depth: 1, era: 'Pleistocene', desc: 'Gravel bars where the river drops old bones.' },
+  { id: 'chalk', name: 'Chalk Cliffs', value: 45, difficulty: 1, rarity: 0.25, depth: 1, era: 'Cretaceous', desc: 'White cliffs full of sea creatures.' },
+  { id: 'tar', name: 'Tar Pits', value: 60, difficulty: 2, rarity: 0.2, depth: 2, era: 'Pleistocene', desc: 'Black tar that trapped giants whole.' },
+  { id: 'cave', name: 'Bone Cave', value: 70, difficulty: 2, rarity: 0.18, depth: 2, era: 'Jurassic', desc: 'A dark cave floored with old bones.' },
+  { id: 'badlands', name: 'Badlands', value: 90, difficulty: 3, rarity: 0.12, depth: 2, era: 'Cretaceous', desc: 'Striped hills where skulls weather out.' },
+  { id: 'lakebed', name: 'Dry Lakebed', value: 50, difficulty: 1, rarity: 0.22, depth: 1, era: 'Miocene', desc: 'Cracked mud hiding fish and ferns.' },
+  { id: 'quarry', name: 'Old Quarry', value: 80, difficulty: 2, rarity: 0.15, depth: 2, era: 'Jurassic', desc: 'Cut stone walls with bones in the layers.' },
+  { id: 'volcano', name: 'Volcano Ash', value: 150, difficulty: 4, rarity: 0.05, depth: 3, era: 'Cretaceous', desc: 'Ash beds that buried nests whole.' },
+  { id: 'glacier', name: 'Glacier Edge', value: 110, difficulty: 3, rarity: 0.08, depth: 3, era: 'Pleistocene', desc: 'Blue ice giving up frozen birds.' },
+  { id: 'reef', name: 'Fossil Reef', value: 65, difficulty: 2, rarity: 0.16, depth: 1, era: 'Devonian', desc: 'An ancient reef turned to stone.' },
 ];
 
 export const FOSSIL_FINDS = [
-  { id: 'shell', name: 'Ammonite Shell', value: 25, site: 'chalk', rarity: 0.3, parts: 1, desc: 'A coiled shell, perfect as a pocket stone.' },
-  { id: 'fish', name: 'Fossil Fish', value: 45, site: 'lakebed', rarity: 0.2, parts: 1, desc: 'A fish in stone, scales still shining.' },
-  { id: 'tooth', name: 'Shark Tooth', value: 40, site: 'chalk', rarity: 0.18, parts: 1, desc: 'A black triangle, sharp after millions of years.' },
-  { id: 'trilobite', name: 'Trilobite', value: 70, site: 'reef', rarity: 0.12, parts: 1, desc: 'A segmented sea bug, beautifully preserved.' },
-  { id: 'fern', name: 'Fern Imprint', value: 35, site: 'quarry', rarity: 0.22, parts: 1, desc: 'A leaf pressed into stone like a photograph.' },
-  { id: 'tusk', name: 'Mammoth Tusk', value: 180, site: 'glacier', rarity: 0.05, parts: 2, desc: 'A curved ivory tusk, heavy as a man.' },
-  { id: 'skull', name: 'Sabre-Tooth Skull', value: 220, site: 'tar', rarity: 0.06, parts: 3, desc: 'Fangs like knives, staring out of the tar.' },
-  { id: 'femur', name: 'Dinosaur Femur', value: 260, site: 'badlands', rarity: 0.05, parts: 3, desc: 'A thigh bone taller than you are.' },
-  { id: 'claw', name: 'Raptor Claw', value: 150, site: 'badlands', rarity: 0.08, parts: 1, desc: 'A curved killing claw, still wicked.' },
-  { id: 'egg', name: 'Dinosaur Egg', value: 300, site: 'volcano', rarity: 0.03, parts: 1, desc: 'An egg in ash — did it ever hatch?' },
-  { id: 'coral', name: 'Fossil Coral', value: 60, site: 'reef', rarity: 0.14, parts: 1, desc: 'A branching coral, turned to stone.' },
-  { id: 'bird', name: 'Ancient Bird', value: 200, site: 'lakebed', rarity: 0.05, parts: 2, desc: 'Feathers in stone — the missing link.' },
+  { id: 'shell', name: 'Shell', value: 25, site: 'reef', rarity: 0.3, parts: 1, desc: 'A ridged shell from an old sea.' },
+  { id: 'fish', name: 'Fish Fossil', value: 40, site: 'lakebed', rarity: 0.25, parts: 1, desc: 'A whole fish pressed flat in stone.' },
+  { id: 'tooth', name: 'Tooth', value: 60, site: 'river', rarity: 0.2, parts: 1, desc: 'A sharp tooth, bigger than your thumb.' },
+  { id: 'trilobite', name: 'Trilobite', value: 55, site: 'reef', rarity: 0.18, parts: 1, desc: 'A segmented bug from the oldest seas.' },
+  { id: 'fern', name: 'Fern Imprint', value: 35, site: 'lakebed', rarity: 0.22, parts: 2, desc: 'A delicate fern pressed into shale.' },
+  { id: 'tusk', name: 'Tusk', value: 150, site: 'tar', rarity: 0.08, parts: 2, desc: 'A curved tusk from a great mammoth.' },
+  { id: 'skull', name: 'Skull', value: 200, site: 'badlands', rarity: 0.06, parts: 2, desc: 'A horned skull, heavy as a stone.' },
+  { id: 'femur', name: 'Femur', value: 180, site: 'quarry', rarity: 0.07, parts: 2, desc: 'A thigh bone as long as your leg.' },
+  { id: 'claw', name: 'Claw', value: 120, site: 'cave', rarity: 0.1, parts: 2, desc: 'A hooked claw from a night hunter.' },
+  { id: 'egg', name: 'Fossil Egg', value: 300, site: 'volcano', rarity: 0.03, parts: 3, desc: 'A whole egg in ash, rarer than gold.' },
+  { id: 'coral', name: 'Coral', value: 45, site: 'reef', rarity: 0.2, parts: 1, desc: 'Branching coral turned to rock.' },
+  { id: 'bird', name: 'Bird Fossil', value: 160, site: 'glacier', rarity: 0.05, parts: 2, desc: 'A bird with feathers frozen in ice.' },
 ];
 
 export const FOSSIL_SKELETONS = [
-  { id: 'mammoth', name: 'Woolly Mammoth', parts: ['tusk', 'tusk', 'femur'], value: 1200, desc: 'A giant of the ice age, standing in the hall.' },
-  { id: 'sabre', name: 'Sabre-Tooth Cat', parts: ['skull', 'claw', 'claw'], value: 1100, desc: 'Fangs, claws, and a hunter’s grace.' },
-  { id: 'raptor', name: 'Velociraptor', parts: ['claw', 'femur', 'skull'], value: 1500, desc: 'Small, fast, and utterly terrifying.' },
-  { id: 'fish-school', name: 'Fish School Slab', parts: ['fish', 'fish', 'fish'], value: 400, desc: 'A whole school, frozen mid-swim.' },
-  { id: 'ammonite-bed', name: 'Ammonite Bed', parts: ['shell', 'shell', 'shell'], value: 300, desc: 'Three coiled shells on one slab.' },
-  { id: 'bird-link', name: 'Feathered Bird', parts: ['bird', 'bird', 'fern'], value: 900, desc: 'Feathers and fern — the dawn of flight.' },
+  { id: 'mammoth', name: 'Mammoth Skeleton', parts: ['tusk', 'tusk', 'femur'], value: 1200, desc: 'A towering mammoth, whole again.' },
+  { id: 'sabre', name: 'Sabre Cat Skeleton', parts: ['skull', 'claw', 'claw'], value: 1100, desc: 'A sabre cat, teeth bared forever.' },
+  { id: 'raptor', name: 'Raptor Skeleton', parts: ['claw', 'femur', 'skull'], value: 1500, desc: 'A swift raptor, posed mid-leap.' },
+  { id: 'fish-school', name: 'Fish School Display', parts: ['fish', 'fish', 'fish'], value: 400, desc: 'Three fish caught in one slab.' },
+  { id: 'ammonite-bed', name: 'Ammonite Bed', parts: ['shell', 'shell', 'shell'], value: 300, desc: 'A bed of coiled shells.' },
+  { id: 'bird-link', name: 'Missing Link Bird', parts: ['bird', 'bird', 'fern'], value: 900, desc: 'A bird with feathers and a fern, side by side.' },
 ];
 
 export const FOSSIL_BUYERS = [
-  { id: 'museum', name: 'Solara Museum', mult: 1.0, likes: ['skeleton'], dislikes: [], mood: 'steady', minRank: 0, desc: 'Buys whole skeletons for the hall.' },
-  { id: 'university', name: 'University Lab', mult: 1.2, likes: ['rare'], dislikes: [], mood: 'steady', minRank: 1, desc: 'Pays grants for rare specimens.' },
-  { id: 'collector', name: 'Collector Vane', mult: 1.5, likes: ['rare'], dislikes: [], mood: 'odd', minRank: 2, desc: 'Wants the rarest pieces, whatever the price.' },
-  { id: 'tourist', name: 'Tourist Shop', mult: 0.9, likes: ['common'], dislikes: ['rare'], mood: 'quick', minRank: 0, desc: 'Sells small fossils to visitors.' },
-  { id: 'blackmarket', name: 'Black Market', mult: 1.6, likes: [], dislikes: [], mood: 'shady', minRank: 3, desc: 'Cash, no questions — and heat if you are caught.' },
+  { id: 'museum', name: 'The Museum', mult: 1.0, likes: ['skull', 'femur', 'egg'], dislikes: ['shell'], mood: 'steady', minRank: 0, desc: 'Buys good finds for the display halls.' },
+  { id: 'university', name: 'The University', mult: 1.2, likes: ['trilobite', 'fern', 'fish'], dislikes: ['coral'], mood: 'busy', minRank: 1, desc: 'Pays well for study specimens.' },
+  { id: 'collector', name: 'The Collector', mult: 1.4, likes: ['egg', 'bird', 'tusk'], dislikes: ['shell', 'fish'], mood: 'eager', minRank: 2, desc: 'Pays silly money for rare finds.' },
+  { id: 'tourist', name: 'Tourist Shop', mult: 0.9, likes: ['shell', 'coral'], dislikes: ['egg'], mood: 'flat', minRank: 0, desc: 'Buys pretty stones for tourists.' },
+  { id: 'blackmarket', name: 'Black Market', mult: 1.6, likes: ['egg', 'skull', 'bird'], dislikes: [], mood: 'shady', minRank: 3, desc: 'Pays the most, and asks no questions.' },
 ];
 
 export const FOSSIL_UPGRADES = [
-  { id: 'brush', name: 'Soft Brushes', cost: 80, desc: 'Clean finds without breaking them.', effect: 'brush' },
-  { id: 'permit', name: 'Dig Permit', cost: 120, desc: 'Legal digging — no warden fines.', effect: 'legal' },
-  { id: 'sieve', name: 'Fine Sieve', cost: 160, desc: 'Small finds +30% on every dig.', effect: 'sieve' },
-  { id: 'chisel', name: 'Rock Chisel', cost: 240, desc: 'Hard rock opens: +1 dig tier.', effect: 'chisel' },
-  { id: 'lab', name: 'Prep Lab', cost: 420, desc: 'Clean fossils at home: +25% value.', effect: 'lab' },
-  { id: 'scanner', name: 'Ground Scanner', cost: 550, desc: 'See the bones before you dig.', effect: 'scan' },
-  { id: 'crane', name: 'Lift Crane', cost: 800, desc: 'Big bones move easy: mammoth parts +1.', effect: 'crane' },
-  { id: 'archive', name: 'Private Archive', cost: 1100, desc: 'Your collection pays a daily grant.', effect: 'archive' },
+  { id: 'brush', name: 'Soft Brush', cost: 80, desc: 'A brush that cleans fossils without breaking them.', effect: 'clean' },
+  { id: 'permit', name: 'Dig Permit', cost: 120, desc: 'A stamped permit for the bone beds.', effect: 'legal' },
+  { id: 'sieve', name: 'Fine Sieve', cost: 160, desc: 'A sieve that catches the smallest finds.', effect: 'find' },
+  { id: 'chisel', name: 'Rock Chisel', cost: 240, desc: 'A chisel that frees fossils from hard rock.', effect: 'dig' },
+  { id: 'lab', name: 'Prep Lab', cost: 420, desc: 'A lab bench for cleaning and study.', effect: 'clean' },
+  { id: 'scanner', name: 'Ground Scanner', cost: 550, desc: 'A scanner that sees bones through rock.', effect: 'dig' },
+  { id: 'crane', name: 'Lifting Crane', cost: 800, desc: 'A crane for the heaviest slabs.', effect: 'lift' },
+  { id: 'archive', name: 'Archive Room', cost: 1100, desc: 'An archive that earns grants from your collection.', effect: 'grant' },
 ];
 
 export const FOSSIL_RANKS = [
-  { level: 0, name: 'Rock Hound', xp: 0, perk: 'Base prices, base finds.' },
-  { level: 1, name: 'Digger', xp: 120, perk: '+10% sale prices.' },
-  { level: 2, name: 'Fossil Hunter', xp: 300, perk: '+10% find rate.' },
-  { level: 3, name: 'Paleontologist', xp: 620, perk: '+20% sale prices, the university funds you.' },
-  { level: 4, name: 'Master of Bone Beds', xp: 1100, perk: '+30% sale prices, rare finds doubled.' },
+  { level: 0, name: 'Rock Hound', xp: 0, perk: 'Learning the layers.' },
+  { level: 1, name: 'Digger', xp: 120, perk: 'A steady trowel.' },
+  { level: 2, name: 'Fossil Hunter', xp: 300, perk: 'The beds give up their secrets.' },
+  { level: 3, name: 'Paleontologist', xp: 620, perk: 'The university knows your name.' },
+  { level: 4, name: 'Master of Bone Beds', xp: 1100, perk: 'Every bed in the county is yours.' },
 ];
 
 export const FOSSIL_EVENTS = [
-  { id: 'flood-exposure', name: 'Flood Exposure', mult: 1.5, sites: ['river', 'lakebed'], desc: 'A flood strips the bank bare — bones everywhere.' },
-  { id: 'rockfall', name: 'Cliff Rockfall', mult: 1.4, sites: ['chalk', 'quarry'], desc: 'Fresh rock falls expose new fossils.' },
-  { id: 'grant-season', name: 'Grant Season', mult: 1.3, sites: [], desc: 'The university has money — rare finds pay more.' },
-  { id: 'expo', name: 'Museum Expo', mult: 1.4, sites: [], desc: 'The expo is in town; skeletons pay double.' },
-  { id: 'heat-wave', name: 'Heat Wave', mult: 0.7, sites: [], desc: 'Too hot to dig — the ground bakes hard.' },
-  { id: 'tar-bubble', name: 'Tar Bubbles', mult: 1.5, sites: ['tar', 'cave'], desc: 'The tar seeps bubble — something big is surfacing.' },
+  { id: 'flood-exposure', name: 'Flood Exposure', mult: 1.2, sites: ['river', 'lakebed'], desc: 'A flood washed fresh bones out of the banks.' },
+  { id: 'rockfall', name: 'Rockfall', mult: 0.8, sites: [], desc: 'A rockfall closed half the beds.' },
+  { id: 'grant-season', name: 'Grant Season', mult: 1.3, sites: [], desc: 'Grants are flowing for good finds.' },
+  { id: 'expo', name: 'Museum Expo', mult: 1.2, sites: [], desc: 'The museum is buying for a new expo.' },
+  { id: 'heat-wave', name: 'Heat Wave', mult: 0.9, sites: [], desc: 'The heat makes digging miserable.' },
+  { id: 'tar-bubble', name: 'Tar Bubble', mult: 1.3, sites: ['tar'], desc: 'Bubbling tar brings up fresh bones.' },
 ];
 
 export const FOSSIL_CONTRACTS = [
-  { id: 'shells-10', name: 'Shell Order', find: 'shell', qty: 6, pay: 240, days: 2, rep: 0, desc: 'The tourist shop needs six ammonites.' },
-  { id: 'fish-6', name: 'Fish Slab', find: 'fish', qty: 4, pay: 320, days: 2, rep: 1, desc: 'The museum wants four fossil fish.' },
-  { id: 'tusk-2', name: 'Tusk Call', find: 'tusk', qty: 2, pay: 560, days: 3, rep: 2, desc: 'Two mammoth tusks for the hall.' },
-  { id: 'skull-1', name: 'The Skull', find: 'skull', qty: 1, pay: 700, days: 3, rep: 3, desc: 'One sabre-tooth skull, intact.' },
-  { id: 'femur-2', name: 'Giant Bones', find: 'femur', qty: 2, pay: 800, days: 3, rep: 3, desc: 'Two dinosaur femurs for the new wing.' },
-  { id: 'egg-1', name: 'The Egg', find: 'egg', qty: 1, pay: 1000, days: 3, rep: 3, desc: 'One dinosaur egg, unbroken.' },
+  { id: 'shells-10', name: 'Shells Ten', find: 'shell', qty: 6, pay: 240, days: 2, rep: 0, desc: 'Six shells for the school display.' },
+  { id: 'fish-6', name: 'Fish Six', find: 'fish', qty: 4, pay: 320, days: 2, rep: 1, desc: 'Four fish fossils for the university.' },
+  { id: 'tusk-2', name: 'Tusk Two', find: 'tusk', qty: 2, pay: 560, days: 3, rep: 2, desc: 'Two tusks for the museum.' },
+  { id: 'skull-1', name: 'One Skull', find: 'skull', qty: 1, pay: 700, days: 3, rep: 3, desc: 'A single great skull.' },
+  { id: 'femur-2', name: 'Femur Two', find: 'femur', qty: 2, pay: 800, days: 3, rep: 3, desc: 'Two femurs for the mammoth hall.' },
+  { id: 'egg-1', name: 'One Egg', find: 'egg', qty: 1, pay: 1000, days: 3, rep: 3, desc: 'A single fossil egg, whole and perfect.' },
 ];
 
 export const FOSSIL_HAZARDS = [
-  { id: 'break', name: 'Shattered Find', chance: 0.08, damage: 1, desc: 'The pick slips — a fossil shatters.' },
-  { id: 'collapse', name: 'Bank Collapse', chance: 0.04, damage: 2, desc: 'The river bank gives way under you.' },
-  { id: 'tar-burn', name: 'Tar Burn', chance: 0.05, damage: 1, desc: 'Hot tar sticks and burns.' },
-  { id: 'dust', name: 'Chalk Dust', chance: 0.1, damage: 0, desc: 'White dust in the lungs.' },
-  { id: 'snake', name: 'Cave Snake', chance: 0.03, damage: 1, desc: 'Something hisses in the dark.' },
+  { id: 'break', name: 'Break', chance: 0.1, damage: 2, desc: 'The fossil shatters in the rock.' },
+  { id: 'collapse', name: 'Collapse', chance: 0.08, damage: 4, desc: 'The trench wall comes down.' },
+  { id: 'tar-burn', name: 'Tar Burn', chance: 0.07, damage: 3, desc: 'Hot tar on bare skin.' },
+  { id: 'dust', name: 'Dust', chance: 0.12, damage: 1, desc: 'Choking dust in the trench.' },
+  { id: 'snake', name: 'Snake', chance: 0.05, damage: 2, desc: 'A snake curled in the shade.' },
+];
+
+export const FOSSIL_HELPERS = [
+  { id: 'prepper', name: 'Prepper', wage: 35, skill: 'clean', bonus: 0.25, desc: 'Cleans fossils without breaking them.' },
+  { id: 'scout', name: 'Scout', wage: 40, skill: 'find', bonus: 0.2, desc: 'Spots bone beds from a mile away.' },
+  { id: 'hauler', name: 'Hauler', wage: 45, skill: 'carry', bonus: 0.4, desc: 'Carries slabs you could never lift.' },
+  { id: 'professor', name: 'Professor', wage: 70, skill: 'grant', bonus: 0.3, desc: 'Writes grants that always get funded.' },
+];
+
+export const FOSSIL_CHALLENGES = [
+  { id: 'finds-10', name: 'Ten Finds', target: 'finds', goal: 10, xp: 80, desc: 'Dig up ten fossils.' },
+  { id: 'finds-50', name: 'Fifty Finds', target: 'finds', goal: 50, xp: 120, desc: 'Dig up fifty fossils.' },
+  { id: 'skeleton-1', name: 'One Skeleton', target: 'skeletons', goal: 1, xp: 140, desc: 'Assemble one whole skeleton.' },
+  { id: 'earn-1000', name: 'A Thousand Earned', target: 'earned', goal: 1000, xp: 120, desc: 'Earn a thousand from fossils.' },
+  { id: 'grants-500', name: 'Five Hundred in Grants', target: 'grants', goal: 500, xp: 150, desc: 'Collect five hundred in grants.' },
+  { id: 'contracts-5', name: 'Five Contracts', target: 'contractsDone', goal: 5, xp: 140, desc: 'Finish five fossil contracts.' },
+  { id: 'egg-1', name: 'One Egg', target: 'bestValue', goal: 300, xp: 200, desc: 'Find something worth at least 300.' },
+  { id: 'deep-3', name: 'Down to Three', target: 'deepest', goal: 3, xp: 150, desc: 'Reach depth three.' },
+];
+
+export const FOSSIL_ACHIEVEMENTS = [
+  { id: 'first-find', name: 'First Find', check: (s) => s.finds >= 1, desc: 'Your first fossil.' },
+  { id: 'first-skeleton', name: 'First Skeleton', check: (s) => s.skeletons >= 1 || s.skeletonsSold >= 1, desc: 'Your first assembled skeleton.' },
+  { id: 'first-egg', name: 'First Egg', check: (s) => s.bestFind === 'egg', desc: 'You found a fossil egg.' },
+  { id: 'rank-3', name: 'Paleontologist', check: (s) => s.rank >= 3, desc: 'Reach rank three.' },
+  { id: 'rich-digger', name: 'Rich Digger', check: (s) => s.earned >= 1000, desc: 'Earn a thousand from fossils.' },
+  { id: 'full-kit', name: 'Full Kit', check: (s) => s.upgrades.length >= 8, desc: 'Own every fossil upgrade.' },
+  { id: 'no-break', name: 'No Break', check: (s) => s.finds >= 10 && s.broken === 0, desc: 'Ten finds without breaking one.' },
+  { id: 'mammoth', name: 'Mammoth!', check: (s) => s.skeletons >= 1, desc: 'You assembled a skeleton.' },
+];
+
+export const FOSSIL_TIPS = [
+  { id: 'brush-first', name: 'Brush First', text: 'A soft brush saves fossils a chisel would shatter.' },
+  { id: 'permit-first', name: 'Permit First', text: 'Buy the dig permit before you touch a bone bed.' },
+  { id: 'skeleton', name: 'Build Skeletons', text: 'Whole skeletons are worth far more than loose bones.' },
+  { id: 'river', name: 'River After Rain', text: 'Rain washes fresh bones out of the river banks.' },
+  { id: 'lab', name: 'Use the Lab', text: 'A prep lab raises the value of every cleaned find.' },
+  { id: 'egg', name: 'Eggs in Ash', text: 'Fossil eggs hide in the volcano ash beds.' },
+  { id: 'black-market', name: 'Black Market', text: 'The black market pays most, but it brings heat.' },
+  { id: 'grant', name: 'Chase Grants', text: 'An archive room turns your collection into grants.' },
+];
+
+export const FOSSIL_LEADERBOARD = [
+  { name: 'Professor Ives', finds: 2400, desc: 'Dug up half the museum.' },
+  { name: 'Scout Ben', finds: 1600, desc: 'Finds beds nobody else can.' },
+  { name: 'Ria', finds: 0, desc: 'The new digger in town.' },
+  { name: 'Prepper Ana', finds: 1100, desc: 'Cleans what others break.' },
+  { name: 'Collector Vane', finds: 900, desc: 'Buys what he cannot dig.' },
+];
+
+export const FOSSIL_RECORDS = [
+  { id: 'most-finds', name: 'Most Finds', stat: 'finds', unit: 'finds', desc: 'Fossils dug up in total.' },
+  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$', desc: 'Coin earned from fossils.' },
+  { id: 'skeletons', name: 'Skeletons', stat: 'skeletons', unit: 'skeletons', desc: 'Skeletons assembled in total.' },
+  { id: 'best-find', name: 'Best Find', stat: 'bestValue', unit: '$', desc: 'Most valuable single find.' },
+  { id: 'grants', name: 'Grants', stat: 'grants', unit: '$', desc: 'Grants collected in total.' },
+];
+
+export const FOSSIL_QUICK_START = [
+  'Buy the dig permit before you touch any bone bed.',
+  'Start at the river bank; the gravel gives up easy finds.',
+  'Brush every fossil out gently or it shatters.',
+  'Save matching parts to assemble whole skeletons.',
+  'Sell common finds to the museum, rare ones to the collector.',
+  'Never sell a rare find to the tourist shop.',
+];
+
+export const FOSSIL_META = {
+  system: 'paleontology',
+  version: '7-B1',
+  author: 'builder-1',
+  sites: 10,
+  finds: 12,
+  note: 'Dig, clean, assemble, sell.',
+};
+
+export const FOSSIL_ERAS = [
+  { id: 'devonian', name: 'Devonian', yearsAgo: '419 to 359 million years', desc: 'The age of fishes, when reefs ruled the seas.' },
+  { id: 'jurassic', name: 'Jurassic', yearsAgo: '201 to 145 million years', desc: 'Giants walked the earth.' },
+  { id: 'cretaceous', name: 'Cretaceous', yearsAgo: '145 to 66 million years', desc: 'The last age of the great dinosaurs.' },
+  { id: 'miocene', name: 'Miocene', yearsAgo: '23 to 5 million years', desc: 'Warm seas and early mammals.' },
+  { id: 'pleistocene', name: 'Pleistocene', yearsAgo: '2.6 million to 11,700 years', desc: 'Ice ages and mammoths.' },
+];
+
+export const FOSSIL_TOOLS = [
+  { id: 'trowel', name: 'Trowel', cost: 20, desc: 'A small trowel for careful digging.' },
+  { id: 'pick', name: 'Geology Pick', cost: 60, desc: 'A pick for splitting rock.' },
+  { id: 'brush-set', name: 'Brush Set', cost: 40, desc: 'Soft brushes of every size.' },
+  { id: 'sieve-set', name: 'Sieve Set', cost: 50, desc: 'Sieves for the smallest teeth.' },
+  { id: 'plaster', name: 'Plaster Kit', cost: 70, desc: 'Plaster jackets for fragile bones.' },
+  { id: 'field-kit', name: 'Field Kit', cost: 90, desc: 'Everything a digger carries.' },
+  { id: 'lamp', name: 'Head Lamp', cost: 45, desc: 'Light for the dark cave digs.' },
+  { id: 'gps', name: 'GPS Unit', cost: 110, desc: 'Marks every bed you find.' },
+];
+
+export const FOSSIL_FIELD_NOTES = [
+  { id: 'layer', name: 'Read the Layer', text: 'The layer tells you the age before the bone does.' },
+  { id: 'label', name: 'Label Everything', text: 'A fossil without a label is just a rock.' },
+  { id: 'plaster', name: 'Plaster the Fragile', text: 'Jacket a fragile find before you lift it.' },
+  { id: 'sieve', name: 'Sieve the Dirt', text: 'The smallest teeth hide in the sieve.' },
+  { id: 'patience', name: 'Patience', text: 'A rushed dig breaks more than it finds.' },
+  { id: 'rain', name: 'After the Rain', text: 'Rain washes the beds clean and shows fresh bone.' },
 ];
 
 export function paleontologyRankFor(xp) {
   let rank = 0;
-  for (let i = 0; i < FOSSIL_RANKS.length; i++) {
-    if (xp >= FOSSIL_RANKS[i].xp) rank = i;
-  }
+  FOSSIL_RANKS.forEach((r, i) => {
+    if (xp >= r.xp) rank = i;
+  });
   return rank;
 }
 
 export function paleontologyPriceFor(find, rank, upgrades) {
-  let price = find.value;
-  price *= 1 + rank * 0.1;
-  if (upgrades.includes('lab')) price *= 1.25;
+  if (!find) return 1;
+  const owned = upgrades || [];
+  let price = find.value * (1 + 0.1 * rank);
+  if (owned.includes('lab')) price *= 1.25;
   return Math.max(1, Math.round(price));
 }
 
 export function paleontologyBuyerPrice(find, buyerId, rank, upgrades) {
   const buyer = FOSSIL_BUYERS.find((b) => b.id === buyerId);
-  if (!buyer) return 0;
-  let mult = buyer.mult;
-  if (find.rarity <= 0.06 && buyer.likes.includes('rare')) mult += 0.25;
-  if (find.rarity >= 0.18 && buyer.likes.includes('common')) mult += 0.1;
-  return Math.max(1, Math.round(paleontologyPriceFor(find, rank, upgrades) * mult));
+  if (!buyer || !find) return 0;
+  let price = paleontologyPriceFor(find, rank, upgrades) * buyer.mult;
+  if (buyer.likes.includes(find.id)) price *= 1.1;
+  if (buyer.dislikes.includes(find.id)) price *= 0.9;
+  if (find.rarity <= 0.05) price *= 1.15;
+  if (find.rarity >= 0.25) price *= 1.05;
+  return Math.max(1, Math.round(price));
 }
 
 export function paleontologyDigTier(upgrades) {
+  const owned = upgrades || [];
   let tier = 1;
-  if (upgrades.includes('chisel')) tier += 1;
-  if (upgrades.includes('scanner')) tier += 1;
+  if (owned.includes('chisel')) tier += 1;
+  if (owned.includes('scanner')) tier += 1;
   return tier;
 }
-
-export function createPaleontologySystem(ctx) {
-  const c = ctx || {};
-  const rng = typeof c.rng === 'function' ? c.rng : Math.random;
-  const getCash = typeof c.getCash === 'function' ? c.getCash : () => 0;
-  const addCash = typeof c.addCash === 'function' ? c.addCash : () => {};
-  const addHeat = typeof c.addHeat === 'function' ? c.addHeat : () => {};
-  const log = typeof c.log === 'function' ? c.log : () => {};
-  const getDay = typeof c.getDay === 'function' ? c.getDay : () => 1;
-  const getHour = typeof c.getHour === 'function' ? c.getHour : () => 12;
-  const getPos = typeof c.getPlayerPos === 'function' ? c.getPlayerPos : () => ({ x: 0, z: 0 });
-  const getWeather = typeof c.getWeather === 'function' ? c.getWeather : () => ({ condition: 'clear' });
-
-  const state = {
-    xp: 0,
-    rank: 0,
-    digs: 0,
-    finds: 0,
-    broken: 0,
-    skeletons: 0,
-    skeletonsSold: 0,
-    earned: 0,
-    spent: 0,
-    grants: 0,
-    fines: 0,
-    finesPaid: 0,
-    inventory: {},
-    upgrades: [],
-    site: null,
-    siteTimeLeft: 0,
-    digging: null,
-    digProgress: 0,
-    lastDay: 1,
-    activeContract: null,
-    contractProgress: 0,
-    contractsDone: 0,
-    contractsFailed: 0,
-    bestFind: null,
-    bestValue: 0,
-    dailyFinds: 0,
-    dailyEarned: 0,
-    currentEvent: null,
-    archiveValue: 0,
-    deepest: 1,
-  };
-  for (const f of FOSSIL_FINDS) state.inventory[f.id] = 0;
-
-  function refreshRank() {
-    const r = paleontologyRankFor(state.xp);
-    if (r > state.rank) {
-      state.rank = r;
-      log(`Paleontology rank up: ${FOSSIL_RANKS[r].name} — ${FOSSIL_RANKS[r].perk}`);
-    }
-  }
-
-  function gainXp(n) {
-    state.xp += n;
-    refreshRank();
-  }
-
-  function pickFind(site) {
-    const bag = [];
-    for (const f of FOSSIL_FINDS) {
-      if (f.site !== site.id) continue;
-      let w = f.rarity;
-      if (state.upgrades.includes('sieve')) w *= 1.3;
-      if (state.currentEvent) {
-        const ev = FOSSIL_EVENTS.find((e) => e.id === state.currentEvent);
-        if (ev && ev.sites.includes(site.id)) w *= ev.mult;
-      }
-      bag.push({ f, w });
-    }
-    if (bag.length === 0) return null;
-    let total = 0;
-    for (const b of bag) total += b.w;
-    let roll = rng() * total;
-    for (const b of bag) {
-      roll -= b.w;
-      if (roll <= 0) return b.f;
-    }
-    return bag[0].f;
-  }
-
-  function enterSite(siteId) {
-    const s = FOSSIL_SITES.find((x) => x.id === siteId);
-    if (!s) return { ok: false, reason: 'no-such-site' };
-    if (state.site) return { ok: false, reason: 'site-active' };
-    if (s.depth >= 3 && state.rank < 2) return { ok: false, reason: 'rank-too-low', need: 2 };
-    const hour = getHour();
-    if (hour >= 22 || hour < 5) return { ok: false, reason: 'too-late' };
-    state.site = siteId;
-    state.siteTimeLeft = 6 * 60;
-    state.deepest = Math.max(state.deepest, s.depth);
-    log(`At ${s.name} — ${s.desc} Brush slow, dig careful.`);
-    return { ok: true, site: siteId, era: s.era };
-  }
-
-  function startDig() {
-    if (!state.site) return { ok: false, reason: 'no-site' };
-    if (state.digging) return { ok: false, reason: 'already-digging' };
-    const site = FOSSIL_SITES.find((x) => x.id === state.site);
-    const find = pickFind(site);
-    if (!find) return { ok: false, reason: 'nothing-here' };
-    const tier = paleontologyDigTier(state.upgrades);
-    if (site.difficulty > tier + 1) {
-      log(`The rock at ${site.name} is too hard for your tools — upgrade first.`);
-      return { ok: false, reason: 'too-hard', site: site.id };
-    }
-    state.digging = find.id;
-    state.digProgress = 0;
-    log(`Sign in the rock — something is buried here. Dig carefully.`);
-    return { ok: true, find: find.id, name: find.name, difficulty: site.difficulty };
-  }
-
-  function dig() {
-    if (!state.digging) return { ok: false, reason: 'not-digging' };
-    const find = FOSSIL_FINDS.find((f) => f.id === state.digging);
-    const site = FOSSIL_SITES.find((x) => x.id === state.site);
-    const tier = paleontologyDigTier(state.upgrades);
-    state.digProgress += tier;
-    const need = site.difficulty * 3;
-    if (state.digProgress < need) {
-      if (rng() < 0.08) {
-        const h = FOSSIL_HAZARDS[Math.floor(rng() * FOSSIL_HAZARDS.length)];
-        if (h.id === 'break' && !state.upgrades.includes('brush')) {
-          state.broken += 1;
-          state.digging = null;
-          state.digProgress = 0;
-          log(`Hazard: ${h.name} — the fossil shatters. Gone.`);
-          return { ok: true, broken: true };
-        }
-        log(`Hazard: ${h.name} — ${h.desc}`);
-        if (h.damage >= 2) addHeat(1);
-      }
-      return { ok: true, progress: state.digProgress, need, done: false };
-    }
-    state.inventory[find.id] += 1;
-    state.finds += 1;
-    state.dailyFinds += 1;
-    state.digs += 1;
-    gainXp(10 + Math.round((1 - find.rarity) * 20));
-    if (find.value > state.bestValue) { state.bestValue = find.value; state.bestFind = find.id; }
-    state.digging = null;
-    state.digProgress = 0;
-    if (find.rarity <= 0.06) {
-      state.grants += 50;
-      addCash(50);
-      state.earned += 50;
-      log(`RARE FIND! ${find.name} — the university pays a $50 grant on the spot.`);
-    } else {
-      log(`Found a ${find.name} — ${find.desc}`);
-    }
-    if (state.activeContract) checkContract(find.id, 1);
-    return { ok: true, done: true, find: find.id, name: find.name, value: find.value };
-  }
-
-  function leaveSite() {
-    if (!state.site) return { ok: false, reason: 'no-site' };
-    const s = state.site;
-    state.site = null;
-    state.siteTimeLeft = 0;
-    state.digging = null;
-    state.digProgress = 0;
-    log(`Back from ${s} — clean the finds in the lab.`);
-    return { ok: true, site: s };
-  }
-
-  function cleanFind(findId, qty) {
-    const find = FOSSIL_FINDS.find((f) => f.id === findId);
-    if (!find) return { ok: false, reason: 'no-such-find' };
-    const have = state.inventory[findId] || 0;
-    if (qty <= 0 || have < qty) return { ok: false, reason: 'not-enough', have };
-    const bonus = state.upgrades.includes('lab') ? 1.25 : 1.1;
-    const value = Math.round(find.value * bonus);
-    gainXp(qty * 3);
-    log(`Cleaned ${qty}x ${find.name} — now worth $${value} each.`);
-    return { ok: true, qty, value };
-  }
-
-  function assembleSkeleton(skeletonId) {
-    const sk = FOSSIL_SKELETONS.find((x) => x.id === skeletonId);
-    if (!sk) return { ok: false, reason: 'no-such-skeleton' };
-    const needed = {};
-    for (const part of sk.parts) needed[part] = (needed[part] || 0) + 1;
-    for (const [part, qty] of Object.entries(needed)) {
-      if ((state.inventory[part] || 0) < qty) return { ok: false, reason: 'missing-part', part, have: state.inventory[part] || 0, need: qty };
-    }
-    for (const [part, qty] of Object.entries(needed)) state.inventory[part] -= qty;
-    state.skeletons += 1;
-    state.archiveValue += sk.value;
-    gainXp(100);
-    log(`Assembled the ${sk.name}! A complete skeleton — the museum will want this.`);
-    return { ok: true, skeleton: skeletonId, value: sk.value };
-  }
-
-  function sellSkeleton(skeletonId) {
-    const sk = FOSSIL_SKELETONS.find((x) => x.id === skeletonId);
-    if (!sk) return { ok: false, reason: 'no-such-skeleton' };
-    if (state.skeletons <= 0) return { ok: false, reason: 'no-skeleton' };
-    const value = sk.value + state.rank * 100;
-    state.skeletons -= 1;
-    state.skeletonsSold += 1;
-    state.earned += value;
-    state.dailyEarned += value;
-    addCash(value);
-    gainXp(80);
-    log(`Sold the ${sk.name} skeleton to the museum for $${value}.`);
-    return { ok: true, value, skeleton: skeletonId };
-  }
-
-  function sellFind(buyerId, findId, qty) {
-    const buyer = FOSSIL_BUYERS.find((b) => b.id === buyerId);
-    if (!buyer) return { ok: false, reason: 'no-such-buyer' };
-    if (state.rank < buyer.minRank) return { ok: false, reason: 'rank-too-low', need: buyer.minRank };
-    const find = FOSSIL_FINDS.find((f) => f.id === findId);
-    if (!find) return { ok: false, reason: 'no-such-find' };
-    const have = state.inventory[findId] || 0;
-    if (qty <= 0 || have < qty) return { ok: false, reason: 'not-enough', have };
-    const unit = paleontologyBuyerPrice(find, buyerId, state.rank, state.upgrades);
-    const total = unit * qty;
-    state.inventory[findId] -= qty;
-    state.earned += total;
-    state.dailyEarned += total;
-    addCash(total);
-    gainXp(qty * 2);
-    if (buyerId === 'blackmarket') {
-      addHeat(3);
-      log(`Sold ${qty}x ${find.name} on the black market for $${total} — heat +3.`);
-    } else {
-      log(`Sold ${qty}x ${find.name} to ${buyer.name} for $${total}.`);
-    }
-    return { ok: true, total, unit, qty };
-  }
-
-  function sellAll(buyerId) {
-    const buyer = FOSSIL_BUYERS.find((b) => b.id === buyerId);
-    if (!buyer) return { ok: false, reason: 'no-such-buyer' };
-    let total = 0;
-    let units = 0;
-    const lines = [];
-    for (const f of FOSSIL_FINDS) {
-      const q = state.inventory[f.id] || 0;
-      if (q <= 0) continue;
-      const unit = paleontologyBuyerPrice(f, buyerId, state.rank, state.upgrades);
-      const line = unit * q;
-      total += line; units += q;
-      lines.push({ id: f.id, qty: q, total: line });
-      state.inventory[f.id] = 0;
-    }
-    if (units === 0) return { ok: false, reason: 'nothing-to-sell' };
-    state.earned += total;
-    state.dailyEarned += total;
-    addCash(total);
-    gainXp(units);
-    if (buyerId === 'blackmarket') addHeat(3);
-    log(`Sold the whole collection to ${buyer.name} for $${total}.`);
-    return { ok: true, total, units, lines };
-  }
-
-  function buyUpgrade(id) {
-    const u = FOSSIL_UPGRADES.find((x) => x.id === id);
-    if (!u) return { ok: false, reason: 'no-such-upgrade' };
-    if (state.upgrades.includes(id)) return { ok: false, reason: 'already-owned' };
-    if (getCash() < u.cost) return { ok: false, reason: 'not-enough-cash', cost: u.cost };
-    addCash(-u.cost);
-    state.spent += u.cost;
-    state.upgrades.push(id);
-    gainXp(20);
-    log(`Bought ${u.name} for $${u.cost}.`);
-    return { ok: true, id };
-  }
-
-  function takeContract(id) {
-    const ct = FOSSIL_CONTRACTS.find((x) => x.id === id);
-    if (!ct) return { ok: false, reason: 'no-such-contract' };
-    if (state.activeContract) return { ok: false, reason: 'contract-active' };
-    if (state.rank < ct.rep) return { ok: false, reason: 'rep-too-low', need: ct.rep };
-    state.activeContract = { ...ct, dayTaken: getDay(), deadlineDay: getDay() + ct.days };
-    state.contractProgress = 0;
-    log(`Contract taken: ${ct.name} — ${ct.qty}x ${ct.find} by day ${state.activeContract.deadlineDay}.`);
-    return { ok: true, contract: state.activeContract };
-  }
-
-  function checkContract(findId, qty) {
-    const ct = state.activeContract;
-    if (!ct || ct.find !== findId) return;
-    state.contractProgress += qty;
-    if (state.contractProgress >= ct.qty) {
-      const bonus = ct.pay + state.rank * 50;
-      state.activeContract = null;
-      state.contractProgress = 0;
-      state.contractsDone += 1;
-      state.earned += bonus;
-      addCash(bonus);
-      gainXp(60);
-      log(`Contract complete: ${ct.name} paid $${bonus}.`);
-    }
-  }
-
-  function deliverContract() {
-    const ct = state.activeContract;
-    if (!ct) return { ok: false, reason: 'no-contract' };
-    if (state.contractProgress < ct.qty) return { ok: false, reason: 'not-enough', have: state.contractProgress, need: ct.qty };
-    const have = state.inventory[ct.find] || 0;
-    if (have < ct.qty) return { ok: false, reason: 'not-enough-finds', have, need: ct.qty };
-    state.inventory[ct.find] -= ct.qty;
-    const bonus = ct.pay + state.rank * 50;
-    state.activeContract = null;
-    state.contractProgress = 0;
-    state.contractsDone += 1;
-    state.earned += bonus;
-    addCash(bonus);
-    gainXp(60);
-    log(`Contract delivered: ${ct.name} paid $${bonus}.`);
-    return { ok: true, pay: bonus };
-  }
-
-  function abandonContract() {
-    if (!state.activeContract) return { ok: false, reason: 'no-contract' };
-    state.activeContract = null;
-    state.contractProgress = 0;
-    state.contractsFailed += 1;
-    log('Contract abandoned — the client will remember that.');
-    return { ok: true };
-  }
-
-  function payFine() {
-    if (state.fines <= 0) return { ok: false, reason: 'no-fines' };
-    const amount = state.fines;
-    if (getCash() < amount) return { ok: false, reason: 'not-enough-cash', amount };
-    addCash(-amount);
-    state.finesPaid += amount;
-    state.fines = 0;
-    log(`Dig fines settled: $${amount} paid.`);
-    return { ok: true, amount };
-  }
-
-  function collectGrant() {
-    if (!state.upgrades.includes('archive')) return { ok: false, reason: 'need-archive' };
-    const grant = Math.floor(state.archiveValue * 0.05);
-    if (grant <= 0) return { ok: false, reason: 'no-archive-value' };
-    state.grants += grant;
-    state.earned += grant;
-    addCash(grant);
-    log(`Archive grant: $${grant} for your collection.`);
-    return { ok: true, grant };
-  }
-
-  function priceBoard() {
-    return FOSSIL_FINDS.map((f) => ({
-      id: f.id, name: f.name,
-      price: paleontologyPriceFor(f, state.rank, state.upgrades),
-      stock: state.inventory[f.id], rarity: f.rarity, site: f.site,
-    }));
-  }
-
-  function siteReport() {
-    return FOSSIL_SITES.map((s) => ({
-      id: s.id, name: s.name, era: s.era, difficulty: s.difficulty, depth: s.depth,
-      finds: FOSSIL_FINDS.filter((f) => f.site === s.id).map((f) => f.id),
-    }));
-  }
-
-  function dailyEvent() {
-    const roll = rng();
-    if (roll < 0.2) {
-      const ev = FOSSIL_EVENTS[Math.floor(rng() * FOSSIL_EVENTS.length)];
-      state.currentEvent = ev.id;
-      log(`Dig news: ${ev.name} — ${ev.desc}`);
-      return { event: ev.id, name: ev.name };
-    }
-    if (roll < 0.3) {
-      const free = FOSSIL_FINDS[Math.floor(rng() * FOSSIL_FINDS.length)];
-      state.inventory[free.id] += 1;
-      state.finds += 1;
-      log(`A fellow digger gifts you a ${free.name}.`);
-      return { event: 'gift', find: free.id };
-    }
-    state.currentEvent = null;
-    return { event: 'none' };
-  }
-
-  function tick(dt) {
-    if (state.site) {
-      state.siteTimeLeft -= dt;
-      if (state.siteTimeLeft <= 0) {
-        const s = state.site;
-        state.site = null;
-        state.siteTimeLeft = 0;
-        state.digging = null;
-        state.digProgress = 0;
-        log(`The light fails at ${s} — pack up the tools.`);
-      }
-    }
-  }
-
-  function tickDay(day) {
-    if (day === state.lastDay) return;
-    state.lastDay = day;
-    state.dailyFinds = 0;
-    state.dailyEarned = 0;
-    if (state.activeContract && day >= state.activeContract.deadlineDay && state.contractProgress < state.activeContract.qty) {
-      log(`Contract ${state.activeContract.name} expired — the client walked away.`);
-      state.activeContract = null;
-      state.contractProgress = 0;
-      state.contractsFailed += 1;
-    }
-    if (!state.upgrades.includes('permit') && state.site && rng() < 0.2) {
-      state.fines += 150;
-      addHeat(2);
-      log('The warden fines you for digging without a permit — $150.');
-    }
-    dailyEvent();
-  }
-
-  function serialize() {
-    return JSON.parse(JSON.stringify({
-      xp: state.xp, rank: state.rank, digs: state.digs, finds: state.finds,
-      broken: state.broken, skeletons: state.skeletons,
-      skeletonsSold: state.skeletonsSold, earned: state.earned, spent: state.spent,
-      grants: state.grants, fines: state.fines, finesPaid: state.finesPaid,
-      inventory: state.inventory, upgrades: state.upgrades, site: state.site,
-      siteTimeLeft: state.siteTimeLeft, digging: state.digging,
-      digProgress: state.digProgress, lastDay: state.lastDay,
-      activeContract: state.activeContract, contractProgress: state.contractProgress,
-      contractsDone: state.contractsDone, contractsFailed: state.contractsFailed,
-      bestFind: state.bestFind, bestValue: state.bestValue,
-      dailyFinds: state.dailyFinds, dailyEarned: state.dailyEarned,
-      currentEvent: state.currentEvent, archiveValue: state.archiveValue,
-      deepest: state.deepest,
-    }));
-  }
-
-  function deserialize(d) {
-    if (!d || typeof d !== 'object') return;
-    for (const k of Object.keys(state)) {
-      if (d[k] !== undefined) state[k] = d[k];
-    }
-    for (const f of FOSSIL_FINDS) {
-      if (state.inventory[f.id] === undefined) state.inventory[f.id] = 0;
-    }
-    refreshRank();
-  }
-
-  function stats() {
-    return {
-      rank: FOSSIL_RANKS[state.rank].name,
-      xp: state.xp,
-      digs: state.digs,
-      finds: state.finds,
-      broken: state.broken,
-      skeletons: state.skeletons,
-      skeletonsSold: state.skeletonsSold,
-      earned: Math.round(state.earned),
-      spent: state.spent,
-      grants: state.grants,
-      fines: state.fines,
-      upgrades: state.upgrades.length,
-      site: state.site,
-      digging: state.digging,
-      activeContract: state.activeContract ? state.activeContract.id : null,
-      contractsDone: state.contractsDone,
-      contractsFailed: state.contractsFailed,
-      bestFind: state.bestFind,
-      bestValue: state.bestValue,
-      dailyFinds: state.dailyFinds,
-      dailyEarned: Math.round(state.dailyEarned),
-      archiveValue: state.archiveValue,
-      deepest: state.deepest,
-      event: state.currentEvent,
-    };
-  }
-
-  function hudLine() {
-    if (state.digging) {
-      const f = FOSSIL_FINDS.find((x) => x.id === state.digging);
-      return `Dig: uncovering ${f ? f.name : state.digging} — ${state.digProgress} done`;
-    }
-    if (state.site) return `Dig: ${state.site} — start a dig`;
-    if (state.skeletons > 0) return `Dig: ${state.skeletons} skeleton${state.skeletons > 1 ? 's' : ''} ready to sell`;
-    if (state.activeContract) return `Dig: ${state.activeContract.name} ${state.contractProgress}/${state.activeContract.qty}`;
-    const total = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-    if (total > 0) return `Dig: ${total} fossils to clean or sell`;
-    return '';
-  }
-
-  function interact() {
-    const pos = getPos();
-    const nearBeds = Math.hypot(pos.x - 520, pos.z - 480) < 40;
-    if (!nearBeds) return false;
-    if (!state.site) { enterSite('river'); return true; }
-    if (!state.digging) { startDig(); return true; }
-    dig();
-    return true;
-  }
-
-  return {
-    state, enterSite, startDig, dig, leaveSite, cleanFind,
-    assembleSkeleton, sellSkeleton, sellFind, sellAll, buyUpgrade,
-    takeContract, deliverContract, abandonContract, payFine,
-    collectGrant, priceBoard, siteReport, dailyEvent,
-    tick, tickDay, serialize, deserialize, stats, hudLine, interact,
-  };
-}
-
-export const FOSSIL_HELPERS = [
-  { id: 'prepper', name: 'Prepper Ana', wage: 35, skill: 'clean', bonus: 0.25, desc: 'Cleans fossils fast: +25% clean value.' },
-  { id: 'scout', name: 'Scout Ben', wage: 40, skill: 'find', bonus: 0.2, desc: 'Spots sign: +20% find rate.' },
-  { id: 'hauler', name: 'Hauler Gus', wage: 45, skill: 'carry', bonus: 0.4, desc: 'Moves big bones: +40% carry.' },
-  { id: 'professor', name: 'Professor Ives', wage: 70, skill: 'grant', bonus: 0.3, desc: 'Writes grants: +30% grant money.' },
-];
-
-export const FOSSIL_CHALLENGES = [
-  { id: 'finds-10', name: 'First Ten', target: 'finds', goal: 10, xp: 80, desc: 'Find 10 fossils.' },
-  { id: 'finds-50', name: 'Bone Collector', target: 'finds', goal: 50, xp: 120, desc: 'Find 50 fossils.' },
-  { id: 'skeleton-1', name: 'First Skeleton', target: 'skeletons', goal: 1, xp: 150, desc: 'Assemble your first skeleton.' },
-  { id: 'earn-1000', name: 'Dig Purse', target: 'earned', goal: 1000, xp: 120, desc: 'Earn $1,000 from fossils.' },
-  { id: 'grants-500', name: 'Grant Winner', target: 'grants', goal: 500, xp: 140, desc: 'Win $500 in grants.' },
-  { id: 'contracts-5', name: 'Reliable Digger', target: 'contractsDone', goal: 5, xp: 140, desc: 'Complete 5 fossil contracts.' },
-  { id: 'egg-1', name: 'The Egg', target: 'bestValue', goal: 300, xp: 200, desc: 'Find a fossil worth $300 or more.' },
-  { id: 'deep-3', name: 'Deep Digger', target: 'deepest', goal: 3, xp: 150, desc: 'Reach depth 3 sites.' },
-];
-
-export const FOSSIL_ACHIEVEMENTS = [
-  { id: 'first-find', name: 'First Find', check: (s) => s.finds >= 1, desc: 'Find your first fossil.' },
-  { id: 'first-skeleton', name: 'First Skeleton', check: (s) => s.skeletons >= 1 || s.skeletonsSold >= 1, desc: 'Assemble your first skeleton.' },
-  { id: 'first-egg', name: 'The Egg', check: (s) => s.bestFind === 'egg', desc: 'Find a dinosaur egg.' },
-  { id: 'rank-3', name: 'Paleontologist', check: (s) => s.rank >= 3, desc: 'Reach rank Paleontologist.' },
-  { id: 'rich-digger', name: 'Rich Digger', check: (s) => s.earned >= 3000, desc: 'Earn $3,000 from fossils.' },
-  { id: 'full-kit', name: 'Full Kit', check: (s) => s.upgrades.length >= 8, desc: 'Own every fossil upgrade.' },
-  { id: 'no-break', name: 'Gentle Hands', check: (s) => s.finds >= 30 && s.broken === 0, desc: 'Find 30 fossils without breaking one.' },
-  { id: 'mammoth', name: 'Mammoth Hunter', check: (s) => s.bestFind === 'tusk', desc: 'Find a mammoth tusk.' },
-];
-
-export function paleontologyHelperBonus(helpers, skill) {
-  let bonus = 0;
-  for (const h of FOSSIL_HELPERS) {
-    if (helpers.includes(h.id) && h.skill === skill) bonus += h.bonus;
-  }
-  return bonus;
-}
-
-export function paleontologyChallengeProgress(challenge, state) {
-  const v = state[challenge.target] || 0;
-  return { id: challenge.id, name: challenge.name, have: Math.floor(v), goal: challenge.goal, done: v >= challenge.goal };
-}
-
-export function createPaleontologyExtras(system) {
-  const helpers = [];
-  const claimed = [];
-  let wagesPaid = 0;
-
-  function hireHelper(id) {
-    const h = FOSSIL_HELPERS.find((x) => x.id === id);
-    if (!h) return { ok: false, reason: 'no-such-helper' };
-    if (helpers.includes(id)) return { ok: false, reason: 'already-hired' };
-    helpers.push(id);
-    return { ok: true, id, name: h.name, wage: h.wage };
-  }
-
-  function fireHelper(id) {
-    const i = helpers.indexOf(id);
-    if (i < 0) return { ok: false, reason: 'not-hired' };
-    helpers.splice(i, 1);
-    return { ok: true, id };
-  }
-
-  function payWages() {
-    let due = 0;
-    for (const id of helpers) {
-      const h = FOSSIL_HELPERS.find((x) => x.id === id);
-      due += h.wage;
-    }
-    wagesPaid += due;
-    return { due, helpers: [...helpers], totalPaid: wagesPaid };
-  }
-
-  function helperBonus(skill) {
-    return paleontologyHelperBonus(helpers, skill);
-  }
-
-  function challenges() {
-    return FOSSIL_CHALLENGES.map((ch) => paleontologyChallengeProgress(ch, system.state));
-  }
-
-  function claimChallenge(id) {
-    const ch = FOSSIL_CHALLENGES.find((x) => x.id === id);
-    if (!ch) return { ok: false, reason: 'no-such-challenge' };
-    if (claimed.includes(id)) return { ok: false, reason: 'already-claimed' };
-    const p = paleontologyChallengeProgress(ch, system.state);
-    if (!p.done) return { ok: false, reason: 'not-done', have: p.have, goal: p.goal };
-    claimed.push(id);
-    return { ok: true, id, xp: ch.xp };
-  }
-
-  function achievements() {
-    return FOSSIL_ACHIEVEMENTS.map((a) => ({
-      id: a.id, name: a.name, desc: a.desc, done: !!a.check(system.state),
-    }));
-  }
-
-  function identify(findId) {
-    const find = FOSSIL_FINDS.find((f) => f.id === findId);
-    if (!find) return { ok: false, reason: 'no-such-find' };
-    return { ok: true, find: findId, value: find.value, rarity: find.rarity, site: find.site, desc: find.desc };
-  }
-
-  function inventoryValue() {
-    let total = 0;
-    for (const f of FOSSIL_FINDS) {
-      total += (system.state.inventory[f.id] || 0) * f.value;
-    }
-    return { ok: true, value: Math.round(total) };
-  }
-
-  function skeletonOptions() {
-    return FOSSIL_SKELETONS.map((sk) => {
-      const needed = {};
-      for (const part of sk.parts) needed[part] = (needed[part] || 0) + 1;
-      const ready = Object.entries(needed).every(([part, qty]) => (system.state.inventory[part] || 0) >= qty);
-      return { id: sk.id, name: sk.name, value: sk.value, ready, needed };
-    });
-  }
-
-  return {
-    hireHelper, fireHelper, payWages, helperBonus, challenges,
-    claimChallenge, achievements, identify, inventoryValue, skeletonOptions,
-    get helpers() { return [...helpers]; },
-    get claimed() { return [...claimed]; },
-    get wagesPaid() { return wagesPaid; },
-  };
-}
-
-export const FOSSIL_TIPS = [
-  { id: 'brush-first', name: 'Brush First', text: 'Soft brushes save fossils that picks would shatter.' },
-  { id: 'permit-first', name: 'Permit First', text: 'One warden fine costs more than the permit.' },
-  { id: 'skeleton', name: 'Build Skeletons', text: 'A whole skeleton pays more than its parts.' },
-  { id: 'river', name: 'After the Flood', text: 'Floods strip the river bank bare — dig then.' },
-  { id: 'lab', name: 'Clean in the Lab', text: 'A prep lab adds 25% to every fossil’s value.' },
-  { id: 'egg', name: 'The Egg', text: 'The ash beds hide dinosaur eggs. Dig slow there.' },
-  { id: 'black-market', name: 'Black Market', text: 'The black market pays double — and the heat is real.' },
-  { id: 'grant', name: 'Grants', text: 'Rare finds win university grants on the spot.' },
-];
-
-export const FOSSIL_LEADERBOARD = [
-  { name: 'Professor Ives', finds: 2400, desc: 'A lifetime in the bone beds.' },
-  { name: 'Scout Ben', finds: 1600, desc: 'Spots sign nobody else sees.' },
-  { name: 'Ria', finds: 0, desc: 'You. Climbing.' },
-  { name: 'Prepper Ana', finds: 1100, desc: 'Cleans what others break.' },
-  { name: 'Collector Vane', finds: 900, desc: 'Buys what others find.' },
-];
-
-export function paleontologyTipFor(day) {
-  return FOSSIL_TIPS[day % FOSSIL_TIPS.length];
-}
-
-export function paleontologyLeaderboardWith(playerFinds) {
-  const board = FOSSIL_LEADERBOARD.map((e) => ({
-    name: e.name, finds: e.name === 'Ria' ? playerFinds : e.finds, desc: e.desc,
-  }));
-  board.sort((a, b) => b.finds - a.finds);
-  return board.map((e, i) => ({ rank: i + 1, ...e }));
-}
-
-export function paleontologyEfficiency(finds, digs) {
-  if (digs === 0) return 0;
-  return Math.round((finds / digs) * 100) / 100;
-}
-
-export function paleontologyProfitPerDay(earned, digs) {
-  if (digs === 0) return 0;
-  return Math.round((earned / digs) * 10) / 10;
-}
-
-export function paleontologyGrade(finds, broken, skeletons) {
-  if (finds === 0) return 'D';
-  const score = finds - broken * 10 + skeletons * 30;
-  if (score >= 200) return 'S';
-  if (score >= 120) return 'A';
-  if (score >= 60) return 'B';
-  if (score >= 25) return 'C';
-  return 'D';
-}
-
-export const FOSSIL_RECORDS = [
-  { id: 'most-finds', name: 'Most Finds', stat: 'finds', unit: 'finds', desc: 'Most fossils found.' },
-  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$', desc: 'Most money from fossils.' },
-  { id: 'skeletons', name: 'Most Skeletons', stat: 'skeletonsSold', unit: 'sold', desc: 'Most skeletons sold.' },
-  { id: 'best-find', name: 'Best Find', stat: 'bestValue', unit: '$', desc: 'Most valuable single find.' },
-  { id: 'grants', name: 'Most Grants', stat: 'grants', unit: '$', desc: 'Most grant money won.' },
-];
-
-export function paleontologyRecordFor(recordId, state) {
-  const r = FOSSIL_RECORDS.find((x) => x.id === recordId);
-  if (!r) return null;
-  return { id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit };
-}
-
-export function paleontologyAllRecords(state) {
-  return FOSSIL_RECORDS.map((r) => ({
-    id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit, desc: r.desc,
-  }));
-}
-
-export function paleontologySummary(state) {
-  return `Dig ${FOSSIL_RANKS[state.rank].name}: ${state.finds} finds, ${state.skeletons} skeletons, $${Math.round(state.earned)} earned, ${state.grants} grants.`;
-}
-
-export function paleontologyNextGoal(state) {
-  if (state.finds < 10) return 'Find 10 fossils.';
-  if (state.skeletons < 1) return 'Assemble your first skeleton.';
-  if (state.rank < 2) return 'Reach rank Fossil Hunter.';
-  return 'Find a dinosaur egg in the ash beds.';
-}
-
-export const FOSSIL_QUICK_START = [
-  'Buy the dig permit before your first dig.',
-  'Start at the River Cut — easy finds, easy money.',
-  'Clean fossils in the lab before selling them.',
-  'Save matching parts to assemble whole skeletons.',
-  'Take museum contracts for fossils you already find.',
-  'Never sell a rare find to the tourist shop.',
-];
-
-export function paleontologyQuickStart(step) {
-  return FOSSIL_QUICK_START[step] || null;
-}
-
-export const FOSSIL_META = {
-  system: 'paleontology', version: '7-B1', author: 'builder-1',
-  sites: FOSSIL_SITES.length, finds: FOSSIL_FINDS.length,
-  note: 'Bone Beds: dig, clean, assemble, sell.',
-};
-
-export const FOSSIL_ERAS = [
-  { id: 'devonian', name: 'Devonian', yearsAgo: '419–359M', desc: 'The age of fishes — reefs and early seas.' },
-  { id: 'jurassic', name: 'Jurassic', yearsAgo: '201–145M', desc: 'The age of giant dinosaurs.' },
-  { id: 'cretaceous', name: 'Cretaceous', yearsAgo: '145–66M', desc: 'The last dinosaurs, and the first flowers.' },
-  { id: 'miocene', name: 'Miocene', yearsAgo: '23–5M', desc: 'Grasslands spread; horses and apes appear.' },
-  { id: 'pleistocene', name: 'Pleistocene', yearsAgo: '2.6M–11k', desc: 'The ice age — mammoths and sabre-tooths.' },
-];
-
-export const FOSSIL_TOOLS = [
-  { id: 'trowel', name: 'Hand Trowel', cost: 20, desc: 'The digger’s best friend.' },
-  { id: 'pick', name: 'Geologist Pick', cost: 60, desc: 'Breaks rock without breaking fossils.' },
-  { id: 'brush-set', name: 'Brush Set', cost: 40, desc: 'Soft brushes for delicate cleaning.' },
-  { id: 'sieve-set', name: 'Sieve Set', cost: 50, desc: 'Wash sediment and find the small stuff.' },
-  { id: 'plaster', name: 'Plaster Jackets', cost: 70, desc: 'Wrap big bones in plaster for the trip home.' },
-  { id: 'field-kit', name: 'Field Kit', cost: 90, desc: 'Glue, labels, and bags for every find.' },
-  { id: 'lamp', name: 'Cave Lamp', cost: 45, desc: 'Light for the bone cave.' },
-  { id: 'gps', name: 'Site GPS', cost: 110, desc: 'Mark every find on the map.' },
-];
 
 export function fossilEraFor(eraId) {
   return FOSSIL_ERAS.find((e) => e.id === eraId) || null;
@@ -901,64 +242,801 @@ export function fossilEraOfSite(siteId) {
 export function fossilAgeDescription(findId) {
   const find = FOSSIL_FINDS.find((f) => f.id === findId);
   if (!find) return null;
+  const era = fossilEraOfSite(find.site);
+  if (era) {
+    return { find: find.id, name: find.name, site: find.site, era: era.name, yearsAgo: era.yearsAgo };
+  }
   const site = FOSSIL_SITES.find((s) => s.id === find.site);
-  const era = site ? fossilEraOfSite(site.id) : null;
-  return { find: findId, name: find.name, site: find.site, era: era ? era.name : site ? site.era : 'unknown', yearsAgo: era ? era.yearsAgo : 'unknown' };
+  return { find: find.id, name: find.name, site: find.site, era: site ? site.era : 'unknown', yearsAgo: 'unknown years' };
 }
-
-export function createPaleontologyJournal(system) {
-  const entries = [];
-  let pages = 0;
-
-  function addEntry(text) {
-    entries.push({ day: system.state.lastDay, site: system.state.site, text });
-    pages += 1;
-    return { ok: true, entries: entries.length };
-  }
-
-  function logFind(findId) {
-    const find = FOSSIL_FINDS.find((f) => f.id === findId);
-    if (!find) return { ok: false, reason: 'no-such-find' };
-    const age = fossilAgeDescription(findId);
-    return addEntry(`Found a ${find.name} — ${age.era}, ${age.yearsAgo} years ago.`);
-  }
-
-  function logSkeleton(skeletonId) {
-    const sk = FOSSIL_SKELETONS.find((x) => x.id === skeletonId);
-    if (!sk) return { ok: false, reason: 'no-such-skeleton' };
-    return addEntry(`Assembled the ${sk.name} — a complete skeleton!`);
-  }
-
-  function readEntries(limit) {
-    const n = limit || entries.length;
-    return entries.slice(-n);
-  }
-
-  function collectionSummary() {
-    const total = Object.values(system.state.inventory).reduce((a, b) => a + b, 0);
-    return {
-      finds: system.state.finds, skeletons: system.state.skeletons,
-      total, bestFind: system.state.bestFind,
-      archiveValue: system.state.archiveValue,
-    };
-  }
-
-  return {
-    addEntry, logFind, logSkeleton, readEntries, collectionSummary,
-    get entries() { return [...entries]; },
-    get pages() { return pages; },
-  };
-}
-
-export const FOSSIL_FIELD_NOTES = [
-  { id: 'layer', name: 'Read the Layers', text: 'Fossils sit in layers — deeper is older. Never dig through a layer blind.' },
-  { id: 'label', name: 'Label Everything', text: 'A fossil without a label is just a rock. Write it down.' },
-  { id: 'plaster', name: 'Jacket Big Bones', text: 'Wrap a big bone in plaster before you lift it, or it falls apart.' },
-  { id: 'sieve', name: 'Sieve the Dirt', text: 'The smallest fossils — teeth, claws, fish scales — hide in the sieve.' },
-  { id: 'patience', name: 'Patience', text: 'A good dig takes days. A rushed dig breaks everything.' },
-  { id: 'rain', name: 'After Rain', text: 'Rain washes the dust off and exposes new bone.' },
-];
 
 export function fossilFieldNoteFor(noteId) {
   return FOSSIL_FIELD_NOTES.find((n) => n.id === noteId) || null;
+}
+
+const FOSSIL_STATE_KEYS = [
+  'xp', 'rank', 'digs', 'finds', 'broken', 'skeletons', 'skeletonsSold', 'earned',
+  'spent', 'grants', 'fines', 'finesPaid', 'inventory', 'upgrades', 'site',
+  'siteTimeLeft', 'digging', 'digProgress', 'lastDay', 'activeContract',
+  'contractProgress', 'contractsDone', 'contractsFailed', 'bestFind', 'bestValue',
+  'dailyFinds', 'dailyEarned', 'currentEvent', 'archiveValue', 'deepest',
+];
+
+function fossilChallengeAmount(target, st) {
+  const table = {
+    finds: st.finds,
+    skeletons: st.skeletons,
+    earned: st.earned,
+    grants: st.grants,
+    contractsDone: st.contractsDone,
+    bestValue: st.bestValue,
+    deepest: st.deepest,
+  };
+  return table[target] !== undefined ? table[target] : 0;
+}
+
+export function paleontologyHelperBonus(ids, skill) {
+  let sum = 0;
+  for (const id of ids || []) {
+    const helper = FOSSIL_HELPERS.find((h) => h.id === id);
+    if (helper && helper.skill === skill) sum += helper.bonus;
+  }
+  return sum;
+}
+
+export function paleontologyChallengeProgress(challenge, state) {
+  const amount = Math.floor(fossilChallengeAmount(challenge.target, state));
+  return { id: challenge.id, name: challenge.name, amount, goal: challenge.goal, done: amount >= challenge.goal };
+}
+
+export function paleontologyTipFor(day) {
+  const idx = ((day || 0) % FOSSIL_TIPS.length + FOSSIL_TIPS.length) % FOSSIL_TIPS.length;
+  return FOSSIL_TIPS[idx];
+}
+
+export function paleontologyLeaderboardWith(finds) {
+  const rows = FOSSIL_LEADERBOARD.map((row) => ({
+    name: row.name,
+    finds: row.name === 'Ria' ? finds : row.finds,
+    desc: row.desc,
+  }));
+  rows.sort((a, b) => b.finds - a.finds);
+  return rows.map((row, i) => ({ rank: i + 1, name: row.name, finds: row.finds, desc: row.desc }));
+}
+
+export function paleontologyEfficiency(finds, digs) {
+  if (!digs) return 0;
+  return Math.round((finds / digs) * 100) / 100;
+}
+
+export function paleontologyProfitPerDay(earned, digs) {
+  if (!digs) return 0;
+  return Math.round((earned / digs) * 10) / 10;
+}
+
+export function paleontologyGrade(finds, broken, skeletons) {
+  if (!finds) return 'D';
+  const score = finds - broken * 10 + skeletons * 30;
+  if (score >= 80) return 'S';
+  if (score >= 45) return 'A';
+  if (score >= 25) return 'B';
+  if (score >= 10) return 'C';
+  return 'D';
+}
+
+function fossilRecordValue(stat, state) {
+  const table = {
+    finds: state.finds,
+    earned: Math.round(state.earned),
+    skeletons: state.skeletons,
+    bestValue: state.bestValue,
+    grants: state.grants,
+  };
+  return table[stat] !== undefined ? table[stat] : 0;
+}
+
+export function paleontologyRecordFor(id, state) {
+  const rec = FOSSIL_RECORDS.find((r) => r.id === id);
+  if (!rec) return null;
+  return { id: rec.id, name: rec.name, value: fossilRecordValue(rec.stat, state), unit: rec.unit };
+}
+
+export function paleontologyAllRecords(state) {
+  return FOSSIL_RECORDS.map((rec) => ({
+    id: rec.id,
+    name: rec.name,
+    value: fossilRecordValue(rec.stat, state),
+    unit: rec.unit,
+    desc: rec.desc,
+  }));
+}
+
+export function paleontologySummary(state) {
+  const rankName = FOSSIL_RANKS[state.rank] ? FOSSIL_RANKS[state.rank].name : 'Rock Hound';
+  return `${rankName} — ${state.finds} finds, ${state.skeletons} skeletons, $${Math.round(state.earned)} earned, $${state.grants} in grants.`;
+}
+
+export function paleontologyNextGoal(state) {
+  if (state.finds < 10) return 'Dig up ten fossils.';
+  if (state.skeletons < 1) return 'Assemble your first whole skeleton.';
+  if (state.rank < 2) return 'Reach rank 2 and become a Fossil Hunter.';
+  return 'Find a fossil egg in the volcano ash.';
+}
+
+export function paleontologyQuickStart(step) {
+  if (step < 0 || step >= FOSSIL_QUICK_START.length) return null;
+  return FOSSIL_QUICK_START[step];
+}
+
+export function createPaleontologySystem(ctx = {}) {
+  const rng = ctx.rng || Math.random;
+  const getDay = ctx.getDay || (() => 1);
+  const getHour = ctx.getHour || (() => 12);
+  const getCash = ctx.getCash || (() => 0);
+  const addCash = ctx.addCash || (() => {});
+  const addHeat = ctx.addHeat || (() => {});
+  const log = ctx.log || (() => {});
+  const getPlayerPos = ctx.getPlayerPos || (() => ({ x: 0, z: 0 }));
+  const getWeather = ctx.getWeather || (() => ({ condition: 'clear' }));
+
+  const seedInventory = () => {
+    const inventory = {};
+    for (const f of FOSSIL_FINDS) inventory[f.id] = 0;
+    return inventory;
+  };
+
+  const sys = {
+    xp: 0,
+    rank: 0,
+    digs: 0,
+    finds: 0,
+    broken: 0,
+    skeletons: 0,
+    skeletonsSold: 0,
+    earned: 0,
+    spent: 0,
+    grants: 0,
+    fines: 0,
+    finesPaid: 0,
+    inventory: seedInventory(),
+    upgrades: [],
+    site: null,
+    siteTimeLeft: 0,
+    digging: null,
+    digProgress: 0,
+    lastDay: 1,
+    activeContract: null,
+    contractProgress: 0,
+    contractsDone: 0,
+    contractsFailed: 0,
+    bestFind: null,
+    bestValue: 0,
+    dailyFinds: 0,
+    dailyEarned: 0,
+    currentEvent: null,
+    archiveValue: 0,
+    deepest: 1,
+  };
+
+  function awardXp(amount) {
+    sys.xp += amount;
+    const next = paleontologyRankFor(sys.xp);
+    if (next > sys.rank) {
+      sys.rank = next;
+      log(`Rank up! You are now ${FOSSIL_RANKS[next].name}.`);
+    }
+  }
+
+  function stop(reason) {
+    return { ok: false, reason };
+  }
+
+  function go(extra) {
+    return { ok: true, ...extra };
+  }
+
+  function activeEvent() {
+    return sys.currentEvent
+      ? FOSSIL_EVENTS.find((e) => e.id === sys.currentEvent) || null
+      : null;
+  }
+
+  function pickFind(siteId) {
+    const pool = FOSSIL_FINDS.filter((f) => f.site === siteId);
+    if (!pool.length) return null;
+    const ev = activeEvent();
+    let total = 0;
+    const weights = pool.map((f) => {
+      let w = f.rarity;
+      if (sys.upgrades.includes('sieve')) w *= 1.3;
+      if (ev && ev.sites.includes(siteId)) w *= ev.mult;
+      total += w;
+      return w;
+    });
+    let roll = rng() * total;
+    for (let i = 0; i < pool.length; i++) {
+      roll -= weights[i];
+      if (roll <= 0) return pool[i];
+    }
+    return pool[pool.length - 1];
+  }
+
+  function settleContract(findId) {
+    if (!sys.activeContract || sys.activeContract.find !== findId) return;
+    sys.contractProgress += 1;
+    if (sys.contractProgress < sys.activeContract.qty) return;
+    const pay = sys.activeContract.pay + 50 * sys.rank;
+    sys.earned += pay;
+    sys.dailyEarned += pay;
+    addCash(pay);
+    sys.contractsDone += 1;
+    log(`Contract done: ${sys.activeContract.name} paid $${pay}.`);
+    sys.activeContract = null;
+    sys.contractProgress = 0;
+    awardXp(60);
+  }
+
+  sys.enterSite = function enterSite(siteId) {
+    const site = FOSSIL_SITES.find((s) => s.id === siteId);
+    if (!site) return stop('unknown-site');
+    if (sys.site) return stop('already-digging');
+    if (site.depth === 3 && sys.rank < 2) return stop('rank-too-low');
+    const hour = getHour();
+    if (hour >= 22 || hour <= 4) return stop('night');
+    sys.site = siteId;
+    sys.siteTimeLeft = 6 * 60 * 60;
+    if (site.depth > sys.deepest) sys.deepest = site.depth;
+    log(`At the ${site.name}, ${site.era} beds.`);
+    return go({ site: siteId, era: site.era });
+  };
+
+  sys.startDig = function startDig() {
+    if (!sys.site) return stop('no-site');
+    if (sys.digging) return stop('already-digging');
+    const site = FOSSIL_SITES.find((s) => s.id === sys.site);
+    const find = pickFind(sys.site);
+    if (!find) return stop('no-finds');
+    const tier = paleontologyDigTier(sys.upgrades);
+    if (site.difficulty > tier + 1) return stop('too-hard');
+    sys.digging = find.id;
+    sys.digProgress = 0;
+    return go({ find: find.id, name: find.name, difficulty: site.difficulty });
+  };
+
+  sys.dig = function dig() {
+    if (!sys.digging) return stop('no-dig');
+    const find = FOSSIL_FINDS.find((f) => f.id === sys.digging);
+    const site = FOSSIL_SITES.find((s) => s.id === sys.site);
+    const tier = paleontologyDigTier(sys.upgrades);
+    sys.digProgress += tier;
+    const need = site.difficulty * 3;
+    if (sys.digProgress < need) {
+      if (rng() < 0.15) {
+        const hazard = FOSSIL_HAZARDS[Math.floor(rng() * FOSSIL_HAZARDS.length)];
+        if (hazard.id === 'break' && !sys.upgrades.includes('brush')) {
+          sys.broken += 1;
+          sys.digging = null;
+          sys.digProgress = 0;
+          log(`The ${find.name} shattered in the rock!`);
+          return go({ broken: true, find: find.id });
+        }
+        log(`Hazard while digging: ${hazard.name}.`);
+      }
+      return go({ done: false, progress: sys.digProgress, needed: need });
+    }
+    sys.digging = null;
+    sys.digProgress = 0;
+    sys.inventory[find.id] += 1;
+    sys.finds += 1;
+    sys.dailyFinds += 1;
+    sys.digs += 1;
+    awardXp(Math.round(10 + (1 - find.rarity) * 20));
+    if (find.value > sys.bestValue) {
+      sys.bestValue = find.value;
+      sys.bestFind = find.id;
+    }
+    if (find.rarity <= 0.05) {
+      sys.grants += 50;
+      sys.earned += 50;
+      sys.dailyEarned += 50;
+      addCash(50);
+      log(`A very rare find! A $50 grant arrives on the spot.`);
+    }
+    settleContract(find.id);
+    log(`Dug out a ${find.name} worth $${find.value}.`);
+    return go({ done: true, find: find.id, name: find.name, value: find.value });
+  };
+
+  sys.leaveSite = function leaveSite() {
+    if (!sys.site) return stop('no-site');
+    const done = sys.site;
+    sys.site = null;
+    sys.siteTimeLeft = 0;
+    sys.digging = null;
+    sys.digProgress = 0;
+    return go({ site: done });
+  };
+
+  sys.cleanFind = function cleanFind(findId, qty) {
+    const find = FOSSIL_FINDS.find((f) => f.id === findId);
+    if (!find) return stop('unknown-find');
+    if ((sys.inventory[findId] || 0) < qty) return stop('not-enough');
+    const mult = sys.upgrades.includes('lab') ? 1.25 : 1.1;
+    const value = Math.round(paleontologyPriceFor(find, sys.rank, sys.upgrades) * mult * qty);
+    awardXp(qty * 5);
+    log(`Cleaned ${qty} ${find.name}(s), valued at $${value}.`);
+    return go({ quantity: qty, value });
+  };
+
+  sys.assembleSkeleton = function assembleSkeleton(skeletonId) {
+    const skeleton = FOSSIL_SKELETONS.find((s) => s.id === skeletonId);
+    if (!skeleton) return stop('unknown-skeleton');
+    const needed = {};
+    for (const part of skeleton.parts) needed[part] = (needed[part] || 0) + 1;
+    for (const part of Object.keys(needed)) {
+      const held = sys.inventory[part] || 0;
+      if (held < needed[part]) {
+        return { ok: false, reason: 'missing-part', part, held, needed: needed[part] };
+      }
+    }
+    for (const part of Object.keys(needed)) sys.inventory[part] -= needed[part];
+    sys.skeletons += 1;
+    sys.archiveValue += skeleton.value;
+    awardXp(100);
+    log(`Assembled a ${skeleton.name} worth $${skeleton.value}.`);
+    return go({ skeleton: skeletonId, value: skeleton.value });
+  };
+
+  sys.sellSkeleton = function sellSkeleton(skeletonId) {
+    const skeleton = FOSSIL_SKELETONS.find((s) => s.id === skeletonId);
+    if (!skeleton) return stop('unknown-skeleton');
+    if (sys.skeletons <= 0) return stop('none-assembled');
+    sys.skeletons -= 1;
+    sys.skeletonsSold += 1;
+    const value = skeleton.value + 100 * sys.rank;
+    sys.earned += value;
+    sys.dailyEarned += value;
+    addCash(value);
+    awardXp(80);
+    return go({ value, skeleton: skeletonId });
+  };
+
+  sys.sellFind = function sellFind(buyerId, findId, qty) {
+    const buyer = FOSSIL_BUYERS.find((b) => b.id === buyerId);
+    if (!buyer) return stop('unknown-buyer');
+    if (sys.rank < buyer.minRank) return stop('rank-too-low');
+    const find = FOSSIL_FINDS.find((f) => f.id === findId);
+    if (!find) return stop('unknown-find');
+    if ((sys.inventory[findId] || 0) < qty) return stop('not-enough');
+    const unitPrice = paleontologyBuyerPrice(find, buyerId, sys.rank, sys.upgrades);
+    const total = unitPrice * qty;
+    sys.inventory[findId] -= qty;
+    sys.earned += total;
+    sys.dailyEarned += total;
+    addCash(total);
+    awardXp(qty * 2);
+    if (buyerId === 'blackmarket') {
+      addHeat(3);
+      log('Sold on the black market. That will draw attention.');
+    }
+    return go({ total, unitPrice, quantity: qty });
+  };
+
+  sys.sellAll = function sellAll(buyerId) {
+    const buyer = FOSSIL_BUYERS.find((b) => b.id === buyerId);
+    if (!buyer) return stop('unknown-buyer');
+    if (sys.rank < buyer.minRank) return stop('rank-too-low');
+    const lines = [];
+    let total = 0;
+    let count = 0;
+    for (const find of FOSSIL_FINDS) {
+      const qty = sys.inventory[find.id] || 0;
+      if (qty > 0) {
+        const unitPrice = paleontologyBuyerPrice(find, buyerId, sys.rank, sys.upgrades);
+        const lineTotal = unitPrice * qty;
+        lines.push({ id: find.id, quantity: qty, total: lineTotal });
+        total += lineTotal;
+        count += qty;
+        sys.inventory[find.id] = 0;
+      }
+    }
+    if (!lines.length) return stop('nothing-to-sell');
+    sys.earned += total;
+    sys.dailyEarned += total;
+    addCash(total);
+    awardXp(count);
+    if (buyerId === 'blackmarket') addHeat(3);
+    return go({ total, count, lines });
+  };
+
+  sys.buyUpgrade = function buyUpgrade(upgradeId) {
+    const upgrade = FOSSIL_UPGRADES.find((u) => u.id === upgradeId);
+    if (!upgrade) return stop('unknown-upgrade');
+    if (sys.upgrades.includes(upgradeId)) return stop('already-owned');
+    if (getCash() < upgrade.cost) return stop('not-enough-cash');
+    addCash(-upgrade.cost);
+    sys.spent += upgrade.cost;
+    sys.upgrades.push(upgradeId);
+    awardXp(20);
+    return go({ id: upgradeId });
+  };
+
+  sys.takeContract = function takeContract(contractId) {
+    const contract = FOSSIL_CONTRACTS.find((c) => c.id === contractId);
+    if (!contract) return stop('unknown-contract');
+    if (sys.activeContract) return stop('contract-active');
+    if (sys.rank < contract.rep) return stop('rank-too-low');
+    const day = getDay();
+    sys.activeContract = { ...contract, dayTaken: day, deadline: day + contract.days };
+    sys.contractProgress = 0;
+    return go({ contract: sys.activeContract });
+  };
+
+  sys.deliverContract = function deliverContract() {
+    if (!sys.activeContract) return stop('no-contract');
+    if (sys.contractProgress < sys.activeContract.qty) return stop('not-ready');
+    if ((sys.inventory[sys.activeContract.find] || 0) < sys.activeContract.qty) return stop('not-enough');
+    sys.inventory[sys.activeContract.find] -= sys.activeContract.qty;
+    const pay = sys.activeContract.pay + 50 * sys.rank;
+    sys.earned += pay;
+    sys.dailyEarned += pay;
+    addCash(pay);
+    sys.contractsDone += 1;
+    sys.activeContract = null;
+    sys.contractProgress = 0;
+    awardXp(60);
+    return go({ pay });
+  };
+
+  sys.abandonContract = function abandonContract() {
+    if (!sys.activeContract) return stop('no-contract');
+    sys.activeContract = null;
+    sys.contractProgress = 0;
+    sys.contractsFailed += 1;
+    return go({});
+  };
+
+  sys.payFine = function payFine() {
+    if (sys.fines <= 0) return stop('no-fines');
+    if (getCash() < sys.fines) return stop('not-enough-cash');
+    const amount = sys.fines;
+    addCash(-amount);
+    sys.spent += amount;
+    sys.finesPaid += amount;
+    sys.fines = 0;
+    return go({ amount });
+  };
+
+  sys.collectGrant = function collectGrant() {
+    if (!sys.upgrades.includes('archive')) return stop('no-archive');
+    const grant = Math.floor(sys.archiveValue * 0.05);
+    if (grant <= 0) return stop('no-grant');
+    sys.grants += grant;
+    sys.earned += grant;
+    sys.dailyEarned += grant;
+    addCash(grant);
+    return go({ grant });
+  };
+
+  sys.priceBoard = function priceBoard() {
+    return FOSSIL_FINDS.map((f) => ({
+      id: f.id,
+      name: f.name,
+      price: paleontologyPriceFor(f, sys.rank, sys.upgrades),
+      stock: sys.inventory[f.id] || 0,
+      rarity: f.rarity,
+      site: f.site,
+    }));
+  };
+
+  sys.siteReport = function siteReport() {
+    return FOSSIL_SITES.map((s) => ({
+      id: s.id,
+      name: s.name,
+      era: s.era,
+      difficulty: s.difficulty,
+      depth: s.depth,
+      finds: FOSSIL_FINDS.filter((f) => f.site === s.id).map((f) => f.id),
+    }));
+  };
+
+  sys.dailyEvent = function dailyEvent() {
+    const roll = rng();
+    if (roll < 0.2) {
+      const ev = FOSSIL_EVENTS[Math.floor(rng() * FOSSIL_EVENTS.length)];
+      sys.currentEvent = ev.id;
+      log(`Today's event: ${ev.name}.`);
+      return go({ event: ev.id, name: ev.name });
+    }
+    if (roll < 0.3) {
+      const find = FOSSIL_FINDS[Math.floor(rng() * FOSSIL_FINDS.length)];
+      sys.inventory[find.id] += 1;
+      sys.finds += 1;
+      sys.currentEvent = null;
+      return go({ event: 'gift', find: find.id, name: 'Gift' });
+    }
+    sys.currentEvent = null;
+    return go({ event: 'none', name: 'None' });
+  };
+
+  sys.tick = function tick(dt) {
+    const step = dt || 0;
+    if (sys.site) {
+      sys.siteTimeLeft -= step;
+      if (sys.siteTimeLeft <= 0) {
+        sys.site = null;
+        sys.siteTimeLeft = 0;
+        sys.digging = null;
+        sys.digProgress = 0;
+        log('The light fails at the bone beds; time to pack up.');
+      }
+    }
+  };
+
+  sys.tickDay = function tickDay(day) {
+    if (day === sys.lastDay) return;
+    sys.lastDay = day;
+    sys.dailyFinds = 0;
+    sys.dailyEarned = 0;
+    if (sys.activeContract && day > sys.activeContract.deadline && sys.contractProgress < sys.activeContract.qty) {
+      sys.contractsFailed += 1;
+      log(`Contract failed: ${sys.activeContract.name}.`);
+      sys.activeContract = null;
+      sys.contractProgress = 0;
+    }
+    if (!sys.upgrades.includes('permit') && sys.site && rng() < 0.2) {
+      sys.fines += 150;
+      addHeat(2);
+      log('The warden fined you $150 for digging without a permit.');
+    }
+    sys.dailyEvent();
+  };
+
+  sys.serialize = function serialize() {
+    const out = {};
+    for (const key of FOSSIL_STATE_KEYS) {
+      out[key] = JSON.parse(JSON.stringify(sys[key]));
+    }
+    return out;
+  };
+
+  sys.deserialize = function deserialize(saved) {
+    if (!saved || typeof saved !== 'object') return;
+    for (const key of FOSSIL_STATE_KEYS) {
+      if (key in saved) sys[key] = JSON.parse(JSON.stringify(saved[key]));
+    }
+    for (const f of FOSSIL_FINDS) {
+      if (sys.inventory[f.id] === undefined) sys.inventory[f.id] = 0;
+    }
+    const next = paleontologyRankFor(sys.xp);
+    if (next > sys.rank) sys.rank = next;
+  };
+
+  sys.stats = function stats() {
+    return {
+      rank: FOSSIL_RANKS[sys.rank].name,
+      xp: sys.xp,
+      digs: sys.digs,
+      finds: sys.finds,
+      broken: sys.broken,
+      skeletons: sys.skeletons,
+      skeletonsSold: sys.skeletonsSold,
+      earned: Math.round(sys.earned),
+      spent: sys.spent,
+      grants: sys.grants,
+      fines: sys.fines,
+      upgrades: sys.upgrades.length,
+      site: sys.site,
+      digging: sys.digging,
+      activeContract: sys.activeContract ? sys.activeContract.id : null,
+      contractsDone: sys.contractsDone,
+      contractsFailed: sys.contractsFailed,
+      bestFind: sys.bestFind,
+      bestValue: sys.bestValue,
+      dailyFinds: sys.dailyFinds,
+      dailyEarned: Math.round(sys.dailyEarned),
+      archiveValue: sys.archiveValue,
+      deepest: sys.deepest,
+      event: sys.currentEvent,
+    };
+  };
+
+  sys.hudLine = function hudLine() {
+    if (sys.digging) {
+      const find = FOSSIL_FINDS.find((f) => f.id === sys.digging);
+      return `Digging ${find.name} — ${sys.digProgress} done`;
+    }
+    if (sys.site) {
+      const site = FOSSIL_SITES.find((s) => s.id === sys.site);
+      return `At ${site.name} — start a dig`;
+    }
+    if (sys.skeletons > 0) {
+      return sys.skeletons === 1
+        ? '1 skeleton ready to sell'
+        : `${sys.skeletons} skeletons ready to sell`;
+    }
+    if (sys.activeContract) {
+      return `Contract ${sys.activeContract.name} ${sys.contractProgress}/${sys.activeContract.qty}`;
+    }
+    let total = 0;
+    for (const f of FOSSIL_FINDS) total += sys.inventory[f.id] || 0;
+    if (total > 0) return `${total} fossils to clean or sell`;
+    return '';
+  };
+
+  sys.interact = function interact() {
+    const pos = getPlayerPos();
+    const dx = (pos.x || 0) - 520;
+    const dz = (pos.z || 0) - 480;
+    if (Math.hypot(dx, dz) > 40) return false;
+    if (!sys.site) {
+      sys.enterSite('river');
+      return true;
+    }
+    if (!sys.digging) {
+      sys.startDig();
+      return true;
+    }
+    sys.dig();
+    return true;
+  };
+
+  return sys;
+}
+
+export function createPaleontologyExtras(system) {
+  const sys = system;
+  let hired = [];
+  let claimed = [];
+  let wagesPaid = 0;
+
+  function stop(reason) {
+    return { ok: false, reason };
+  }
+
+  function go(extra) {
+    return { ok: true, ...extra };
+  }
+
+  const extras = {
+    hireHelper(id) {
+      const helper = FOSSIL_HELPERS.find((h) => h.id === id);
+      if (!helper) return stop('unknown-helper');
+      if (hired.includes(id)) return stop('already-hired');
+      hired.push(id);
+      return go({ id, name: helper.name, wage: helper.wage });
+    },
+    fireHelper(id) {
+      if (!hired.includes(id)) return stop('not-hired');
+      hired = hired.filter((h) => h !== id);
+      return go({ id });
+    },
+    payWages() {
+      let due = 0;
+      for (const id of hired) {
+        const helper = FOSSIL_HELPERS.find((h) => h.id === id);
+        if (helper) due += helper.wage;
+      }
+      wagesPaid += due;
+      return go({ due, helpers: [...hired], wagesPaid });
+    },
+    helperBonus(skill) {
+      let sum = 0;
+      for (const id of hired) {
+        const helper = FOSSIL_HELPERS.find((h) => h.id === id);
+        if (helper && helper.skill === skill) sum += helper.bonus;
+      }
+      return sum;
+    },
+    challenges() {
+      return FOSSIL_CHALLENGES.map((c) => paleontologyChallengeProgress(c, sys));
+    },
+    claimChallenge(id) {
+      const challenge = FOSSIL_CHALLENGES.find((c) => c.id === id);
+      if (!challenge) return stop('unknown-challenge');
+      if (claimed.includes(id)) return stop('already-claimed');
+      const progress = paleontologyChallengeProgress(challenge, sys);
+      if (!progress.done) return stop('not-done');
+      claimed.push(id);
+      return go({ id, xp: challenge.xp });
+    },
+    achievements() {
+      return FOSSIL_ACHIEVEMENTS.map((a) => ({
+        id: a.id,
+        name: a.name,
+        desc: a.desc,
+        done: !!a.check(sys),
+      }));
+    },
+    identify(findId) {
+      const find = FOSSIL_FINDS.find((f) => f.id === findId);
+      if (!find) return stop('unknown-find');
+      return go({ find: find.id, value: find.value, rarity: find.rarity, site: find.site, desc: find.desc });
+    },
+    inventoryValue() {
+      let value = 0;
+      for (const f of FOSSIL_FINDS) {
+        value += (sys.inventory[f.id] || 0) * f.value;
+      }
+      return go({ value: Math.round(value) });
+    },
+    skeletonOptions() {
+      return FOSSIL_SKELETONS.map((s) => {
+        const needed = {};
+        for (const part of s.parts) needed[part] = (needed[part] || 0) + 1;
+        const ready = Object.keys(needed).every((part) => (sys.inventory[part] || 0) >= needed[part]);
+        return { id: s.id, name: s.name, value: s.value, ready, parts: needed };
+      });
+    },
+    get helpers() {
+      return [...hired];
+    },
+    get claimed() {
+      return [...claimed];
+    },
+    get wagesPaid() {
+      return wagesPaid;
+    },
+  };
+
+  return extras;
+}
+
+export function createPaleontologyJournal(system) {
+  const sys = system;
+  const entries = [];
+  let pages = 0;
+
+  function stop(reason) {
+    return { ok: false, reason };
+  }
+
+  function go(extra) {
+    return { ok: true, ...extra };
+  }
+
+  const journal = {
+    addEntry(text) {
+      entries.push({ day: sys.lastDay || 1, site: sys.site || null, text });
+      pages += 1;
+      return go({ count: entries.length });
+    },
+    logFind(findId) {
+      const find = FOSSIL_FINDS.find((f) => f.id === findId);
+      if (!find) return stop('unknown-find');
+      const age = fossilAgeDescription(findId);
+      const line = age
+        ? `Found a ${find.name} (${age.era}, ${age.yearsAgo}).`
+        : `Found a ${find.name}.`;
+      return journal.addEntry(line);
+    },
+    logSkeleton(skeletonId) {
+      const skeleton = FOSSIL_SKELETONS.find((s) => s.id === skeletonId);
+      if (!skeleton) return stop('unknown-skeleton');
+      return journal.addEntry(`Assembled a ${skeleton.name}.`);
+    },
+    readEntries(limit) {
+      const n = limit === undefined ? entries.length : limit;
+      return entries.slice(-n);
+    },
+    collectionSummary() {
+      let total = 0;
+      for (const f of FOSSIL_FINDS) total += sys.inventory[f.id] || 0;
+      return {
+        finds: sys.finds,
+        skeletons: sys.skeletons,
+        total,
+        bestFind: sys.bestFind,
+        archiveValue: sys.archiveValue,
+      };
+    },
+    get entries() {
+      return [...entries];
+    },
+    get pages() {
+      return pages;
+    },
+  };
+
+  return journal;
 }

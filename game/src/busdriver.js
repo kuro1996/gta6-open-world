@@ -1,61 +1,40 @@
-// Solara Transit — city bus driver: routes, timetables, passengers,
-// fares, tips and breakdowns. Round 7, all-new system. Clock in at the
-// depot, pick a route, and run it stop to stop: open the doors, take the
-// fare, keep the schedule, and keep the passengers happy. Late buses lose
-// tips; rude passengers cost rating; a clean record earns the night route
-// and the articulated bus. The city rides with you — literally.
 export const BUS_DEPOT = { id: 'depot', name: 'Solara Transit Depot', x: 110, z: 100, district: 'Industrial' };
 
 export const BUS_ROUTES = [
-  {
-    id: 'downtown-loop', name: 'Downtown Loop', fare: 3, basePay: 90, difficulty: 1,
-    stops: [
-      { id: 'central', name: 'Central Station', x: 0, z: 0 },
-      { id: 'mall', name: 'Solara Mall', x: 20, z: -140 },
-      { id: 'diner', name: "Ria's Diner", x: 40, z: 30 },
-      { id: 'hotel', name: 'Grand Solara Hotel', x: 160, z: 60 },
-      { id: 'depot', name: 'Transit Depot', x: 110, z: 100 },
-    ],
-  },
-  {
-    id: 'harbor-line', name: 'Harbor Line', fare: 4, basePay: 130, difficulty: 2,
-    stops: [
-      { id: 'central', name: 'Central Station', x: 0, z: 0 },
-      { id: 'warehouse', name: 'Harbor Warehouse 9', x: -180, z: 120 },
-      { id: 'marina', name: 'Marina Bay', x: 190, z: 140 },
-      { id: 'gas', name: 'FuelMax Station', x: 90, z: 150 },
-      { id: 'depot', name: 'Transit Depot', x: 110, z: 100 },
-    ],
-  },
-  {
-    id: 'northside-express', name: 'Northside Express', fare: 5, basePay: 170, difficulty: 3,
-    stops: [
-      { id: 'central', name: 'Central Station', x: 0, z: 0 },
-      { id: 'apartments', name: 'Palm Court Apartments', x: -100, z: -60 },
-      { id: 'school', name: 'Northside High', x: -130, z: -170 },
-      { id: 'stadium', name: 'Stadium', x: -200, z: -40 },
-      { id: 'depot', name: 'Transit Depot', x: 110, z: 100 },
-    ],
-  },
-  {
-    id: 'airport-shuttle', name: 'Airport Shuttle', fare: 6, basePay: 200, difficulty: 2,
-    stops: [
-      { id: 'central', name: 'Central Station', x: 0, z: 0 },
-      { id: 'airport', name: 'Solara Intl Airport', x: 220, z: -180 },
-      { id: 'hotel', name: 'Grand Solara Hotel', x: 160, z: 60 },
-      { id: 'depot', name: 'Transit Depot', x: 110, z: 100 },
-    ],
-  },
-  {
-    id: 'night-owl', name: 'Night Owl', fare: 7, basePay: 260, difficulty: 4, nightOnly: true,
-    stops: [
-      { id: 'central', name: 'Central Station', x: 0, z: 0 },
-      { id: 'nightclub', name: 'Neon Reef Club', x: 60, z: 120 },
-      { id: 'marina', name: 'Marina Bay', x: 190, z: 140 },
-      { id: 'stadium', name: 'Stadium', x: -200, z: -40 },
-      { id: 'depot', name: 'Transit Depot', x: 110, z: 100 },
-    ],
-  },
+  { id: 'downtown-loop', name: 'Downtown Loop', fare: 3, basePay: 90, difficulty: 1, stops: [
+    { id: 'central', name: 'Central Station', x: 0, z: 0 },
+    { id: 'mall', name: 'Solara Mall', x: 20, z: -140 },
+    { id: 'diner', name: "Ria's Diner", x: 40, z: 30 },
+    { id: 'hotel', name: 'Grand Solara Hotel', x: 160, z: 60 },
+    { id: 'depot', name: 'Solara Transit Depot', x: 110, z: 100 },
+  ] },
+  { id: 'harbor-line', name: 'Harbor Line', fare: 4, basePay: 130, difficulty: 2, stops: [
+    { id: 'central', name: 'Central Station', x: 0, z: 0 },
+    { id: 'warehouse', name: 'Harbor Warehouse 9', x: -180, z: 120 },
+    { id: 'marina', name: 'Marina Bay', x: 190, z: 140 },
+    { id: 'gas', name: 'FuelMax Station', x: 90, z: 150 },
+    { id: 'depot', name: 'Solara Transit Depot', x: 110, z: 100 },
+  ] },
+  { id: 'northside-express', name: 'Northside Express', fare: 5, basePay: 170, difficulty: 3, stops: [
+    { id: 'central', name: 'Central Station', x: 0, z: 0 },
+    { id: 'apartments', name: 'Palm Court Apartments', x: -100, z: -60 },
+    { id: 'school', name: 'Northside High', x: -130, z: -170 },
+    { id: 'stadium', name: 'Stadium', x: -200, z: -40 },
+    { id: 'depot', name: 'Solara Transit Depot', x: 110, z: 100 },
+  ] },
+  { id: 'airport-shuttle', name: 'Airport Shuttle', fare: 6, basePay: 200, difficulty: 2, stops: [
+    { id: 'central', name: 'Central Station', x: 0, z: 0 },
+    { id: 'airport', name: 'Solara Intl Airport', x: 220, z: -180 },
+    { id: 'hotel', name: 'Grand Solara Hotel', x: 160, z: 60 },
+    { id: 'depot', name: 'Solara Transit Depot', x: 110, z: 100 },
+  ] },
+  { id: 'night-owl', name: 'Night Owl', fare: 7, basePay: 260, difficulty: 4, nightOnly: true, stops: [
+    { id: 'central', name: 'Central Station', x: 0, z: 0 },
+    { id: 'nightclub', name: 'Neon Reef Row', x: 60, z: 120 },
+    { id: 'marina', name: 'Marina Bay', x: 190, z: 140 },
+    { id: 'stadium', name: 'Stadium', x: -200, z: -40 },
+    { id: 'depot', name: 'Solara Transit Depot', x: 110, z: 100 },
+  ] },
 ];
 
 export const BUS_MODELS = [
@@ -71,21 +50,21 @@ export const BUS_PASSENGER_TYPES = [
   { id: 'student', name: 'Student', patience: 90, tipChance: 0.05, tip: 1, fare: 0.5 },
   { id: 'tourist', name: 'Tourist', patience: 45, tipChance: 0.4, tip: 8, fare: 1.5 },
   { id: 'elderly', name: 'Elderly', patience: 120, tipChance: 0.2, tip: 3, fare: 0.5 },
-  { id: 'worker', name: 'Shift Worker', patience: 50, tipChance: 0.15, tip: 4, fare: 1.0 },
+  { id: 'worker', name: 'Worker', patience: 50, tipChance: 0.15, tip: 4, fare: 1.0 },
   { id: 'party', name: 'Party Goer', patience: 40, tipChance: 0.5, tip: 10, fare: 1.2 },
   { id: 'rude', name: 'Rude Passenger', patience: 25, tipChance: 0, tip: 0, fare: 1.0, rude: true },
-  { id: 'musician', name: 'Street Musician', patience: 70, tipChance: 0.3, tip: 5, fare: 0.8 },
+  { id: 'musician', name: 'Musician', patience: 70, tipChance: 0.3, tip: 5, fare: 0.8 },
 ];
 
 export const BUS_EVENTS = [
-  { id: 'traffic', name: 'Traffic Jam', text: 'Gridlock ahead — the schedule slips.' },
-  { id: 'breakdown', name: 'Breakdown', text: 'The engine coughs and dies. Passengers groan.' },
+  { id: 'traffic', name: 'Traffic Jam', text: 'Traffic brings the bus to a crawl.' },
+  { id: 'breakdown', name: 'Breakdown', text: 'Something under the hood gives up.' },
   { id: 'fare-dodger', name: 'Fare Dodger', text: 'Someone slips past without paying.' },
-  { id: 'lost-child', name: 'Lost Child', text: 'A lost kid boards, crying. You help them find mom.' },
-  { id: 'singer', name: 'Bus Singer', text: 'A passenger starts singing. The bus joins in.' },
-  { id: 'rain', name: 'Sudden Rain', text: 'Rain hammers the roof. Everyone stays aboard longer.' },
-  { id: 'inspector', name: 'Ticket Inspector', text: 'An inspector boards and checks every pass.' },
-  { id: 'proposal', name: 'Bus Proposal', text: 'A passenger proposes on your bus! The crowd cheers.' },
+  { id: 'lost-child', name: 'Lost Child', text: 'A lost child finds their stop.' },
+  { id: 'singer', name: 'Singer', text: 'A passenger sings a sweet song.' },
+  { id: 'rain', name: 'Rain', text: 'Rain rattles on the roof.' },
+  { id: 'inspector', name: 'Inspector', text: 'An inspector boards the bus.' },
+  { id: 'proposal', name: 'Proposal', text: 'Someone proposes on the bus.' },
 ];
 
 export const BUS_RANKS = [
@@ -97,34 +76,55 @@ export const BUS_RANKS = [
 ];
 
 export const BUS_UPGRADES = [
-  { id: 'ac', name: 'Air Conditioning', price: 500, desc: '+comfort, happier passengers' },
-  { id: 'wifi', name: 'Free WiFi', price: 700, desc: '+tips, +rating' },
-  { id: 'engine', name: 'Tuned Engine', price: 900, desc: '+15% speed, fewer breakdowns' },
-  { id: 'seats', name: 'Comfy Seats', price: 600, desc: '+comfort, +patience' },
-  { id: 'display', name: 'Next-Stop Display', price: 350, desc: 'passengers alight on time' },
-  { id: 'camera', name: 'Cabin Camera', price: 450, desc: 'fare dodgers caught automatically' },
-  { id: 'horn', name: 'Air Horn', price: 150, desc: 'traffic parts for you' },
-  { id: 'paint', name: 'Custom Paint', price: 800, desc: 'the city notices your bus' },
+  { id: 'ac', name: 'Air Conditioning', price: 500, desc: 'Comfort and happier passengers.' },
+  { id: 'wifi', name: 'WiFi', price: 700, desc: 'Tips and rating.' },
+  { id: 'engine', name: 'Tuned Engine', price: 900, desc: 'Plus 15 percent speed and fewer breakdowns.' },
+  { id: 'seats', name: 'Comfy Seats', price: 600, desc: 'Comfort and patience.' },
+  { id: 'display', name: 'Stop Display', price: 350, desc: 'Passengers alight on time.' },
+  { id: 'camera', name: 'Fare Camera', price: 450, desc: 'Fare dodgers caught automatically.' },
+  { id: 'horn', name: 'Loud Horn', price: 150, desc: 'Traffic parts.' },
+  { id: 'paint', name: 'Fresh Paint', price: 800, desc: 'The city notices the bus.' },
+];
+
+const CHARTERS = [
+  { id: 'school-trip', name: 'School Trip', pay: 300, needCapacity: 12 },
+  { id: 'wedding-bus', name: 'Wedding Bus', pay: 500, needCapacity: 20 },
+  { id: 'tour-group', name: 'Tour Group', pay: 400, needCapacity: 30 },
+  { id: 'team-bus', name: 'Team Bus', pay: 650, needCapacity: 40 },
 ];
 
 export function busRankFor(routesDone) {
-  let rank = 0;
-  for (let i = 0; i < BUS_RANKS.length; i++) {
-    if (routesDone >= BUS_RANKS[i].routesNeeded) rank = i;
-  }
-  return rank;
+  let out = 0;
+  for (const r of BUS_RANKS) if (routesDone >= r.routesNeeded) out = r.rank;
+  return out;
 }
 
-export function createBusDriverSystem(deps = {}) {
-  const rng = deps.rng || Math.random;
-  const getCash = deps.getCash || (() => 0);
-  const addCash = deps.addCash || (() => {});
-  const addHeat = deps.addHeat || (() => {});
-  const log = deps.log || (() => {});
-  const getDay = deps.getDay || (() => 1);
-  const getHour = deps.getHour || (() => 12);
-  const getPlayerPos = deps.getPlayerPos || (() => ({ x: 0, z: 0 }));
-  const getSpeed = deps.getSpeed || (() => 0);
+function routeById(id) {
+  for (const r of BUS_ROUTES) if (r.id === id) return r;
+  return null;
+}
+
+function modelById(id) {
+  for (const m of BUS_MODELS) if (m.id === id) return m;
+  return null;
+}
+
+function typeById(id) {
+  for (const t of BUS_PASSENGER_TYPES) if (t.id === id) return t;
+  return null;
+}
+
+export function createBusDriverSystem(deps) {
+  const d = deps || {};
+  const rnd = typeof d.rng === 'function' ? d.rng : Math.random;
+  const cashOf = typeof d.getCash === 'function' ? d.getCash : () => 0;
+  const moveCash = typeof d.addCash === 'function' ? d.addCash : () => {};
+  const pushHeat = typeof d.addHeat === 'function' ? d.addHeat : () => {};
+  const say = typeof d.log === 'function' ? d.log : () => {};
+  const dayOf = typeof d.getDay === 'function' ? d.getDay : () => 1;
+  const hourOf = typeof d.getHour === 'function' ? d.getHour : () => 12;
+  const posOf = typeof d.getPlayerPos === 'function' ? d.getPlayerPos : () => ({ x: 0, z: 0 });
+  const speedOf = typeof d.getSpeed === 'function' ? d.getSpeed : () => 0;
 
   const state = {
     rank: 0,
@@ -139,7 +139,7 @@ export function createBusDriverSystem(deps = {}) {
     bus: 'minibus',
     ownedBuses: ['minibus'],
     upgrades: [],
-    activeRoute: null, // { routeId, stopIndex, passengers: [], startedDay, schedule: [], lateBy, doorsOpen }
+    activeRoute: null,
     shift: null,
     shiftRoutes: 0,
     breakdowns: 0,
@@ -158,11 +158,26 @@ export function createBusDriverSystem(deps = {}) {
     lastRouteDay: 0,
     consecutiveOnTime: 0,
     bestStreak: 0,
+    chartersDone: 0,
+    schoolRuns: 0,
+    toursDone: 0,
+    washes: 0,
+    lostFound: 0,
+    karaokeNights: 0,
   };
 
-  function rankInfo() { return BUS_RANKS[state.rank]; }
-  function busInfo() { return BUS_MODELS.find((b) => b.id === state.bus) || BUS_MODELS[0]; }
-  function hasUpgrade(id) { return state.upgrades.includes(id); }
+  function rankInfo() {
+    return BUS_RANKS[state.rank] || BUS_RANKS[0];
+  }
+
+  function busInfo() {
+    return modelById(state.bus) || BUS_MODELS[0];
+  }
+
+  function hasUpgrade(id) {
+    return state.upgrades.includes(id);
+  }
+
   function comfort() {
     let c = busInfo().comfort;
     if (hasUpgrade('ac')) c += 1;
@@ -170,31 +185,35 @@ export function createBusDriverSystem(deps = {}) {
     if (hasUpgrade('wifi')) c += 1;
     return c;
   }
+
   function speedMult() {
-    let s = busInfo().speed;
-    if (hasUpgrade('engine')) s *= 1.15;
-    if (state.condition < 50) s *= 0.85;
-    return s;
+    let m = busInfo().speed;
+    if (hasUpgrade('engine')) m *= 1.15;
+    if (state.condition < 50) m *= 0.85;
+    return m;
   }
-  function capacity() { return busInfo().capacity; }
+
+  function capacity() {
+    return busInfo().capacity;
+  }
 
   function startRoute(routeId) {
     if (state.activeRoute) return { ok: false, reason: 'route-active' };
-    const route = BUS_ROUTES.find((r) => r.id === routeId);
-    if (!route) return { ok: false, reason: 'no-such-route' };
-    const hour = getHour();
+    const route = routeById(routeId);
+    if (!route) return { ok: false, reason: 'unknown-route' };
+    const hour = hourOf();
     const night = hour >= 22 || hour < 5;
-    if (route.nightOnly && !night) return { ok: false, reason: 'night-only' };
-    if (route.id === 'night-owl' && state.rank < 2) return { ok: false, reason: 'rank-too-low', need: 'Senior Driver' };
-    if (state.fuel < 20) return { ok: false, reason: 'low-fuel', need: 20 };
-    const schedule = route.stops.map((s, i) => ({ stopId: s.id, dueIn: 60 + i * 75, arrived: false }));
+    if (route.nightOnly && !night) return { ok: false, reason: 'not-night' };
+    if (routeId === 'night-owl' && state.rank < 2) return { ok: false, reason: 'rank-too-low' };
+    if (state.fuel < 20) return { ok: false, reason: 'low-fuel' };
+    const schedule = route.stops.map((s, i) => ({ stopId: s.id, due: 60 + i * 75, arrived: false }));
     state.activeRoute = {
       routeId: route.id,
       routeName: route.name,
       stopIndex: 0,
       passengers: [],
       schedule,
-      startedDay: getDay(),
+      startedDay: dayOf(),
       lateBy: 0,
       doorsOpen: false,
       boarded: 0,
@@ -203,435 +222,364 @@ export function createBusDriverSystem(deps = {}) {
       tips: 0,
       elapsed: 0,
     };
-    log(`Route started: ${route.name} — ${route.stops.length} stops. First stop: ${route.stops[0].name}.`);
-    return { ok: true, route: { ...state.activeRoute, passengers: [] } };
+    return { ok: true, route: { ...state.activeRoute, passengers: [] }, passengers: [] };
+  }
+
+  function currentStop() {
+    if (!state.activeRoute) return null;
+    const route = routeById(state.activeRoute.routeId);
+    return route ? route.stops[state.activeRoute.stopIndex] : null;
   }
 
   function openDoors() {
-    const run = state.activeRoute;
-    if (!run) return { ok: false, reason: 'no-route' };
-    const route = BUS_ROUTES.find((r) => r.id === run.routeId);
-    const stop = route.stops[run.stopIndex];
-    const p = getPlayerPos();
-    if (Math.hypot(stop.x - p.x, stop.z - p.z) > 25) {
-      return { ok: false, reason: 'not-at-stop', stop: stop.name };
+    if (!state.activeRoute) return { ok: false, reason: 'no-route' };
+    const stop = currentStop();
+    if (!stop) return { ok: false, reason: 'no-stop' };
+    const pos = posOf();
+    if (Math.hypot(pos.x - stop.x, pos.z - stop.z) > 25) return { ok: false, reason: 'too-far' };
+    const route = routeById(state.activeRoute.routeId);
+    const active = state.activeRoute;
+    active.doorsOpen = true;
+    let alighted = 0;
+    const remaining = [];
+    for (const p of active.passengers) {
+      if (p.destination === stop.id) alighted += 1;
+      else remaining.push(p);
     }
-    run.doorsOpen = true;
-    // Passengers alight.
-    const alighting = run.passengers.filter((ps) => ps.destination === stop.id);
-    for (const ps of alighting) {
-      run.passengers = run.passengers.filter((x) => x !== ps);
-      run.alighted += 1;
-      state.passengersCarried += 1;
-    }
-    // New passengers board, up to capacity.
-    const free = capacity() - run.passengers.length;
-    const waiting = 1 + Math.floor(rng() * 5) + (stop.id === 'central' ? 3 : 0);
-    const boarding = Math.min(free, waiting);
+    active.passengers = remaining;
+    active.alighted += alighted;
+    let boarded = 0;
     let collected = 0;
     let tips = 0;
-    for (let i = 0; i < boarding; i++) {
-      const type = BUS_PASSENGER_TYPES[Math.floor(rng() * BUS_PASSENGER_TYPES.length)];
-      const destIdx = Math.min(route.stops.length - 1, run.stopIndex + 1 + Math.floor(rng() * (route.stops.length - run.stopIndex - 1 || 1)));
-      const dest = route.stops[destIdx].id;
+    const freeSeats = capacity() - active.passengers.length;
+    let want = 1 + Math.floor(rnd() * 5);
+    if (stop.id === 'central') want += 3;
+    want = Math.min(want, Math.max(0, freeSeats));
+    for (let i = 0; i < want; i++) {
+      const type = BUS_PASSENGER_TYPES[Math.floor(rnd() * BUS_PASSENGER_TYPES.length)];
+      const destIdx = state.activeRoute.stopIndex + 1 + Math.floor(rnd() * Math.max(1, route.stops.length - state.activeRoute.stopIndex - 1));
+      const dest = route.stops[Math.min(destIdx, route.stops.length - 1)] || route.stops[route.stops.length - 1];
+      const dodges = rnd() < 0.12 && !hasUpgrade('camera');
       const fare = Math.round(route.fare * type.fare);
-      if (rng() < 0.12 && !hasUpgrade('camera')) {
-        state.fareDodgers += 1;
-        log('A fare dodger slips past without paying!');
-      } else {
-        collected += fare;
-        state.faresCollected += fare;
-        if (rng() < type.tipChance * (1 + comfort() * 0.1)) {
-          const tip = type.tip;
-          tips += tip;
-          state.tipsEarned += tip;
-        }
-      }
-      run.passengers.push({
-        type: type.id,
-        name: type.name,
-        destination: dest,
-        patience: type.patience * (hasUpgrade('seats') ? 1.25 : 1),
-        rude: !!type.rude,
-        boardedAt: run.stopIndex,
-      });
-      run.boarded += 1;
+      let tip = 0;
+      if (!dodges && rnd() < type.tipChance * (1 + comfort() * 0.1)) tip = type.tip;
+      const patience = type.patience * (hasUpgrade('seats') ? 1.25 : 1);
+      active.passengers.push({ typeId: type.id, destination: dest.id, fare, dodger: dodges, patience, rude: !!type.rude, tip });
+      boarded += 1;
+      if (!dodges) collected += fare;
+      tips += tip;
+      if (dodges) state.fareDodgers += 1;
     }
-    addCash(collected + tips);
-    run.collected += collected;
-    run.tips += tips;
-    state.totalEarned += collected + tips;
-    // Schedule check.
-    const sched = run.schedule[run.stopIndex];
-    const late = run.elapsed - sched.dueIn;
+    if (collected > 0) {
+      moveCash(collected);
+      state.totalEarned += collected;
+      state.faresCollected += collected;
+    }
+    if (tips > 0) {
+      moveCash(tips);
+      state.totalEarned += tips;
+      state.tipsEarned += tips;
+    }
+    active.boarded += boarded;
+    active.collected += collected;
+    active.tips += tips;
+    state.passengersCarried += boarded;
+    const due = active.schedule[active.stopIndex] ? active.schedule[active.stopIndex].due : 0;
+    const late = Math.max(0, Math.floor(active.elapsed - due));
     if (late > 0) {
-      run.lateBy += late;
-      state.totalLateMinutes += Math.round(late / 60);
+      active.lateBy += late;
+      state.totalLateMinutes += Math.ceil(late / 60);
       state.consecutiveOnTime = 0;
     } else {
       state.consecutiveOnTime += 1;
       if (state.consecutiveOnTime > state.bestStreak) state.bestStreak = state.consecutiveOnTime;
     }
-    sched.arrived = true;
-    log(`Doors open at ${stop.name}: ${alighting.length} off, ${boarding} on. Fares $${collected}, tips $${tips}.${late > 0 ? ` LATE by ${Math.round(late)}s.` : ' On time!'}`);
-    return { ok: true, stop: stop.id, alighted: alighting.length, boarded: boarding, collected, tips, late: Math.max(0, Math.round(late)) };
+    if (active.schedule[active.stopIndex]) active.schedule[active.stopIndex].arrived = true;
+    say('Doors open at ' + stop.name + ' — ' + boarded + ' boarded, ' + alighted + ' alighted.');
+    return { ok: true, stopId: stop.id, alighted, boarded, collected, tips, lateSeconds: late };
   }
 
   function closeDoors() {
-    const run = state.activeRoute;
-    if (!run) return { ok: false, reason: 'no-route' };
-    if (!run.doorsOpen) return { ok: false, reason: 'doors-closed' };
-    run.doorsOpen = false;
-    // Rude passengers complain if the bus is late or crowded.
-    const rude = run.passengers.filter((ps) => ps.rude);
-    if (rude.length > 0 && run.lateBy > 30) {
+    if (!state.activeRoute) return { ok: false, reason: 'no-route' };
+    const active = state.activeRoute;
+    if (!active.doorsOpen) return { ok: false, reason: 'doors-closed' };
+    active.doorsOpen = false;
+    const rudeAboard = active.passengers.some((p) => p.rude);
+    if (rudeAboard && active.lateBy > 30) {
       state.complaints += 1;
       state.rating = Math.max(1, state.rating - 0.05);
-      log('A rude passenger complains loudly about the delay. Rating dips.');
     }
-    // Advance to the next stop, or finish the route.
-    run.stopIndex += 1;
-    const route = BUS_ROUTES.find((r) => r.id === run.routeId);
-    if (run.stopIndex >= route.stops.length) {
-      return finishRoute();
-    }
-    const next = route.stops[run.stopIndex];
-    log(`Doors closed. Next stop: ${next.name}.`);
-    return { ok: true, nextStop: next.id, nextName: next.name };
+    const route = routeById(active.routeId);
+    active.stopIndex += 1;
+    if (active.stopIndex >= route.stops.length) return finishRoute();
+    const next = route.stops[active.stopIndex];
+    return { ok: true, nextStopId: next.id, nextStopName: next.name };
   }
 
   function finishRoute() {
-    const run = state.activeRoute;
-    if (!run) return { ok: false, reason: 'no-route' };
-    const route = BUS_ROUTES.find((r) => r.id === run.routeId);
+    if (!state.activeRoute) return { ok: false, reason: 'no-route' };
+    const active = state.activeRoute;
     state.activeRoute = null;
+    const route = routeById(active.routeId);
     state.routesDone += 1;
     state.shiftRoutes += 1;
-    const pay = Math.round(route.basePay * rankInfo().payMult);
-    const onTime = run.lateBy <= 30;
-    const perfect = onTime && state.complaints === 0 && run.boarded >= 5;
+    const base = Math.round(route.basePay * rankInfo().payMult);
+    const onTime = active.lateBy <= 30;
     const bonus = onTime ? 40 : 0;
+    const perfect = onTime && state.complaints === 0 && active.boarded >= 5;
     const perfectBonus = perfect ? 60 : 0;
-    const total = pay + bonus + perfectBonus;
-    addCash(total);
+    const total = base + bonus + perfectBonus;
+    moveCash(total);
     state.totalEarned += total;
-    if (onTime) {
-      state.perfectRoutes += perfect ? 1 : 0;
-      state.rating = Math.min(5, state.rating + 0.05);
-      state.compliments += 1;
-    } else {
-      state.rating = Math.max(1, state.rating - 0.08);
-    }
-    if (route.nightOnly) state.nightRoutes += 1;
-    state.routeHistory[route.id] = (state.routeHistory[route.id] || 0) + 1;
+    if (onTime) state.rating = Math.min(5, state.rating + 0.05);
+    else state.rating = Math.max(1, state.rating - 0.08);
+    if (perfect) state.perfectRoutes += 1;
+    if (active.routeId === 'night-owl') state.nightRoutes += 1;
+    state.routeHistory[active.routeId] = (state.routeHistory[active.routeId] || 0) + 1;
+    const oldRank = state.rank;
     const newRank = busRankFor(state.routesDone);
-    let promoted = false;
-    if (newRank > state.rank) {
-      state.rank = newRank;
-      promoted = true;
-      log(`PROMOTED to ${BUS_RANKS[newRank].name}! Pay x${BUS_RANKS[newRank].payMult}.`);
-    }
-    if (state.bestOnTime === null || run.elapsed < state.bestOnTime) {
-      state.bestOnTime = Math.round(run.elapsed);
-    }
-    state.lastRouteDay = getDay();
+    const promoted = newRank > oldRank;
+    if (promoted) state.rank = newRank;
+    if (state.bestOnTime === null || active.elapsed < state.bestOnTime) state.bestOnTime = Math.round(active.elapsed);
+    state.lastRouteDay = dayOf();
     state.fuel = Math.max(0, state.fuel - 15);
     state.condition = Math.max(0, state.condition - 3);
-    log(`Route complete: ${route.name}! Pay $${pay}${bonus ? ` + on-time $${bonus}` : ''}${perfectBonus ? ` + perfect $${perfectBonus}` : ''} = $${total}. Fares $${run.collected}, tips $${run.tips}.`);
-    return { ok: true, route: route.id, pay: total, base: pay, bonus, perfectBonus, onTime, perfect, promoted, boarded: run.boarded, alighted: run.alighted };
+    say('Route done: ' + route.name + ' — $' + total + '.');
+    return { ok: true, routeId: active.routeId, totalPay: total, basePay: base, bonus, perfectBonus, onTime, perfect, promoted, boarded: active.boarded, alighted: active.alighted };
   }
 
   function abandonRoute() {
     if (!state.activeRoute) return { ok: false, reason: 'no-route' };
-    const run = state.activeRoute;
+    const active = state.activeRoute;
+    const stranded = active.passengers.length;
     state.activeRoute = null;
     state.routesFailed += 1;
     state.rating = Math.max(1, state.rating - 0.15);
     state.complaints += 1;
     state.consecutiveOnTime = 0;
-    log(`Route abandoned mid-way — ${run.passengers.length} passengers left stranded. Rating drops.`);
-    return { ok: true, route: run.routeId, stranded: run.passengers.length };
+    return { ok: true, routeId: active.routeId, stranded };
   }
 
   function refuel() {
-    const p = getPlayerPos();
-    const d = Math.hypot(BUS_DEPOT.x - p.x, BUS_DEPOT.z - p.z);
-    if (d > 25) return { ok: false, reason: 'not-at-depot' };
-    const missing = 100 - state.fuel;
-    if (missing <= 0) return { ok: false, reason: 'tank-full' };
-    const cost = Math.ceil(missing * 0.8);
-    if (getCash() < cost) return { ok: false, reason: 'no-cash', need: cost };
-    addCash(-cost);
+    const pos = posOf();
+    if (Math.hypot(pos.x - BUS_DEPOT.x, pos.z - BUS_DEPOT.z) > 25) return { ok: false, reason: 'too-far' };
+    if (state.fuel >= 100) return { ok: false, reason: 'tank-full' };
+    const cost = Math.ceil((100 - state.fuel) * 0.8);
+    if (cashOf() < cost) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-cost);
     state.fuel = 100;
-    log(`Bus refueled at the depot for $${cost}.`);
     return { ok: true, cost };
   }
 
   function repairBus() {
-    const p = getPlayerPos();
-    const d = Math.hypot(BUS_DEPOT.x - p.x, BUS_DEPOT.z - p.z);
-    if (d > 25) return { ok: false, reason: 'not-at-depot' };
-    const missing = 100 - state.condition;
-    if (missing <= 0) return { ok: false, reason: 'bus-fine' };
-    const cost = Math.ceil(missing * 3);
-    if (getCash() < cost) return { ok: false, reason: 'no-cash', need: cost };
-    addCash(-cost);
+    const pos = posOf();
+    if (Math.hypot(pos.x - BUS_DEPOT.x, pos.z - BUS_DEPOT.z) > 25) return { ok: false, reason: 'too-far' };
+    if (state.condition >= 100) return { ok: false, reason: 'bus-fine' };
+    const cost = Math.ceil((100 - state.condition) * 3);
+    if (cashOf() < cost) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-cost);
     state.condition = 100;
-    log(`Bus repaired at the depot for $${cost}.`);
     return { ok: true, cost };
   }
 
   function buyBus(busId) {
-    const bus = BUS_MODELS.find((b) => b.id === busId);
-    if (!bus) return { ok: false, reason: 'no-such-bus' };
+    const model = modelById(busId);
+    if (!model) return { ok: false, reason: 'unknown-bus' };
+    if (cashOf() < model.price && !state.ownedBuses.includes(busId)) return { ok: false, reason: 'not-enough-cash' };
     if (state.ownedBuses.includes(busId)) {
       state.bus = busId;
-      log(`Switched to your ${bus.name}.`);
-      return { ok: true, bus: busId, switched: true };
+      return { ok: true, busId, switched: true };
     }
-    if (busId === 'articulated' && state.rank < 2) return { ok: false, reason: 'rank-too-low', need: 'Senior Driver' };
-    if (busId === 'electric' && state.rank < 3) return { ok: false, reason: 'rank-too-low', need: 'Route Master' };
-    if (busId === 'party' && state.rank < 3) return { ok: false, reason: 'rank-too-low', need: 'Route Master' };
-    if (getCash() < bus.price) return { ok: false, reason: 'no-cash', need: bus.price };
-    addCash(-bus.price);
+    if (busId === 'articulated' && state.rank < 2) return { ok: false, reason: 'rank-too-low' };
+    if ((busId === 'electric' || busId === 'party') && state.rank < 3) return { ok: false, reason: 'rank-too-low' };
+    moveCash(-model.price);
     state.ownedBuses.push(busId);
     state.bus = busId;
-    log(`Bought the ${bus.name} for $${bus.price}! Capacity ${bus.capacity}, comfort ${bus.comfort}.`);
-    return { ok: true, bus: busId, price: bus.price };
+    return { ok: true, busId, price: model.price };
   }
 
-  function buyUpgrade(upId) {
-    const up = BUS_UPGRADES.find((u) => u.id === upId);
-    if (!up) return { ok: false, reason: 'no-such-upgrade' };
-    if (hasUpgrade(upId)) return { ok: false, reason: 'already-owned' };
-    if (getCash() < up.price) return { ok: false, reason: 'no-cash', need: up.price };
-    addCash(-up.price);
-    state.upgrades.push(upId);
-    log(`Bus upgrade: ${up.name} for $${up.price}. ${up.desc}.`);
-    return { ok: true, upgrade: upId, price: up.price };
+  function buyUpgrade(upgradeId) {
+    const up = BUS_UPGRADES.find((u) => u.id === upgradeId);
+    if (!up) return { ok: false, reason: 'unknown-upgrade' };
+    if (hasUpgrade(upgradeId)) return { ok: false, reason: 'already-owned' };
+    if (cashOf() < up.price) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-up.price);
+    state.upgrades.push(upgradeId);
+    return { ok: true, upgradeId, price: up.price };
   }
 
   function catchDodger() {
-    const run = state.activeRoute;
-    if (!run) return { ok: false, reason: 'no-route' };
-    if (state.fareDodgers <= state.dodgersCaught) return { ok: false, reason: 'no-dodgers' };
+    if (!state.activeRoute) return { ok: false, reason: 'no-route' };
+    const dodger = state.activeRoute.passengers.find((p) => p.dodger);
+    if (!dodger) return { ok: false, reason: 'no-dodgers' };
+    dodger.dodger = false;
     state.dodgersCaught += 1;
-    const fine = 25;
-    addCash(fine);
-    state.totalEarned += fine;
-    log(`Caught a fare dodger! They pay the $${fine} fine on the spot.`);
-    return { ok: true, fine };
+    moveCash(25);
+    state.totalEarned += 25;
+    return { ok: true, fine: 25 };
   }
 
   function handlePassengerComplaint() {
-    const run = state.activeRoute;
-    if (!run) return { ok: false, reason: 'no-route' };
-    const rude = run.passengers.find((ps) => ps.rude);
-    if (!rude) return { ok: false, reason: 'no-rude-passenger' };
-    run.passengers = run.passengers.filter((ps) => ps !== rude);
+    if (!state.activeRoute) return { ok: false, reason: 'no-route' };
+    const idx = state.activeRoute.passengers.findIndex((p) => p.rude);
+    if (idx < 0) return { ok: false, reason: 'no-rude-passenger' };
+    state.activeRoute.passengers.splice(idx, 1);
     state.complaints += 1;
-    if (rng() < 0.5) {
-      addHeat(5);
-      log('You threw the rude passenger off the bus. They call the cops!');
+    if (rnd() < 0.5) {
+      pushHeat(5);
       return { ok: true, removed: true, heat: 5 };
     }
     state.rating = Math.min(5, state.rating + 0.03);
-    log('You calmly handle the rude passenger. The other riders applaud.');
     return { ok: true, removed: true, heat: 0 };
   }
 
   function startShift() {
     if (state.shift) return { ok: false, reason: 'shift-active' };
-    state.shift = { startedDay: getDay(), routes: 0 };
+    state.shift = { startedDay: dayOf(), routes: 0 };
     state.shiftRoutes = 0;
-    log('Bus shift started at the depot. Pick a route and run it.');
     return { ok: true, shift: { ...state.shift } };
   }
 
   function endShift() {
     if (!state.shift) return { ok: false, reason: 'no-shift' };
     const routes = state.shiftRoutes;
-    const bonus = routes * 20;
-    if (bonus > 0) {
-      addCash(bonus);
-      state.totalEarned += bonus;
-    }
+    const bonus = 20 * routes;
+    moveCash(bonus);
+    state.totalEarned += bonus;
     state.shift = null;
-    log(`Shift over: ${routes} routes run, shift bonus $${bonus}.`);
     return { ok: true, routes, bonus };
   }
 
+  function applyBusEvent(eventId) {
+    state.eventsSeen[eventId] = (state.eventsSeen[eventId] || 0) + 1;
+    const active = state.activeRoute;
+    if (eventId === 'traffic') {
+      if (active) { active.lateBy += 45; state.totalLateMinutes += 1; }
+    } else if (eventId === 'breakdown') {
+      if (active && (state.condition < 40 || rnd() < 0.3)) {
+        state.breakdowns += 1;
+        active.lateBy += 120;
+        state.totalLateMinutes += 2;
+        state.condition = Math.max(0, state.condition - 10);
+      }
+    } else if (eventId === 'fare-dodger') {
+      state.fareDodgers += 1;
+    } else if (eventId === 'lost-child') {
+      state.compliments += 1;
+      state.rating = Math.min(5, state.rating + 0.05);
+      moveCash(10);
+      state.totalEarned += 10;
+    } else if (eventId === 'singer') {
+      state.compliments += 1;
+      state.rating = Math.min(5, state.rating + 0.03);
+    } else if (eventId === 'rain') {
+      say('Rain rattles on the bus roof.');
+    } else if (eventId === 'inspector') {
+      if (active) {
+        let fined = 0;
+        for (const p of active.passengers) {
+          if (p.dodger && fined < 2) { p.dodger = false; fined += 1; state.dodgersCaught += 1; }
+        }
+        if (fined > 0) {
+          moveCash(fined * 25);
+          state.totalEarned += fined * 25;
+        }
+      }
+    } else if (eventId === 'proposal') {
+      state.compliments += 2;
+      state.rating = Math.min(5, state.rating + 0.1);
+      moveCash(50);
+      state.totalEarned += 50;
+    }
+    return eventId;
+  }
+
   function tick(dt) {
-    const run = state.activeRoute;
-    if (!run) return;
-    run.elapsed += dt;
-    // Fuel burns while driving; the bus wears down.
-    const moving = getSpeed() > 1;
-    if (moving) {
-      state.fuel = Math.max(0, state.fuel - dt * 0.05);
-      state.condition = Math.max(0, state.condition - dt * 0.01);
+    if (!state.activeRoute) return;
+    const step = dt || 0;
+    const active = state.activeRoute;
+    active.elapsed += step;
+    if (speedOf() > 1) {
+      state.fuel = Math.max(0, state.fuel - 0.05 * step);
+      state.condition = Math.max(0, state.condition - 0.01 * step);
     }
-    // Passengers lose patience; the impatient ones get off angry at the next stop.
-    for (const ps of run.passengers) {
-      ps.patience -= dt * (run.lateBy > 60 ? 2 : 1);
-      if (ps.patience <= 0) {
-        ps.angry = true;
+    for (const p of active.passengers) {
+      p.patience -= step * (active.lateBy > 60 ? 2 : 1);
+      if (p.patience <= 0 && active.doorsOpen) {
+        state.complaints += 1;
+        state.rating = Math.max(1, state.rating - 0.03);
+        p.patience = 9999;
       }
     }
-    // Angry passengers at the next door-opening leave a complaint.
-    if (run.doorsOpen) {
-      const angry = run.passengers.filter((ps) => ps.angry);
-      if (angry.length > 0) {
-        state.complaints += angry.length;
-        state.rating = Math.max(1, state.rating - 0.03 * angry.length);
-      }
+    if (rnd() < step * 0.004) {
+      const ev = BUS_EVENTS[Math.floor(rnd() * BUS_EVENTS.length)];
+      applyBusEvent(ev.id);
     }
-    // Random road events, rare.
-    if (rng() < dt * 0.004) {
-      const ev = BUS_EVENTS[Math.floor(rng() * BUS_EVENTS.length)];
-      state.eventsSeen[ev.id] = (state.eventsSeen[ev.id] || 0) + 1;
-      switch (ev.id) {
-        case 'traffic':
-          run.lateBy += 45;
-          state.totalLateMinutes += 1;
-          log('Traffic jam! The schedule slips by 45 seconds.');
-          break;
-        case 'breakdown': {
-          if (state.condition < 40 || rng() < 0.3) {
-            state.breakdowns += 1;
-            run.lateBy += 120;
-            state.totalLateMinutes += 2;
-            state.condition = Math.max(0, state.condition - 10);
-            log('BREAKDOWN! The engine dies. Passengers groan as you wait for the mechanic.');
-          }
-          break;
-        }
-        case 'fare-dodger':
-          state.fareDodgers += 1;
-          log('A fare dodger slips past without paying!');
-          break;
-        case 'lost-child':
-          state.compliments += 1;
-          state.rating = Math.min(5, state.rating + 0.05);
-          addCash(10);
-          state.totalEarned += 10;
-          log('You help a lost kid find their mom. She tips you $10. Rating up!');
-          break;
-        case 'singer':
-          state.compliments += 1;
-          state.rating = Math.min(5, state.rating + 0.03);
-          log('A passenger sings, the whole bus joins in. Morale up!');
-          break;
-        case 'rain':
-          log('Sudden rain — everyone stays aboard a little longer.');
-          break;
-        case 'inspector': {
-          const caught = Math.min(state.fareDodgers - state.dodgersCaught, 2);
-          if (caught > 0) {
-            state.dodgersCaught += caught;
-            const fines = caught * 25;
-            addCash(fines);
-            state.totalEarned += fines;
-            log(`Ticket inspector boards and fines ${caught} dodgers — $${fines} to you.`);
-          } else {
-            log('Ticket inspector boards. All passes in order.');
-          }
-          break;
-        }
-        case 'proposal':
-          state.compliments += 2;
-          state.rating = Math.min(5, state.rating + 0.1);
-          addCash(50);
-          state.totalEarned += 50;
-          log('A passenger proposes on your bus! The couple tips you $50. Rating up!');
-          break;
-        default:
-          log(`Bus: ${ev.text}`);
-          break;
-      }
-    }
-    // Out of fuel mid-route: the route fails.
-    if (state.fuel <= 0) {
-      log('Out of fuel mid-route! The bus rolls to a stop.');
-      abandonRoute();
-    }
+    if (state.fuel <= 0) abandonRoute();
   }
 
   function tickDay(day) {
-    // New day: fuel and condition partially restored by the depot crew.
+    const today = day !== undefined && day !== null ? day : dayOf();
     state.fuel = Math.min(100, state.fuel + 40);
     state.condition = Math.min(100, state.condition + 15);
-    if (state.shift && state.shift.startedDay !== day) endShift();
-    // Monday maintenance: the depot services every bus for free.
-    if (day % 7 === 1) {
-      state.condition = 100;
-      log('Monday depot maintenance — your bus is serviced for free.');
-    }
-    return { day, fuel: Math.round(state.fuel), condition: Math.round(state.condition), rating: Number(state.rating.toFixed(1)) };
+    if (state.shift && state.shift.startedDay !== today) state.shift = null;
+    if (today % 7 === 1) state.condition = 100;
+    return { day: today, fuel: Math.round(state.fuel), condition: Math.round(state.condition), rating: Math.round(state.rating * 10) / 10 };
   }
 
   function interact() {
-    const p = getPlayerPos();
-    // At the depot: refuel, repair, or clock in.
-    const depotD = Math.hypot(BUS_DEPOT.x - p.x, BUS_DEPOT.z - p.z);
-    if (depotD < 25) {
-      if (state.fuel < 50) return refuel().ok;
-      if (state.condition < 60) return repairBus().ok;
-      if (!state.shift) return startShift().ok;
-      if (!state.activeRoute) {
-        const res = startRoute('downtown-loop');
-        return res.ok || res.reason === 'low-fuel';
-      }
+    const pos = posOf();
+    if (Math.hypot(pos.x - BUS_DEPOT.x, pos.z - BUS_DEPOT.z) <= 25) {
+      if (state.fuel < 50) { refuel(); return true; }
+      if (state.condition < 60) { repairBus(); return true; }
+      if (!state.shift) { startShift(); return true; }
+      if (!state.activeRoute) { startRoute('downtown-loop'); return true; }
       return true;
     }
-    // On a route: open/close doors at the current stop.
-    const run = state.activeRoute;
-    if (run) {
-      const route = BUS_ROUTES.find((r) => r.id === run.routeId);
-      const stop = route.stops[Math.min(run.stopIndex, route.stops.length - 1)];
-      const d = Math.hypot(stop.x - p.x, stop.z - p.z);
-      if (d < 25) {
-        if (!run.doorsOpen) return openDoors().ok;
-        return closeDoors().ok;
+    if (state.activeRoute) {
+      const stop = currentStop();
+      if (stop && Math.hypot(pos.x - stop.x, pos.z - stop.z) <= 25) {
+        if (state.activeRoute.doorsOpen) closeDoors();
+        else openDoors();
+        return true;
       }
     }
     return false;
   }
 
   function hudLine() {
-    const run = state.activeRoute;
-    if (run) {
-      const route = BUS_ROUTES.find((r) => r.id === run.routeId);
-      const stop = route.stops[Math.min(run.stopIndex, route.stops.length - 1)];
-      return `BUS ${run.routeName} → ${stop.name} · ${run.passengers.length}/${capacity()} pax · late ${Math.round(run.lateBy)}s · ★${state.rating.toFixed(1)}`;
+    if (state.activeRoute) {
+      const route = routeById(state.activeRoute.routeId);
+      const next = route.stops[state.activeRoute.stopIndex];
+      return 'BUS ' + state.activeRoute.routeName + ' → ' + (next ? next.name : 'depot') + ' · ' + state.activeRoute.passengers.length + '/' + capacity() + ' · late ' + state.activeRoute.lateBy + 's · ' + Math.round(state.rating * 10) / 10 + '★';
     }
-    const p = getPlayerPos();
-    if (Math.hypot(BUS_DEPOT.x - p.x, BUS_DEPOT.z - p.z) < 25) {
-      return `DEPOT · ${BUS_RANKS[state.rank].name} · fuel ${Math.round(state.fuel)}% · ${state.bus}`;
+    const pos = posOf();
+    if (Math.hypot(pos.x - BUS_DEPOT.x, pos.z - BUS_DEPOT.z) <= 25) {
+      return 'DEPOT · ' + rankInfo().name + ' · fuel ' + Math.round(state.fuel) + '% · ' + state.bus;
     }
-    if (state.fuel < 20) return 'BUS fuel low — visit the depot!';
+    if (state.fuel < 20) return 'Low fuel — refuel at the depot.';
     return '';
   }
 
   function stats() {
     return {
-      rank: BUS_RANKS[state.rank].name,
-      rankIndex: state.rank,
+      rankName: rankInfo().name,
+      rank: state.rank,
       routesDone: state.routesDone,
       routesFailed: state.routesFailed,
       totalEarned: state.totalEarned,
       tipsEarned: state.tipsEarned,
       passengersCarried: state.passengersCarried,
       faresCollected: state.faresCollected,
-      rating: Number(state.rating.toFixed(1)),
+      rating: Math.round(state.rating * 10) / 10,
       ratingCount: state.ratingCount,
-      bus: state.bus,
+      busId: state.bus,
       ownedBuses: [...state.ownedBuses],
       upgrades: [...state.upgrades],
       comfort: comfort(),
       capacity: capacity(),
-      activeRoute: state.activeRoute ? state.activeRoute.routeId : null,
-      activeStop: state.activeRoute ? state.activeRoute.stopIndex : null,
+      activeRouteId: state.activeRoute ? state.activeRoute.routeId : null,
+      activeStopIndex: state.activeRoute ? state.activeRoute.stopIndex : null,
       passengersOnboard: state.activeRoute ? state.activeRoute.passengers.length : 0,
       onShift: !!state.shift,
       shiftRoutes: state.shiftRoutes,
@@ -650,12 +598,12 @@ export function createBusDriverSystem(deps = {}) {
       bestStreak: state.bestStreak,
       routeHistory: { ...state.routeHistory },
       eventsSeen: Object.keys(state.eventsSeen).length,
-      chartersDone: state.chartersDone || 0,
-      schoolRuns: state.schoolRuns || 0,
-      toursDone: state.toursDone || 0,
-      washes: state.washes || 0,
-      lostFound: state.lostFound || 0,
-      karaokeNights: state.karaokeNights || 0,
+      chartersDone: state.chartersDone,
+      schoolRuns: state.schoolRuns,
+      toursDone: state.toursDone,
+      washes: state.washes,
+      lostFound: state.lostFound,
+      karaokeNights: state.karaokeNights,
     };
   }
 
@@ -689,140 +637,125 @@ export function createBusDriverSystem(deps = {}) {
       bestStreak: state.bestStreak,
       routeHistory: { ...state.routeHistory },
       eventsSeen: { ...state.eventsSeen },
-      chartersDone: state.chartersDone || 0,
-      schoolRuns: state.schoolRuns || 0,
-      toursDone: state.toursDone || 0,
-      washes: state.washes || 0,
-      lostFound: state.lostFound || 0,
-      karaokeNights: state.karaokeNights || 0,
+      chartersDone: state.chartersDone,
+      schoolRuns: state.schoolRuns,
+      toursDone: state.toursDone,
+      washes: state.washes,
+      lostFound: state.lostFound,
+      karaokeNights: state.karaokeNights,
     };
   }
 
-  function deserialize(d) {
-    if (!d) return;
-    state.rank = d.rank ?? 0;
-    state.routesDone = d.routesDone ?? 0;
-    state.routesFailed = d.routesFailed ?? 0;
-    state.totalEarned = d.totalEarned ?? 0;
-    state.tipsEarned = d.tipsEarned ?? 0;
-    state.passengersCarried = d.passengersCarried ?? 0;
-    state.faresCollected = d.faresCollected ?? 0;
-    state.rating = d.rating ?? 4.0;
-    state.ratingCount = d.ratingCount ?? 20;
-    state.bus = d.bus || 'minibus';
-    state.ownedBuses = [...(d.ownedBuses || ['minibus'])];
-    state.upgrades = [...(d.upgrades || [])];
-    state.shiftRoutes = d.shiftRoutes ?? 0;
-    state.breakdowns = d.breakdowns ?? 0;
-    state.fareDodgers = d.fareDodgers ?? 0;
-    state.dodgersCaught = d.dodgersCaught ?? 0;
-    state.complaints = d.complaints ?? 0;
-    state.compliments = d.compliments ?? 0;
-    state.bestOnTime = d.bestOnTime ?? null;
-    state.totalLateMinutes = d.totalLateMinutes ?? 0;
-    state.nightRoutes = d.nightRoutes ?? 0;
-    state.perfectRoutes = d.perfectRoutes ?? 0;
-    state.fuel = d.fuel ?? 100;
-    state.condition = d.condition ?? 100;
-    state.lastRouteDay = d.lastRouteDay ?? 0;
-    state.bestStreak = d.bestStreak ?? 0;
-    state.routeHistory = { ...(d.routeHistory || {}) };
-    state.eventsSeen = { ...(d.eventsSeen || {}) };
-    state.chartersDone = d.chartersDone ?? 0;
-    state.schoolRuns = d.schoolRuns ?? 0;
-    state.toursDone = d.toursDone ?? 0;
-    state.washes = d.washes ?? 0;
-    state.lostFound = d.lostFound ?? 0;
-    state.karaokeNights = d.karaokeNights ?? 0;
+  function deserialize(saved) {
+    const s = saved || {};
+    state.rank = Math.floor(Number(s.rank) || 0);
+    state.routesDone = Math.floor(Number(s.routesDone) || 0);
+    state.routesFailed = Math.floor(Number(s.routesFailed) || 0);
+    state.totalEarned = Number(s.totalEarned) || 0;
+    state.tipsEarned = Number(s.tipsEarned) || 0;
+    state.passengersCarried = Math.floor(Number(s.passengersCarried) || 0);
+    state.faresCollected = Number(s.faresCollected) || 0;
+    state.rating = Number(s.rating) || 4.0;
+    state.ratingCount = Math.floor(Number(s.ratingCount) || 0);
+    state.bus = typeof s.bus === 'string' ? s.bus : 'minibus';
+    state.ownedBuses = Array.isArray(s.ownedBuses) && s.ownedBuses.length > 0 ? [...s.ownedBuses] : ['minibus'];
+    state.upgrades = Array.isArray(s.upgrades) ? [...s.upgrades] : [];
+    state.shiftRoutes = Math.floor(Number(s.shiftRoutes) || 0);
+    state.breakdowns = Math.floor(Number(s.breakdowns) || 0);
+    state.fareDodgers = Math.floor(Number(s.fareDodgers) || 0);
+    state.dodgersCaught = Math.floor(Number(s.dodgersCaught) || 0);
+    state.complaints = Math.floor(Number(s.complaints) || 0);
+    state.compliments = Math.floor(Number(s.compliments) || 0);
+    state.bestOnTime = s.bestOnTime === null || s.bestOnTime === undefined ? null : Number(s.bestOnTime);
+    state.totalLateMinutes = Math.floor(Number(s.totalLateMinutes) || 0);
+    state.nightRoutes = Math.floor(Number(s.nightRoutes) || 0);
+    state.perfectRoutes = Math.floor(Number(s.perfectRoutes) || 0);
+    state.fuel = Number(s.fuel) || 100;
+    state.condition = Number(s.condition) || 100;
+    state.lastRouteDay = Math.floor(Number(s.lastRouteDay) || 0);
+    state.bestStreak = Math.floor(Number(s.bestStreak) || 0);
+    state.routeHistory = s.routeHistory && typeof s.routeHistory === 'object' ? { ...s.routeHistory } : {};
+    state.eventsSeen = s.eventsSeen && typeof s.eventsSeen === 'object' ? { ...s.eventsSeen } : {};
+    state.chartersDone = Math.floor(Number(s.chartersDone) || 0);
+    state.schoolRuns = Math.floor(Number(s.schoolRuns) || 0);
+    state.toursDone = Math.floor(Number(s.toursDone) || 0);
+    state.washes = Math.floor(Number(s.washes) || 0);
+    state.lostFound = Math.floor(Number(s.lostFound) || 0);
+    state.karaokeNights = Math.floor(Number(s.karaokeNights) || 0);
     state.activeRoute = null;
     state.shift = null;
     state.consecutiveOnTime = 0;
+    return { ok: true };
   }
 
-  // --- Round 7 top-up: charters, school runs, tours, bus wash ---
-  const BUS_CHARTERS = [
-    { id: 'school-trip', name: 'School Field Trip', pay: 200, needCapacity: 20 },
-    { id: 'wedding-bus', name: 'Wedding Shuttle', pay: 350, needCapacity: 25 },
-    { id: 'team-bus', name: 'Sports Team Bus', pay: 300, needCapacity: 30 },
-    { id: 'concert-bus', name: 'Concert Shuttle', pay: 500, needCapacity: 40 },
-  ];
   function bookCharter(charterId) {
-    const charter = BUS_CHARTERS.find((c) => c.id === charterId);
-    if (!charter) return { ok: false, reason: 'no-such-charter' };
-    if (capacity() < charter.needCapacity) return { ok: false, reason: 'capacity-too-low', need: charter.needCapacity };
-    if (state.fuel < 30) return { ok: false, reason: 'low-fuel', need: 30 };
-    state.fuel = Math.max(0, state.fuel - 30);
+    const charter = CHARTERS.find((c) => c.id === charterId);
+    if (!charter) return { ok: false, reason: 'unknown-charter' };
+    if (capacity() < charter.needCapacity) return { ok: false, reason: 'capacity-too-low' };
+    if (state.fuel < 30) return { ok: false, reason: 'low-fuel' };
+    state.fuel -= 30;
     const pay = Math.round(charter.pay * rankInfo().payMult);
-    addCash(pay);
+    moveCash(pay);
     state.totalEarned += pay;
-    state.chartersDone = (state.chartersDone || 0) + 1;
+    state.chartersDone += 1;
     state.passengersCarried += charter.needCapacity;
-    log(`Charter complete: ${charter.name}! Paid $${pay}.`);
-    return { ok: true, charter: charterId, pay };
+    return { ok: true, charterId, pay };
   }
+
   function schoolRun() {
-    const hour = getHour();
-    if (hour < 6 || hour > 9) return { ok: false, reason: 'wrong-hours', window: '06:00–09:00' };
-    const kids = 10 + Math.floor(rng() * 15);
+    const hour = hourOf();
+    if (hour < 6 || hour >= 9) return { ok: false, reason: 'wrong-hour' };
+    const kids = 10 + Math.floor(rnd() * 15);
     const pay = kids * 3;
-    addCash(pay);
+    moveCash(pay);
     state.totalEarned += pay;
-    state.schoolRuns = (state.schoolRuns || 0) + 1;
+    state.schoolRuns += 1;
     state.passengersCarried += kids;
-    log(`School run: ${kids} kids safely to Northside High. Pay $${pay}.`);
     return { ok: true, kids, pay };
   }
+
   function sightseeingTour() {
-    if (state.rank < 1) return { ok: false, reason: 'rank-too-low', need: 'Driver' };
-    const tourists = 8 + Math.floor(rng() * 12);
+    if (state.rank < 1) return { ok: false, reason: 'rank-too-low' };
+    const tourists = 8 + Math.floor(rnd() * 12);
     const pay = tourists * 8;
-    addCash(pay);
+    moveCash(pay);
     state.totalEarned += pay;
-    state.toursDone = (state.toursDone || 0) + 1;
-    state.passengersCarried += tourists;
+    state.toursDone += 1;
     state.rating = Math.min(5, state.rating + 0.05);
-    log(`Sightseeing tour: ${tourists} tourists, $${pay}. Rating up!`);
     return { ok: true, tourists, pay };
   }
+
   function washBus() {
-    const cost = 25;
-    if (getCash() < cost) return { ok: false, reason: 'no-cash', need: cost };
-    addCash(-cost);
+    if (cashOf() < 25) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-25);
     state.condition = Math.min(100, state.condition + 5);
     state.rating = Math.min(5, state.rating + 0.03);
-    state.washes = (state.washes || 0) + 1;
-    log(`Bus washed for $${cost}. It gleams. Condition +5.`);
-    return { ok: true, cost };
+    state.washes += 1;
+    return { ok: true, cost: 25 };
   }
+
   function lostProperty() {
-    if (rng() < 0.5) return { ok: false, reason: 'nothing-found' };
-    const value = 10 + Math.floor(rng() * 50);
-    addCash(value);
+    if (rnd() < 0.5) return { ok: false, reason: 'nothing-found' };
+    const value = 10 + Math.floor(rnd() * 50);
+    moveCash(value);
     state.totalEarned += value;
-    state.lostFound = (state.lostFound || 0) + 1;
-    log(`Found lost property on the bus — returned it, kept the $${value} reward.`);
+    state.lostFound += 1;
     return { ok: true, value };
   }
+
   function busKaraokeNight() {
-    if (state.rank < 2) return { ok: false, reason: 'rank-too-low', need: 'Senior Driver' };
-    const riders = 15 + Math.floor(rng() * 20);
+    if (state.rank < 2) return { ok: false, reason: 'rank-too-low' };
+    const riders = 15 + Math.floor(rnd() * 20);
     const pay = riders * 5;
-    addCash(pay);
+    moveCash(pay);
     state.totalEarned += pay;
-    state.karaokeNights = (state.karaokeNights || 0) + 1;
-    log(`Karaoke bus night: ${riders} riders singing all the way. Pay $${pay}.`);
+    state.karaokeNights += 1;
     return { ok: true, riders, pay };
   }
 
   return {
+    name: 'Bus Driver',
     state,
-    tick,
-    tickDay,
-    interact,
-    hudLine,
-    stats,
-    serialize,
-    deserialize,
     startRoute,
     openDoors,
     closeDoors,
@@ -836,12 +769,13 @@ export function createBusDriverSystem(deps = {}) {
     handlePassengerComplaint,
     startShift,
     endShift,
-    comfort,
-    speedMult,
-    capacity,
-    hasUpgrade,
-    busInfo,
-    rankInfo,
+    tick,
+    tickDay,
+    interact,
+    hudLine,
+    stats,
+    serialize,
+    deserialize,
     bookCharter,
     schoolRun,
     sightseeingTour,

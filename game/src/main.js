@@ -1,24 +1,30 @@
-// Solara Nights — boot, the one loop, the state machine (title / playing /
-// paused / wasted / busted / complete), mission wiring, and ?shot= staging
-// for screenshots (stage a scene, step it forward, paint it, set __shotReady).
+// Solara Nights — main entry point.
+// Wires the city, the player, the police, the story and eighty-eight small
+// factory systems into one playable night. Everything here is built by hand
+// from the interface brief; nothing is imported from the old file.
+
 import * as THREE from 'three';
-import { CITY_HALF, PLACES, WORLD } from './config.js';
-import { makeRng, clamp } from './random.js';
+import { WORLD, PLACES } from './config.js';
 import { buildCity, buildRooftopBeacons } from './city.js';
 import { AudioEngine } from './audio.js';
 import { Effects } from './effects.js';
-import { Input, ACT_INTERACT, ACT_PAUSE, ACT_RELOAD, ACT_HORN, ACT_MUTE, ACT_SIDEJOB, ACT_TUTORIAL, ACT_MARKET, ACT_NIGHTOPS, ACT_RACE, ACT_SAFEHOUSE, ACT_FISH, ACT_PHOTO } from './input.js';
+import { Input } from './input.js';
+import { Player } from './player.js';
+import { TrafficSystem, spawnParkedCars, syncCarMesh, setCarGlow } from './vehicles.js';
+import { PedestrianSystem } from './pedestrians.js';
+import { WantedSystem } from './police.js';
+import { PoliceSystem } from './police.js';
+import { Combat } from './combat.js';
+import { MissionManager, MISSIONS, SideJobs } from './missions.js';
+import { Driving } from './driving.js';
+import { HUD } from './hud.js';
 import { WeatherSystem } from './weather.js';
 import { NightOps } from './nightops.js';
 import { BlackMarket, MARKET_ITEMS } from './blackmarket.js';
-// Round 4 attempt 5 — three all-new systems: the day/night shop economy,
-// wanted-heat persistence with safehouses, and street races / time trials.
+import { saveGame, loadGame, emptyStats } from './save.js';
 import { createEconomySystem, SHOPS } from './economy.js';
-import { createSafehouseSystem, SAFEHOUSES } from './safehouse.js';
+import { createSafehouseSystem, SAFEHOUSES, heatToStars, nearSafehouse } from './safehouse.js';
 import { createStreetRaceSystem, ROUTES } from './streetrace.js';
-// Round 4 attempt 6 — eleven all-new systems: shore fishing, the casino,
-// buyable businesses, courier deliveries, stunt jumps, the in-car radio,
-// photo mode, smuggling runs, the gym, the chop shop, and taxi shifts.
 import { createFishingSystem, FISHING_SPOTS } from './fishing.js';
 import { createCasinoSystem } from './casino.js';
 import { createBusinessSystem, BUSINESS_TYPES } from './businesses.js';
@@ -30,30 +36,20 @@ import { createSmugglingSystem } from './smuggling.js';
 import { createGymSystem, EXERCISES } from './gym.js';
 import { createChopShopSystem, CAR_VALUES } from './chopshop.js';
 import { createTaxiSystem } from './taxi.js';
-// Round 4 attempt 7 — three more all-new systems: the boardwalk arcade
-// (arcade.js), bank-heist planning with a vault-crack minigame (bank.js),
-// and the Voss Garage tuning shop (tuning.js).
 import { createArcadeSystem, ARCADE_CABINETS } from './arcade.js';
 import { createBankSystem, HEIST_TARGETS } from './bank.js';
 import { createTuningSystem, TUNING_CATEGORIES } from './tuning.js';
-// Round 6 attempt 8 — five more all-new systems: nightclubs, bounty
-// hunting, car meets, real estate, and the fight club.
 import { createNightclubSystem, NIGHTCLUBS } from './nightclub.js';
 import { createBountySystem, BOUNTY_TARGETS } from './bounty.js';
 import { createCarMeetSystem, CAR_MEETS } from './carmeet.js';
 import { createRealEstateSystem, PROPERTIES } from './realestate.js';
 import { createFightClubSystem, FIGHTERS } from './fightclub.js';
-// Round 6 attempt 9 — six more all-new systems: street graffiti crews,
-// the night market, the recording studio, private-eye cases, the
-// courtroom lawyer, and film-studio stunt shoots.
 import { createGraffitiSystem, GRAFFITI_DISTRICTS, SPRAY_BRANDS, RIVAL_CREWS } from './graffiti.js';
 import { createNightMarketSystem, MARKET_GOODS } from './nightmarket.js';
 import { createStudioSystem, STUDIO_GENRES, STUDIO_FEATURES, STUDIO_VENUES } from './studio.js';
 import { createDetectiveSystem, EYE_CASES, TAIL_TARGETS } from './detective.js';
 import { createLawyerSystem, LAWYERS, CHARGES } from './lawyer.js';
 import { createFilmSystem, FILMS, STUNT_SCRIPTS, FILM_DRIVERS } from './film.js';
-// Round 7 — subway, firefighter, barber, pet, bus driver, food truck,
-// bowling, yacht, skatepark and karaoke, same factory pattern as before.
 import { createSubwaySystem, SUBWAY_STATIONS, SUBWAY_LINES } from './subway.js';
 import { createFirefighterSystem, FIRE_TYPES, FIRE_RANKS } from './firefighter.js';
 import { createBarberSystem, HAIRCUTS, TATTOOS } from './barber.js';
@@ -64,11 +60,6 @@ import { createBowlingSystem, BOWLING_LANES, BOWLING_OPPONENTS } from './bowling
 import { createYachtSystem, BOATS, SEA_ROUTES } from './yacht.js';
 import { createSkateparkSystem, SKATE_PARKS, SKATE_TRICKS } from './skatepark.js';
 import { createKaraokeSystem, KARAOKE_SONGS, KARAOKE_BATTLERS } from './karaoke.js';
-// Round 7b — eighteen more systems: casino royale, angling, courier, ghost
-// hunting, golf, helicopter tours, prison break, surfing, treasure hunting,
-// recycling, drone racing, tennis, hospital, restaurant, pawnshop, bodyguard,
-// jetski, farming. (angling's FISHING_SPOTS is deliberately NOT imported:
-// fishing.js already exports that name.)
 import { createCasinoRoyaleSystem, CHIP_PACKS, SLOT_MACHINES, BLACKJACK_TABLES, VIP_TIERS, CASINO_MISSIONS } from './casinoroyale.js';
 import { createAnglingSystem, FISH_SPECIES, RODS, BAITS, ANGLER_RANKS, TOURNAMENTS } from './angling.js';
 import { createCourierSystem, DISTRICTS, PARCEL_TYPES, COURIER_VEHICLES, COURIER_RANKS, URGENCY } from './courier.js';
@@ -87,13 +78,6 @@ import { createPawnshopSystem, PAWN_CATEGORIES, PAWN_CUSTOMERS, PAWN_AUCTIONS } 
 import { createBodyguardSystem, BODYGUARD_CLIENTS, BODYGUARD_ROUTES, BODYGUARD_THREATS } from './bodyguard.js';
 import { createJetskiSystem, JETSKI_MODELS, JETSKI_COURSES, JETSKI_TRICKS } from './jetski.js';
 import { createFarmingSystem, FARM_CROPS, FARM_ANIMALS, FARM_PLOTS } from './farming.js';
-// Round 7c — thirty-two more systems: hunting, mining, logging, apiary,
-// paleontology, park ranger, storm chasing, horse ranch, scuba diving,
-// skydiving, hot air balloon, ferry, kayaking, windsurfing, lifeguard,
-// coast guard, brewery, bakery, sushi bar, coffee shop, butcher, fish
-// market, donut shop, vineyard, museum, esports arena, comedy club,
-// streaming, hotel, car wash, stock trading, politics. (esportsArena's
-// TOURNAMENTS is imported aliased: angling.js already owns that name.)
 import { createHuntingSystem, HUNTING_ANIMALS } from './hunting.js';
 import { createMiningSystem, MINING_ORES } from './mining.js';
 import { createLoggingSystem, LOGGING_TREES } from './logging.js';
@@ -126,1594 +110,118 @@ import { createHotelSystem, ROOM_TYPES } from './hotel.js';
 import { createCarWashSystem, WASH_PACKAGES } from './carWash.js';
 import { createStockTradingSystem, STOCKS } from './stockTrading.js';
 import { createPoliticsSystem, CAMPAIGN_EVENTS } from './politics.js';
-import { Player } from './player.js';
-import { Driving } from './driving.js';
-import { TrafficSystem, spawnParkedCars, syncCarMesh, setCarGlow } from './vehicles.js';
-import { PedestrianSystem } from './pedestrians.js';
-import { WantedSystem, PoliceSystem } from './police.js';
-import { Combat } from './combat.js';
-import { MissionManager, MISSIONS, SideJobs } from './missions.js';
-import { HUD } from './hud.js';
-import { saveGame, loadGame, clearSave, hasSave, emptyStats } from './save.js';
 
-const params = new URLSearchParams(window.location.search);
-const shot = params.get('shot');
-const seedParam = Number.parseInt(params.get('seed') ?? '', 10);
-const seed = Number.isInteger(seedParam) ? seedParam : 7;
-const rng = makeRng(seed);
+// ---------------------------------------------------------------------------
+// Launch parameters, seeded chance, small numeric helpers
+// ---------------------------------------------------------------------------
 
-const canvas = document.getElementById('game');
+const query = new URLSearchParams(window.location.search);
+const seedText = parseInt(query.get('seed'), 10);
+const SEED = Number.isInteger(seedText) ? seedText : 7;
+const SHOT = query.get('shot');
+
+function mulberry32(a) {
+  return function nextRand() {
+    a |= 0;
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const seededRand = mulberry32(SEED);
+function rngFn() { return seededRand(); }
+const rngTool = {
+  next: rngFn,
+  range(lo, hi) { return lo + seededRand() * (hi - lo); },
+};
+
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+function clamp01(v) { return clamp(v, 0, 1); }
+function lerp(a, b, t) { return a + (b - a) * t; }
+function dist2d(ax, az, bx, bz) { return Math.hypot(ax - bx, az - bz); }
+function fmtClock(minutes) {
+  const total = Math.floor(minutes);
+  const h = Math.floor(total / 60) % 24;
+  const m = total % 60;
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+
+// Day-cycle boundaries. The world config owns the exact numbers; fall back to
+// the familiar Solara rhythm when a field is absent.
+const DAY_START = WORLD.dayStart ?? 5.5;
+const DUSK_START = WORLD.duskStart ?? 18;
+const NIGHT_START = WORLD.nightStart ?? 19.5;
+const DAWN_END = WORLD.dawnEnd ?? 6;
+
+function nightFactorFor(hour) {
+  if (hour >= NIGHT_START || hour < DAY_START) return 1;
+  if (hour >= DUSK_START) return (hour - DUSK_START) / (NIGHT_START - DUSK_START);
+  if (hour >= DAY_START && hour < DAWN_END) return 1 - (hour - DAY_START) / (DAWN_END - DAY_START);
+  return 0;
+}
+
+function phaseNameFor(hour) {
+  if (hour >= NIGHT_START || hour < DAY_START) return 'night';
+  if (hour < 8) return 'dawn';
+  if (hour < DUSK_START) return 'day';
+  return 'dusk';
+}
+
+// ---------------------------------------------------------------------------
+// Page elements
+// ---------------------------------------------------------------------------
+
+const canvasEl = document.getElementById('game');
 const statusEl = document.getElementById('status');
 const hudEl = document.getElementById('hud');
+const menuTitleEl = document.getElementById('menu-title');
+const menuPauseEl = document.getElementById('menu-pause');
+const menuOverEl = document.getElementById('menu-over');
+const menuCompleteEl = document.getElementById('menu-complete');
+const overTitleEl = document.getElementById('over-title');
+const overTextEl = document.getElementById('over-text');
+const howtoEl = document.getElementById('howto');
+const btnContinue = document.getElementById('btn-continue');
+const btnNew = document.getElementById('btn-new');
+const btnHow = document.getElementById('btn-how');
+const btnResume = document.getElementById('btn-resume');
+const btnRestart = document.getElementById('btn-restart');
+const btnMute = document.getElementById('btn-mute');
+const btnQuit = document.getElementById('btn-quit');
+const btnRetry = document.getElementById('btn-retry');
+const btnOverTitle = document.getElementById('btn-over-title');
+const btnFreeroam = document.getElementById('btn-freeroam');
 
-// --- three.js setup ---------------------------------------------------------
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+// ---------------------------------------------------------------------------
+// Renderer, scene, camera, lights
+// ---------------------------------------------------------------------------
+
+const renderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
+
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87bfe8);
-scene.fog = new THREE.Fog(0x9fc6e8, 220, 620);
-const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 1200);
-camera.position.set(120, 45, 120);
-const hemi = new THREE.HemisphereLight(0xbfd9ff, 0x8a7a5a, 0.9);
+scene.background = new THREE.Color(0x0b1026);
+scene.fog = new THREE.Fog(0x0b1026, 60, 320);
+
+const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.1, 900);
+camera.position.set(40, 26, 60);
+camera.lookAt(0, 0, 0);
+
+const hemi = new THREE.HemisphereLight(0xbfd4ff, 0x1a2028, 0.9);
 scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xfff2d8, 1.6);
-sun.position.set(180, 260, 120);
+const sun = new THREE.DirectionalLight(0xffe0b3, 1.1);
+sun.position.set(80, 120, 40);
 scene.add(sun);
 
-// --- systems ------------------------------------------------------------------
-const city = buildCity(scene, rng);
-const audio = new AudioEngine();
-const effects = new Effects(scene);
-const input = new Input(canvas);
-const player = new Player(scene, PLACES.playerStart.x, PLACES.playerStart.z);
-const traffic = new TrafficSystem(scene, rng, city);
-const peds = new PedestrianSystem(scene, rng, city);
-let parked = spawnParkedCars(scene, rng);
-const wanted = new WantedSystem();
-const police = new PoliceSystem(scene, rng, city, audio, effects);
-const combat = new Combat(scene, audio, effects);
-const missions = new MissionManager(scene, audio);
-const sideJobs = new SideJobs(scene, audio);
-const driving = new Driving(city, audio, effects);
-const hud = new HUD();
-// Round 4 attempt 4 — the night economy: a weather system that owns the
-// sky, Night Shift contracts that only open after dark, and the Black
-// Market stall by the docks. All three are built once, here, and the
-// frame loop below drives them.
-const beacons = buildRooftopBeacons(scene, rng);
-const weather = new WeatherSystem(scene, rng, audio, effects);
-let rep = 0;
-const market = new BlackMarket(scene, rng, audio, {
-  announce,
-  onBuy: (item, price) => {
-    stats.marketDeals += 1;
-    hud.showBanner('DEAL CLOSED', `${item.name} — $${price}. ${item.blurb}`, 3500);
-    announce(`Bought ${item.name} for $${price}.`);
-  },
-});
-const nightops = new NightOps(scene, rng, audio, effects, {
-  announce,
-  reward: (pay, repGain, label) => {
-    const bonus = Math.round(pay * market.upgrades.nightPay);
-    money += pay + bonus;
-    rep += repGain;
-    stats.nightOps += 1;
-    stats.rep = rep;
-    market.addRep(Math.ceil(repGain / 4), 'owls');
-    hud.showBanner('NIGHT SHIFT PAID', `${label} — +$${pay}${bonus ? ` (+$${bonus} Owl cut)` : ''} · +${repGain} rep`, 4000);
-    saveGame({ missionIndex: missions.index, money, rep, stats: { ...stats, kills: combat.kills }, tutorialSeen });
-  },
-  fail: (reason) => {
-    stats.nightBurned += 1;
-    hud.showBanner('CONTRACT BURNED', reason, 4000);
-  },
-  onSpotted: () => {
-    wanted.addHeat(15);
-    hud.showBanner('SPOTTED', 'A watcher made you — the cops got a tip.', 3000);
-  },
-});
-// Round 4 attempt 5 — the day/night economy, safehouses and street races.
-// Each system owns its own state and only touches the game through the
-// small hooks below; money/wanted are read live so the HUD never lies.
-const economy = createEconomySystem({
-  getHour: () => (Math.floor(gameMinutes / 60) % 24) + ((gameMinutes % 60) / 60),
-  getCash: () => money,
-  addCash: (d) => { money += d; },
-  notify: announce,
-  addHeat: (n) => wanted.addHeat(n),
-});
-const safehouse = createSafehouseSystem({
-  getStars: () => wanted.level,
-  setStars: (s) => { wanted.heat = s * 20; wanted.level = s; },
-  getCash: () => money,
-  addCash: (d) => { money += d; },
-  notify: announce,
-  getPosition: () => playerPos(),
-  isChased: () => police.cars.length > 0 || police.cops.length > 0,
-});
-const streetrace = createStreetRaceSystem({
-  getPosition: () => playerPos(),
-  getSpeed: () => (player.inCar ? Math.abs(player.inCar.speed) : 0),
-  getCash: () => money,
-  addCash: (d) => { money += d; },
-  notify: announce,
-  addHeat: (n) => wanted.addHeat(n),
-  playerName: 'Ria',
-});
-// Round 4 attempt 6 — eleven more systems, same pattern: each owns its
-// state and only touches the game through the small hooks below.
-const hourFloat = () => (Math.floor(gameMinutes / 60) % 24) + ((gameMinutes % 60) / 60);
-const dayCount = () => Math.floor(gameMinutes / 1440) + 1;
-const fishing = createFishingSystem({
-  rng: () => rng.next(), getHour: hourFloat, getCash: () => money, addCash: (d) => { money += d; },
-  log: announce, onBite: () => audio.blip(),
-});
-const casino = createCasinoSystem({
-  getCash: () => money, addCash: (d) => { money += d; }, log: announce,
-  addHeat: (n) => wanted.addHeat(n),
-});
-const businesses = createBusinessSystem({
-  rng: () => rng.next(), getHour: hourFloat, getHeatLevel: () => wanted.level,
-  getCash: () => money, addCash: (d) => { money += d; }, log: announce,
-  reduceHeat: (n) => { wanted.heat = Math.max(0, wanted.heat - n); },
-});
-const delivery = createDeliverySystem({
-  rng: () => rng.next(), getPlayerPos: playerPos, getCash: () => money,
-  addCash: (d) => { money += d; }, log: announce,
-});
-const stunt = createStuntSystem({
-  rng: () => rng.next(), getPlayerPos: playerPos,
-  getSpeed: () => (player.inCar ? Math.abs(player.inCar.speed) : 0),
-  isAirborne: () => !!(player.inCar && player.inCar.airborne),
-  addCash: (d) => { money += d; }, log: announce,
-  onCrash: () => { if (player.inCar) player.inCar.health = Math.max(10, (player.inCar.health || 100) - 15); },
-});
-const radio = createRadioSystem({
-  rng: () => rng.next(), getWanted: () => wanted.level, getHour: hourFloat,
-  log: announce, now: () => Date.now(),
-});
-const photo = createPhotoSystem({
-  getPlayerPos: playerPos, getHour: hourFloat, getWanted: () => wanted.level,
-  getSpeed: () => (player.inCar ? Math.abs(player.inCar.speed) : 0),
-  isAirborne: () => !!(player.inCar && player.inCar.airborne),
-  log: announce,
-  captureFrame: () => { try { return renderer.domElement.toDataURL('image/jpeg', 0.6); } catch { return null; } },
-});
-const smuggling = createSmugglingSystem({
-  rng: () => rng.next(), getPlayerPos: playerPos, getHeatLevel: () => wanted.level,
-  getWanted: () => wanted.level, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n),
-  log: announce, getDeliveryRep: () => delivery.stats().rep,
-  hasBusiness: (id) => businesses.hasPerk(id),
-});
-const gym = createGymSystem({
-  getDay: dayCount, getCash: () => money, addCash: (d) => { money += d; },
-  log: announce,
-});
-const chopshop = createChopShopSystem({
-  getDay: dayCount, getHeatLevel: () => wanted.level,
-  getCash: () => money, addCash: (d) => { money += d; },
-  addHeat: (n) => wanted.addHeat(n), log: announce,
-});
-const taxi = createTaxiSystem({
-  rng: () => rng.next(), getPlayerPos: playerPos, getDay: dayCount,
-  getSpeed: () => (player.inCar ? Math.abs(player.inCar.speed) : 0),
-  getCash: () => money, addCash: (d) => { money += d; }, log: announce,
-});
-// Round 4 attempt 7 — arcade, bank heists and tuning, same factory pattern.
-const arcade = createArcadeSystem({
-  rng: () => rng.next(), getCash: () => money, addCash: (d) => { money += d; }, log: announce,
-});
-const bank = createBankSystem({
-  rng: () => rng.next(), getCash: () => money, addCash: (d) => { money += d; },
-  addHeat: (n) => wanted.addHeat(n), log: announce,
-});
-const tuning = createTuningSystem({
-  rng: () => rng.next(), getCash: () => money, addCash: (d) => { money += d; }, log: announce,
-});
-// Round 6 attempt 8 — nightclubs, bounty hunting, car meets, real estate
-// and the fight club, same factory pattern as the attempt-7 systems.
-const nightclub = createNightclubSystem({
-  rng: () => rng.next(), getHour: hourFloat, getDay: dayCount,
-  getCash: () => money, addCash: (d) => { money += d; },
-  addHeat: (n) => wanted.addHeat(n), log: announce,
-});
-const bounty = createBountySystem({
-  rng: () => rng.next(), getDay: dayCount,
-  getCash: () => money, addCash: (d) => { money += d; },
-  addHeat: (n) => wanted.addHeat(n), log: announce,
-});
-const carmeet = createCarMeetSystem({
-  rng: () => rng.next(), getHour: hourFloat, getDay: dayCount,
-  getCash: () => money, addCash: (d) => { money += d; },
-  addHeat: (n) => wanted.addHeat(n), log: announce,
-});
-const realestate = createRealEstateSystem({
-  rng: () => rng.next(), getDay: dayCount,
-  getCash: () => money, addCash: (d) => { money += d; }, log: announce,
-});
-const fightclub = createFightClubSystem({
-  rng: () => rng.next(), getCash: () => money, addCash: (d) => { money += d; },
-  addHeat: (n) => wanted.addHeat(n), log: announce,
-});
-// Round 6 attempt 9 — graffiti crews, night market, studio, detective,
-// lawyer and film shoots, same factory pattern as the attempt-8 systems.
-const graffiti = createGraffitiSystem({
-  getHour: hourFloat, getDay: dayCount, rng: () => rng.next(),
-  addCash: (d) => { money += d; }, getCash: () => money,
-  log: announce, addHeat: (n) => wanted.addHeat(n),
-});
-const nightmarket = createNightMarketSystem({
-  getDay: dayCount, getCash: () => money, rng: () => rng.next(),
-  log: announce, addCash: (d) => { money += d; },
-});
-const studio = createStudioSystem({
-  rng: () => rng.next(), getCash: () => money, log: announce,
-  getDay: dayCount, addCash: (d) => { money += d; },
-});
-const detective = createDetectiveSystem({
-  rng: () => rng.next(), addHeat: (n) => wanted.addHeat(n), getDay: dayCount,
-  log: announce, getCash: () => money, addCash: (d) => { money += d; },
-});
-const lawyer = createLawyerSystem({
-  getHeatLevel: () => wanted.level, log: announce, rng: () => rng.next(),
-  getDay: dayCount, getCash: () => money,
-  addHeat: (n) => wanted.addHeat(n), addCash: (d) => { money += d; },
-});
-const film = createFilmSystem({
-  getDay: dayCount, addHeat: (n) => wanted.addHeat(n), rng: () => rng.next(),
-  addCash: (d) => { money += d; }, log: announce, getCash: () => money,
-});
-// Round 7 — ten more systems, same factory pattern as the attempt-9 ones.
-const subway = createSubwaySystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos,
-});
-const firefighter = createFirefighterSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos,
-});
-const barber = createBarberSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos,
-});
-const pet = createPetSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos,
-});
-const busdriver = createBusDriverSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getSpeed: () => (player.inCar ? Math.abs(player.inCar.speed) : 0),
-});
-const foodtruck = createFoodTruckSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos,
-});
-const bowling = createBowlingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos,
-});
-const yacht = createYachtSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos,
-});
-const skatepark = createSkateparkSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos,
-});
-const karaoke = createKaraokeSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos,
-});
-// Round 7b — eighteen more systems, same factory pattern as the Round 7 ones.
-// The nine attempt-A systems expose summary() instead of stats(), so wire a
-// stats alias at the seam; their tick/hudLine/serialize shapes already match.
-const casinoroyale = createCasinoRoyaleSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-casinoroyale.stats = () => casinoroyale.summary();
-const angling = createAnglingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-angling.stats = () => angling.summary();
-const courier = createCourierSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-courier.stats = () => courier.summary();
-const ghosthunting = createGhostHuntingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-ghosthunting.stats = () => ghosthunting.summary();
-const golf = createGolfSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-golf.stats = () => golf.summary();
-const helitours = createHeliTourSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-helitours.stats = () => helitours.summary();
-const prisonbreak = createPrisonBreakSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-prisonbreak.stats = () => prisonbreak.summary();
-const surfing = createSurfingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-surfing.stats = () => surfing.summary();
-const treasurehunting = createTreasureHuntingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-treasurehunting.stats = () => treasurehunting.summary();
-const recycling = createRecyclingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const droneRacing = createDroneRacingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const tennis = createTennisSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const hospital = createHospitalSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const restaurant = createRestaurantSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const pawnshop = createPawnshopSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const bodyguard = createBodyguardSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const jetski = createJetskiSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const farming = createFarmingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-// Round 7c — thirty-two more systems, same factory pattern as the Round 7b
-// ones. All 32 expose stats() natively, so no summary() alias is needed.
-const hunting = createHuntingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const mining = createMiningSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const logging = createLoggingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const apiary = createApiarySystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const paleontology = createPaleontologySystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const parkRanger = createParkRangerSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const stormChasing = createStormChasingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const horseRanch = createHorseRanchSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const scubaDiving = createScubaDivingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const skydiving = createSkydivingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const hotAirBalloon = createHotAirBalloonSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const ferry = createFerrySystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const kayaking = createKayakingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const windsurfing = createWindsurfingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const lifeguard = createLifeguardSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const coastGuard = createCoastGuardSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const brewery = createBrewerySystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const bakery = createBakerySystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const sushiBar = createSushiBarSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const coffeeShop = createCoffeeShopSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const butcher = createButcherSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const fishMarket = createFishMarketSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const donutShop = createDonutShopSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const vineyard = createVineyardSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const museum = createMuseumSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const esportsArena = createEsportsArenaSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const comedyClub = createComedyClubSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const streaming = createStreamingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const hotel = createHotelSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const carWash = createCarWashSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const stockTrading = createStockTradingSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const politics = createPoliticsSystem({
-  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
-  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
-  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
-});
-const NEW_SYSTEMS = { fishing, casino, businesses, delivery, stunt, radio, photo, smuggling, gym, chopshop, taxi, arcade, bank, tuning, nightclub, bounty, carmeet, realestate, fightclub, graffiti, nightmarket, studio, detective, lawyer, film, subway, firefighter, barber, pet, busdriver, foodtruck, bowling, yacht, skatepark, karaoke, casinoroyale, angling, courier, ghosthunting, golf, helitours, prisonbreak, surfing, treasurehunting, recycling, droneRacing, tennis, hospital, restaurant, pawnshop, bodyguard, jetski, farming, hunting, mining, logging, apiary, paleontology, parkRanger, stormChasing, horseRanch, scubaDiving, skydiving, hotAirBalloon, ferry, kayaking, windsurfing, lifeguard, coastGuard, brewery, bakery, sushiBar, coffeeShop, butcher, fishMarket, donutShop, vineyard, museum, esportsArena, comedyClub, streaming, hotel, carWash, stockTrading, politics };
-// NOTE: gameMinutes is declared below (17:40 start); mirror its initial
-// hour here instead of reading it, or the TDZ throws at boot.
-let lastGameHour = Math.floor((17 * 60 + 40) / 60);
-// Round 6 attempt 8 — the game starts on day 1; the day-change hook below
-// settles clubs, property rent and bounty contracts once per day.
-let lastDay = 1;
-function systemsHudLine() {
-  const lines = [];
-  for (const s of Object.values(NEW_SYSTEMS)) {
-    if (typeof s.hudLine === 'function') {
-      const line = s.hudLine();
-      if (line) lines.push(line);
-    }
-  }
-  return lines.slice(0, 2).join('  ');
-}
-function saveNewSystems() {
-  const out = {};
-  for (const [name, s] of Object.entries(NEW_SYSTEMS)) {
-    if (typeof s.serialize === 'function') out[name] = s.serialize();
-  }
-  return out;
-}
-function restoreNewSystems(data) {
-  if (!data) return;
-  for (const [name, s] of Object.entries(NEW_SYSTEMS)) {
-    if (data[name] && typeof s.deserialize === 'function') s.deserialize(data[name]);
-  }
-}
-// Round 4 attempt 2 — weather: rain rolls in on a timer (game-minutes of
-// play), lasts 40–90 s, then clears. rainF eases in/out over ~5 s so the
-// shower never pops in or out in a single frame.
-let rainF = 0;
-let rainTarget = 0;
-let rainTimer = 90 + rng.range(0, 60); // first shower ~2–3 min in
-let rainLeft = 0;
-// Attempt 4 — latest weather summary (refreshed every stepWorld) and
-// the shot counter Night Shift last saw, so a fired shot counts once.
-let wxSummary = { condition: 'clear', rain: 0, fog: 0, visibility: 320 };
-let nightShotSeq = 0;
-// Round 4 attempt 2 — tutorial: three short steps for a first-time player
-// (move, enter a car, follow the beacon). Done once, remembered in the save.
-let tutorialStep = -1; // -1 = off (returning player or skipped)
-let tutorialSeen = false;
-const TUTORIAL_STEPS = [
-  'WASD to move — Shift to sprint (watch your stamina)',
-  'Walk to a gold car on the minimap and press E to get in',
-  'Follow the yellow beacon — that is your next job. Press T to skip these tips',
-];
-
-// --- game state ---------------------------------------------------------------
-let state = 'title'; // title | playing | paused | over | complete
-let money = 0;
-let missionPhase = 'go';
-let nextMissionTimer = 0;
-let failTimer = 0;
-let failReason = '';
-let orbitAngle = 0.6;
-let gameMinutes = 17 * 60 + 40;
-let muted = false;
-let lastHurtFlash = false;
-let lastShotResult = null; // debug handle only: result of the last pistol shot
-let shotSeq = 0; // debug handle only: counts pistol shots (1 per fired round)
-// Round-4 stats (save v3): kills, missions completed, best Drop time left.
-let stats = emptyStats();
-
-// Read-only playtest handle: automated runs (and curious players in the
-// console) can watch live state without touching the simulation. It never
-// writes anything and the game plays exactly the same with or without it.
-window.__solara = {
-  get state() { return state; },
-  get money() { return money; },
-  get missionIndex() { return missions.index; },
-  get missionPhase() { return missionPhase; },
-  get missionStage() { return missions.stage; },
-  get objective() { return missions.objective; },
-  get waypoint() { return missions.waypoint; },
-  get timeLeft() { return missions.timeLeft; },
-  get wanted() { return { heat: wanted.heat, level: wanted.level }; },
-  get health() { return player.health; },
-  get ammo() { return combat.ammo; },
-  get lastShot() { return lastShotResult; },
-  get lastShotPoint() { return combat.lastHit; },
-  get lastDamage() { return combat.lastDamage; },
-  get shotSeq() { return shotSeq; },
-  get alive() { return combat.aliveCount; },
-  get kills() { return combat.kills; },
-  get dayPhase() { return dayPhase; },
-  get nightF() { return nightF; },
-  get clock() { return clockText(); },
-  get police() { return police.cars.length + police.cops.length; },
-  get carHealth() { return player.inCar ? player.inCar.health : null; },
-  get headlight() { return !!(driving.headlight && driving.headlight.visible); },
-  get stats() { return { ...stats, kills: combat.kills }; },
-  get parked() { return parked.map((c) => ({ name: c.name, x: c.x, z: c.z })); },
-  // Round 4 attempt 3 handles: drift chain, helicopter, roadblocks,
-  // damage zones, side-job chains.
-  get drift() { return { score: Math.floor(driving.driftScore), banked: driving.bankedTotal, drifting: driving.drifting }; },
-  get heli() { return police.heliActive; },
-  get heliPos() { return police.heli ? { x: police.heli.x, z: police.heli.z } : null; },
-  get roadblocks() { return police.roadblocks.map((c) => ({ x: c.x, z: c.z })); },
-  get damage() { return driving.damageZones; },
-  get chain() { return sideJobs.chainStatus(); },
-  get rain() { return rainF; },
-  get raining() { return rainF > 0.3; },
-  get sideJob() { return sideJobs.active ? { id: sideJobs.active.id, stage: sideJobs.stage, objective: sideJobs.objective } : null; },
-  get sideOffer() { return sideJobs.offered ? sideJobs.offered.id : null; },
-  // Round 4 attempt 4 handles: weather, Night Shift, Black Market, rep.
-  get weather() { return { condition: weather.condition, rain: weather.rainLevel, fog: weather.fogLevel, storms: weather.stormsSeen, strikes: weather.strikesSeen }; },
-  get nightops() { return { active: nightops.active, offer: nightops.offer, noise: nightops.noise, eyes: nightops.eyes, done: nightops.contractsDone, burned: nightops.contractsBurned }; },
-  get market() { return { near: market.nearStall, open: market.open, standing: { ...market.standing }, upgrades: { ...market.upgrades }, deals: market.deals }; },
-  // Round 4 attempt 5 handles: economy, safehouses, street races.
-  get economy() { return economy.summary(); },
-  get economyShops() { return SHOPS.map((s) => s.id); },
-  get safehouse() { return safehouse.status(); },
-  get safehouses() { return SAFEHOUSES.map((s) => s.id); },
-  get streetrace() { return streetrace.hud(); },
-  get raceBoard() { return ROUTES.map((r) => ({ id: r.id, best: streetrace.bestTime(r.id) })); },
-  // Round 4 attempt 6 handles: the eleven new systems, live stats each,
-  // plus a debug dispatcher (act) so a playtest can drive them.
-  get systems() {
-    const out = {};
-    for (const [name, s] of Object.entries(NEW_SYSTEMS)) {
-      out[name] = typeof s.stats === 'function' ? s.stats() : null;
-    }
-    return out;
-  },
-  get systemsOk() {
-    return Object.values(NEW_SYSTEMS).every((s) => s && typeof s.stats === 'function')
-      && FISHING_SPOTS.length === 5 && BUSINESS_TYPES.length === 5
-      && STUNT_RAMPS.length === 6 && STATIONS.length === 5
-      && EXERCISES.length === 6 && CAR_VALUES.length === 10
-      && ARCADE_CABINETS.length === 4 && HEIST_TARGETS.length === 3
-      && TUNING_CATEGORIES.length === 5
-      && NIGHTCLUBS.length === 4 && BOUNTY_TARGETS.length === 6
-      && CAR_MEETS.length === 4 && PROPERTIES.length === 6
-      && FIGHTERS.length === 5
-      && GRAFFITI_DISTRICTS.length === 8 && SPRAY_BRANDS.length === 4
-      && RIVAL_CREWS.length === 4 && MARKET_GOODS.length === 10
-      && STUDIO_GENRES.length === 5 && STUDIO_FEATURES.length === 6
-      && STUDIO_VENUES.length === 4 && EYE_CASES.length === 6
-      && TAIL_TARGETS.length === 6 && LAWYERS.length === 3
-      && CHARGES.length === 6 && FILMS.length === 4
-      && STUNT_SCRIPTS.length === 6 && FILM_DRIVERS.length === 4
-      && SUBWAY_STATIONS.length === 8 && SUBWAY_LINES.length === 3
-      && FIRE_TYPES.length === 8 && FIRE_RANKS.length === 5
-      && HAIRCUTS.length === 10 && TATTOOS.length === 12
-      && PET_BREEDS.length === 6 && PET_TRICKS.length === 10
-      && BUS_ROUTES.length === 5 && BUS_MODELS.length === 5
-      && FOOD_MENU.length === 10 && FOOD_TRUCK_SPOTS.length === 7
-      && BOWLING_LANES.length === 6 && BOWLING_OPPONENTS.length === 6
-      && BOATS.length === 7 && SEA_ROUTES.length === 8
-      && SKATE_PARKS.length === 4 && SKATE_TRICKS.length === 20
-      && KARAOKE_SONGS.length === 17 && KARAOKE_BATTLERS.length === 5
-      && CHIP_PACKS.length === 4 && SLOT_MACHINES.length === 4
-      && BLACKJACK_TABLES.length === 3 && VIP_TIERS.length === 5
-      && CASINO_MISSIONS.length === 10 && FISH_SPECIES.length === 18
-      && RODS.length === 5 && BAITS.length === 7 && ANGLER_RANKS.length === 6
-      && TOURNAMENTS.length === 3 && DISTRICTS.length === 12
-      && PARCEL_TYPES.length === 20 && COURIER_VEHICLES.length === 6
-      && COURIER_RANKS.length === 5 && URGENCY.length === 4
-      && EVIDENCE_TYPES.length === 8 && GHOST_TYPES.length === 14
-      && HAUNTED_LOCATIONS.length === 12 && GHOST_EQUIPMENT.length === 14
-      && HUNTER_RANKS.length === 5 && CLUBS.length === 12
-      && GOLF_BALLS.length === 5 && COURSES.length === 5
-      && GOLF_OPPONENTS.length === 8 && HELICOPTERS.length === 6
-      && TOUR_ROUTES.length === 12 && PHOTO_SPOTS.length === 16
-      && PASSENGER_TYPES.length === 8 && CELL_BLOCKS.length === 8
-      && ESCAPE_PLANS.length === 10 && CONTRABAND.length === 15
-      && CRAFT_RECIPES.length === 8 && GUARDS.length === 8
-      && ALLIES.length === 8 && SURF_BEACHES.length === 12
-      && SURFBOARDS.length === 10 && SURF_TRICKS.length === 20
-      && WETSUITS.length === 5 && SURF_COMPS.length === 8
-      && DIG_SITES.length === 12 && TREASURE_MAPS.length === 12
-      && DETECTORS.length === 5 && SHOVELS.length === 5
-      && FIND_TABLE.length === 20 && RECYCLING_MATERIALS.length === 12
-      && RECYCLING_BINS.length === 9 && RECYCLING_ROUTES.length === 8
-      && DRONE_MODELS.length === 8 && DRONE_TRACKS.length === 8
-      && DRONE_PARTS.length === 10 && TENNIS_COURTS.length === 8
-      && TENNIS_RACKETS.length === 8 && TENNIS_SHOES.length === 4
-      && HOSPITAL_WARDS.length === 8 && TRIAGE_LEVELS.length === 5
-      && HOSPITAL_CONDITIONS.length === 16 && RESTAURANT_DISHES.length === 12
-      && RESTAURANT_INGREDIENTS.length === 12 && RESTAURANT_CUSTOMERS.length === 8
-      && PAWN_CATEGORIES.length === 16 && PAWN_CUSTOMERS.length === 8
-      && PAWN_AUCTIONS.length === 6 && BODYGUARD_CLIENTS.length === 10
-      && BODYGUARD_ROUTES.length === 8 && BODYGUARD_THREATS.length === 10
-      && JETSKI_MODELS.length === 8 && JETSKI_COURSES.length === 8
-      && JETSKI_TRICKS.length === 10 && FARM_CROPS.length === 14
-      && FARM_ANIMALS.length === 8 && FARM_PLOTS.length === 8
-      && HUNTING_ANIMALS.length === 12 && MINING_ORES.length === 12
-      && LOGGING_TREES.length === 10 && APIARY_HIVES.length === 10
-      && FOSSIL_SITES.length === 10 && RANGER_PATROLS.length === 10
-      && STORM_TYPES.length === 10 && HORSE_BREEDS.length === 12
-      && DIVE_SITES.length === 10 && DROP_ZONES.length === 10
-      && BALLOON_ROUTES.length === 10 && FERRY_ROUTES.length === 12
-      && KAYAK_RIVERS.length === 10 && WINDSURF_SPOTS.length === 10
-      && BEACH_PATROLS.length === 10 && RESCUE_MISSIONS.length === 10
-      && BREW_RECIPES.length === 12 && BAKED_GOODS.length === 12
-      && SUSHI_MENU.length === 12 && COFFEE_MENU.length === 12
-      && MEAT_CUTS.length === 10 && MARKET_CATCH.length === 12
-      && DONUT_FLAVORS.length === 12 && WINE_VARIETALS.length === 10
-      && EXHIBITS.length === 12 && ESPORTS_TOURNAMENTS.length === 10
-      && COMEDY_ACTS.length === 12 && STREAM_CATEGORIES.length === 12
-      && ROOM_TYPES.length === 10 && WASH_PACKAGES.length === 10
-      && STOCKS.length === 12 && CAMPAIGN_EVENTS.length === 10;
-  },
-  get fishingSpots() { return FISHING_SPOTS.map((s) => s.id); },
-  get businessTypes() { return BUSINESS_TYPES.map((b) => b.id); },
-  get radioStations() { return STATIONS.map((s) => s.id); },
-  act(system, method, ...args) {
-    const s = NEW_SYSTEMS[system];
-    if (!s || typeof s[method] !== 'function') return { ok: false, reason: 'no-such-system-method' };
-    try { return s[method](...args); } catch (e) { return { ok: false, reason: String(e).slice(0, 120) }; }
-  },
-  get rep() { return rep; },
-  get sneaking() { return player.sneaking; },
-  get tutorial() { return tutorialStep; },
-  get stamina() { return player.stamina01; },
-  get player() {
-    const car = player.inCar;
-    // Effective position: the car's, while driving — the on-foot x/z go stale
-    // the moment the player gets in, and a playtest reader would chase a ghost.
-    return {
-      x: car ? car.x : player.x, z: car ? car.z : player.z,
-      heading: player.heading, camYaw: player.camYaw, camPitch: player.camPitch,
-      inCar: !!car,
-      car: car ? { name: car.name, x: car.x, z: car.z, heading: car.heading, speed: car.speed, health: car.health } : null,
-    };
-  },
-  get enemies() { return combat.enemies.map((e) => ({ x: e.x, z: e.z, alive: e.alive, health: e.health })); },
-  get audio() {
-    return {
-      ctx: !!audio.ctx, running: audio.ctx ? audio.ctx.state === 'running' : false,
-      musicStep: audio.musicStep, siren: audio.sirenOn, engine: !!audio.engineOsc,
-    };
-  },
-};
-
-input.onFirstGesture = () => {
-  audio.ensure();
-  audio.startMusic();
-};
-
-function announce(message) {
-  statusEl.textContent = message;
-}
-
-function $(id) {
-  return document.getElementById(id);
-}
-
-function showOnly(id) {
-  for (const m of ['menu-title', 'menu-pause', 'menu-over', 'menu-complete']) {
-    $(m).classList.toggle('hidden', m !== id);
-  }
-  if (!id) {
-    for (const m of ['menu-title', 'menu-pause', 'menu-over', 'menu-complete']) $(m).classList.add('hidden');
-  }
-}
-
-function clockText() {
-  const h = Math.floor(gameMinutes / 60) % 24;
-  const m = Math.floor(gameMinutes % 60);
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
-// Day/night cycle: the clock drives sun, sky, fog and the streetlight glow,
-// so a chase at 19:00 feels different from one at noon. gameMinutes runs
-// 0.5 min per real second; dusk 18:00–19:30, night 19:30–05:30, dawn 05:30–06:00.
-const DAY_SKY = new THREE.Color(0x87bfe8);
-const NIGHT_SKY = new THREE.Color(0x0e1626);
-const DAY_FOG = new THREE.Color(0x9fc6e8);
-const NIGHT_FOG = new THREE.Color(0x0e1626);
-const _sky = new THREE.Color();
-const _fog = new THREE.Color();
-let dayPhase = 'day';
-let nightF = 0;
-let lastNightF = -1;
-
-function applyDayNight() {
-  const mins = gameMinutes % 1440;
-  let f;
-  let phase;
-  if (mins >= WORLD.dayStart && mins < WORLD.duskStart) {
-    f = 0;
-    phase = 'day';
-  } else if (mins >= WORLD.duskStart && mins < WORLD.nightStart) {
-    f = (mins - WORLD.duskStart) / (WORLD.nightStart - WORLD.duskStart);
-    phase = 'dusk';
-  } else if (mins >= WORLD.nightStart || mins < WORLD.dawnStart) {
-    f = 1;
-    phase = 'night';
-  } else {
-    f = 1 - (mins - WORLD.dawnStart) / (WORLD.dayStart - WORLD.dawnStart);
-    phase = 'dawn';
-  }
-  dayPhase = phase;
-  nightF = f;
-  sun.intensity = 1.6 - 1.25 * f;
-  hemi.intensity = 0.9 - 0.55 * f;
-  scene.background.copy(_sky.copy(DAY_SKY).lerp(NIGHT_SKY, f));
-  scene.fog.color.copy(_fog.copy(DAY_FOG).lerp(NIGHT_FOG, f));
-  if (Math.abs(f - lastNightF) > 0.02) {
-    lastNightF = f;
-    city.setNight(f);
-  }
-}
-
-function playerPos() {
-  if (player.inCar) return { x: player.inCar.x, z: player.inCar.z };
-  return { x: player.x, z: player.z };
-}
-
-function resetMissionWorld() {
-  if (player.inCar) {
-    driving.exit();
-    player.mesh.visible = true;
-    player.inCar = null;
-  }
-  player.reset(PLACES.playerStart.x, PLACES.playerStart.z, WORLD.playerHealth);
-  player.camYaw = Math.PI;
-  wanted.heat = 0;
-  wanted.level = 0;
-  police.clear();
-  combat.clearEnemies();
-  combat.ammo = WORLD.pistolMag;
-  combat.reloadTimer = 0;
-  combat.shotCooldown = 0; // a stale cooldown must not swallow the first shot after a retry
-  for (const car of parked) scene.remove(car.mesh);
-  parked = spawnParkedCars(scene, rng);
-  missionPhase = 'go';
-}
-
-function startMission(index) {
-  const m = missions.start(index);
-  // A story mission cancels any side job or offer: the two never fight
-  // over the beacon, and the player is never paid for a job the story
-  // interrupted.
-  sideJobs.cancel();
-  if (!m) {
-    missions.objective = 'Free roam — Solara Bay is yours.';
-    return;
-  }
-  // Each mission's phase is what the step loop waits on: homecoming and
-  // thedrop just walk/drive to the waypoint ('go'), hotwheels waits for the
-  // Comet GT theft ('steal'), payback waits for the docks to be cleared.
-  missionPhase = m.id === 'hotwheels' ? 'steal' : m.id === 'payback' ? 'clear' : 'go';
-  missions.begin();
-  if (m.id === 'thedrop') wanted.addHeat(55);
-  if (m.id === 'payback') {
-    combat.spawnEnemies([
-      [-160, 250], [-132, 250], [-104, 250], [-76, 250], [-146, 268], [-90, 268],
-    ]);
-  }
-  // A retry shows its attempt number, so the grind reads in the banner.
-  const attempt = missions.attemptsFor(m.id);
-  hud.showBanner(m.title, `${m.briefing}${attempt > 1 ? ` (Attempt ${attempt})` : ''}`, 6000);
-  announce(`${m.title}. ${m.objective}`);
-}
-
-function completeMission() {
-  // Capture the Drop clock before complete() clears the mission state.
-  const dropLeft = missions.current && missions.current.id === 'thedrop' ? missions.timeLeft : 0;
-  const finishedStory = missions.complete();
-  stats.missions += 1;
-  if (dropLeft > 0) stats.bestDrop = Math.max(stats.bestDrop, Math.ceil(dropLeft));
-  if (finishedStory) {
-    state = 'complete';
-    hudEl.classList.add('hidden');
-    input.unlockPointer();
-    showOnly('menu-complete');
-    audio.engine(null);
-    audio.siren(false);
-    saveGame({ missionIndex: MISSIONS.length, money, rep, stats: { ...stats, kills: combat.kills }, market: market.serialize(), nightops: nightops.serialize(), weather: weather.serialize(), economy: economy.serialize(), safehouse: safehouse.serialize(), streetrace: streetrace.serialize(), newSystems: saveNewSystems() });
-    announce('Story complete. Free roam continues.');
-    return;
-  }
-  // Save AFTER missions.complete() bumped the index, so Continue resumes at
-  // the next mission instead of replaying the one just finished.
-  saveGame({ missionIndex: missions.index, money, stats: { ...stats, kills: combat.kills }, newSystems: saveNewSystems() });
-  nextMissionTimer = 2.5;
-}
-
-function failMission(reason) {
-  failReason = reason;
-  hud.showBanner('MISSION FAILED', reason, 3000);
-  audio.fail();
-  failTimer = 2.2;
-}
-
-missions.onMissionComplete = (m) => {
-  money += m.reward + (m.bonus || 0);
-  hud.showBanner('MISSION COMPLETE', `${m.title} — +$${m.reward}${m.bonus ? ` (+$${m.bonus} speed bonus)` : ''}`, 3500);
-  // No save here: completeMission() saves after the index has advanced.
-};
-
-function startGame(fresh) {
-  clearSaveIfFresh(fresh);
-  const save = fresh ? null : loadGame();
-  money = save ? save.money || 0 : 0;
-  stats = save && save.stats ? { ...emptyStats(), ...save.stats } : emptyStats();
-  tutorialSeen = save ? !!save.tutorialSeen : false;
-  // Attempt 4 — restore the night economy: crew reputation, market
-  // upgrades and standing, night contracts, and the weather record.
-  rep = save && typeof save.rep === 'number' ? save.rep : (stats.rep || 0);
-  if (save && save.market) market.restore(save.market);
-  if (save && save.nightops) nightops.restore(save.nightops);
-  if (save && save.weather) weather.restore(save.weather);
-  // Attempt 5 — restore the day/night economy, safehouses and race board.
-  if (save && save.economy) economy.deserialize(save.economy);
-  if (save && save.safehouse) safehouse.deserialize(save.safehouse);
-  if (save && save.streetrace) streetrace.deserialize(save.streetrace);
-  // Attempt 6 — restore the eleven new systems (fishing, casino, ...).
-  if (save && save.newSystems) restoreNewSystems(save.newSystems);
-  // Tutorial (attempt 2): first-time players get the three steps; a
-  // returning player (or one who skipped) never sees them again.
-  tutorialStep = tutorialSeen ? -1 : 0;
-  const missionIndex = save ? Math.min(save.missionIndex || 0, MISSIONS.length - 1) : 0;
-  resetMissionWorld();
-  showOnly(null);
-  hudEl.classList.remove('hidden');
-  state = 'playing';
-  input.lockPointer();
-  startMission(missionIndex);
-  announce('Playing. Follow the yellow beacon.');
-}
-
-function clearSaveIfFresh(fresh) {
-  if (fresh) clearSave();
-}
-
-function gameOver(kind, text) {
-  state = 'over';
-  money = Math.floor(money * 0.9);
-  audio.engine(null);
-  audio.siren(false);
-  audio.fail();
-  input.unlockPointer();
-  $('over-title').textContent = kind;
-  $('over-text').textContent = text;
-  showOnly('menu-over');
-  announce(`${kind}. ${text}`);
-}
-
-function quitToTitle() {
-  saveGame({ missionIndex: Math.min(missions.index, MISSIONS.length - 1), money, stats: { ...stats, kills: combat.kills } });
-  state = 'title';
-  hudEl.classList.add('hidden');
-  audio.engine(null);
-  audio.siren(false);
-  showOnly('menu-title');
-  $('btn-continue').style.display = hasSave() ? '' : 'none';
-}
-
-// --- interaction ---------------------------------------------------------------
-function nearestParked(maxDist) {
-  let best = null;
-  let bestD = maxDist;
-  for (const car of parked) {
-    const d = Math.hypot(car.x - player.x, car.z - player.z);
-    if (d < bestD) {
-      bestD = d;
-      best = car;
-    }
-  }
-  return best;
-}
-
-function handleInteract() {
-  if (player.inCar) {
-    const car = player.inCar;
-    const speed = Math.abs(car.speed);
-    if (speed > 3) return;
-    driving.exit();
-    player.inCar = null;
-    player.x = car.x + Math.cos(car.heading) * 2.4;
-    player.z = car.z - Math.sin(car.heading) * 2.4;
-    player.mesh.visible = true;
-    player.mesh.position.set(player.x, 0, player.z);
-    player.snapCamera(camera);
-    audio.doorSlam();
-    audio.blip();
-    return;
-  }
-  // Attempt 6 — E at the water starts fishing, or strikes on a bite.
-  if (fishing.state.phase === 'bite') { fishing.strike(); return; }
-  if (fishing.state.phase === 'idle') {
-    const spot = FISHING_SPOTS.find((s) => Math.hypot(s.x - player.x, s.z - player.z) < 14);
-    if (spot) {
-      const res = fishing.startFishing(spot);
-      if (!res.ok) hud.showBanner('FISHING', res.reason === 'no-bait-money' ? 'Not enough cash for bait.' : 'Already fishing.', 2500);
-      return;
-    }
-  }
-  // Round 7 — the ten new systems answer E near their own places (metro
-  // platforms, Station 7, the barbershop, Rex, the depot, the truck, the
-  // lanes, the marina, the skatepark, the karaoke bar). Each one returns
-  // false when the player is nowhere near it, so cars still work.
-  for (const s of Object.values(NEW_SYSTEMS)) {
-    if (typeof s.interact === 'function' && s.interact()) return;
-  }
-  const car = nearestParked(4.5);
-  if (!car) return;
-  const m = missions.current;
-  if (m && m.id === 'hotwheels' && missionPhase === 'steal' && car.name === 'Comet GT') {
-    driving.enter(car);
-    player.inCar = car;
-    player.mesh.visible = false;
-    wanted.addHeat(45);
-    missionPhase = 'escape';
-    missions.objective = 'Lose the cops, then return to Voss Garage';
-    missions.setWaypoint(PLACES.garage.x, PLACES.garage.z - 14);
-    hud.showBanner('CAR STOLEN', 'The Comet GT is yours — now lose the cops!', 3500);
-    announce('Car stolen. Lose the cops, then return to the garage.');
-    return;
-  }
-  if (car.parked && car.name !== 'Voss Sedan') {
-    wanted.addHeat(25);
-    hud.showBanner('STOLEN CAR', 'Someone saw you take it — the heat is on.', 2500);
-  }
-  driving.enter(car);
-  player.inCar = car;
-  player.mesh.visible = false;
-  audio.doorSlam();
-  audio.blip();
-}
-
-function hittables() {
-  const list = [];
-  for (const c of traffic.cars) list.push({ mesh: c.mesh, kind: 'car' });
-  for (const c of parked) list.push({ mesh: c.mesh, kind: 'car' });
-  for (const p of peds.peds) list.push({ mesh: p.group, kind: 'ped' });
-  return list;
-}
-
-// --- per-frame simulation -------------------------------------------------------
-function stepWorld(dt) {
-  gameMinutes += dt * 0.5;
-  applyDayNight();
-  driving.setNight(nightF);
-  // Weather (attempt 2): a shower rolls in every few minutes of play and
-  // lasts 40–90 s. The factor eases in and out; every system that cares
-  // (rain streaks, wet roads, grip, traffic, pedestrians, rain audio)
-  // reads the same rainF, so the shower is one coherent state.
-  rainTimer -= dt;
-  if (rainTarget <= 0 && rainTimer <= 0) {
-    rainTarget = 1;
-    rainLeft = rng.range(WORLD.rainDurationMin, WORLD.rainDurationMax);
-  } else if (rainTarget > 0) {
-    rainLeft -= dt;
-    if (rainLeft <= 0) {
-      rainTarget = 0;
-      rainTimer = rng.range(WORLD.rainEveryMin * 60 * 0.7, WORLD.rainEveryMin * 60 * 1.3);
-    }
-  }
-  rainF += clamp(rainTarget - rainF, -dt / 5, dt / 5);
-  const pos = playerPos();
-  // Attempt 4 — dynamic weather: the storm cycle owns the sky now, and
-  // the old timer shower just feeds the same rain level. The weather's
-  // own rain wins when it is heavier; storms dim the streets too.
-  wxSummary = weather.update(dt, pos.x, pos.z);
-  const effRain = Math.max(rainF, wxSummary.rain);
-  city.setStorm(wxSummary.condition === 'storm' ? 1 : wxSummary.condition === 'drizzle' ? 0.4 : 0);
-  effects.setRain(effRain, pos.x, pos.z);
-  city.setWet(effRain);
-  driving.setRain(effRain);
-  traffic.setRain(effRain);
-  // Attempt 3 — night underglow: the fast cars' neon brightens with the
-  // night factor, traffic and parked alike.
-  traffic.setNight(nightF);
-  for (const c of parked) setCarGlow(c.mesh, nightF);
-  audio.setRainLevel(effRain);
-  // Attempt 4 — night economy, per frame: rooftop beacons blink, the
-  // market stall watches for the player, and Night Shift runs its
-  // noise/eyes meters. A shot fired this frame counts as noise.
-  beacons.update(dt);
-  market.update(dt, pos.x, pos.z, nightF);
-  const shotFired = shotSeq !== nightShotSeq;
-  nightShotSeq = shotSeq;
-  if (state === 'playing') {
-    const speedNow = player.inCar ? Math.abs(player.inCar.speed) : (player.moving ? 3 : 0);
-    nightops.update(dt, {
-      playerX: pos.x,
-      playerZ: pos.z,
-      speed: speedNow,
-      sneaking: player.sneaking,
-      nightF,
-      visibility: wxSummary.visibility,
-      shotFired,
-      inCar: !!player.inCar,
-    });
-  }
-  // Attempt 5 — the new systems, per frame: the economy restocks on game
-  // time (the clock runs 0.5 game-minutes per real second), the safehouse
-  // mirrors the wanted heat and only cools it while Ria hides inside
-  // (the shed heat is written back, so the HUD stars follow), and the
-  // street race runs its clock while the player is racing.
-  economy.update(dt / 120);
-  safehouse.syncHeat(wanted.heat);
-  if (safehouse.inside()) {
-    safehouse.update(dt);
-    wanted.heat = safehouse.heat;
-    wanted.level = Math.min(WORLD.maxWanted, Math.floor(wanted.heat / 20));
-  }
-  if (state === 'playing') streetrace.update(dt);
-  // Attempt 6 — the eleven new systems, per frame: fishing (Space reels
-  // while a fish fights), the delivery / smuggling / taxi job clocks, the
-  // radio (chase flips the station), and the gym needle. Businesses and
-  // the chop shop settle once per in-game hour, on the hour change.
-  if (state === 'playing') {
-    fishing.tick(dt, { reel: input.down('Space') });
-    delivery.tick(dt);
-    smuggling.tick(dt);
-    taxi.tick(dt);
-    radio.tick(dt, { wanted: wanted.level, hour: hourFloat() });
-    gym.tick(dt);
-    // Round 7 — the ten new systems, per frame: metro trains run, fires
-    // spread, walk-in clients lose patience, Rex follows, bus passengers
-    // wait, food truck orders cook, bowling and pool sit idle until played,
-    // charters sail, skate runs tick down, karaoke songs play out.
-    subway.tick(dt);
-    firefighter.tick(dt);
-    barber.tick(dt);
-    pet.tick(dt);
-    busdriver.tick(dt);
-    foodtruck.tick(dt);
-    bowling.tick(dt);
-    yacht.tick(dt);
-    skatepark.tick(dt);
-    karaoke.tick(dt);
-    // Round 7b — the eighteen new systems tick per frame too.
-    casinoroyale.tick(dt);
-    angling.tick(dt);
-    courier.tick(dt);
-    ghosthunting.tick(dt);
-    golf.tick(dt);
-    helitours.tick(dt);
-    prisonbreak.tick(dt);
-    surfing.tick(dt);
-    treasurehunting.tick(dt);
-    recycling.tick(dt);
-    droneRacing.tick(dt);
-    tennis.tick(dt);
-    hospital.tick(dt);
-    restaurant.tick(dt);
-    pawnshop.tick(dt);
-    bodyguard.tick(dt);
-    jetski.tick(dt);
-    farming.tick(dt);
-    // Round 7c — the thirty-two new systems tick per frame too.
-    hunting.tick(dt);
-    mining.tick(dt);
-    logging.tick(dt);
-    apiary.tick(dt);
-    paleontology.tick(dt);
-    parkRanger.tick(dt);
-    stormChasing.tick(dt);
-    horseRanch.tick(dt);
-    scubaDiving.tick(dt);
-    skydiving.tick(dt);
-    hotAirBalloon.tick(dt);
-    ferry.tick(dt);
-    kayaking.tick(dt);
-    windsurfing.tick(dt);
-    lifeguard.tick(dt);
-    coastGuard.tick(dt);
-    brewery.tick(dt);
-    bakery.tick(dt);
-    sushiBar.tick(dt);
-    coffeeShop.tick(dt);
-    butcher.tick(dt);
-    fishMarket.tick(dt);
-    donutShop.tick(dt);
-    vineyard.tick(dt);
-    museum.tick(dt);
-    esportsArena.tick(dt);
-    comedyClub.tick(dt);
-    streaming.tick(dt);
-    hotel.tick(dt);
-    carWash.tick(dt);
-    stockTrading.tick(dt);
-    politics.tick(dt);
-    if (player.inCar && player.inCar.airborne && !stunt.state.airborne) {
-      const ramp = STUNT_RAMPS.find((r) => Math.hypot(r.x - player.inCar.x, r.z - player.inCar.z) < 40) || null;
-      stunt.startJump(ramp);
-    }
-    if (stunt.state.airborne && player.inCar) {
-      if (player.inCar.airborne) stunt.tickAir(dt);
-      else stunt.land(0.85);
-    }
-    const hourNow = Math.floor(gameMinutes / 60);
-    if (hourNow !== lastGameHour) {
-      lastGameHour = hourNow;
-      businesses.tickHour(hourFloat());
-      chopshop.tickHour();
-      // Round 6 attempt 8 — once per in-game day: settle the nightclubs,
-      // drift the property market and pay rent, and let bounty contracts
-      // go cold. (settleDay/tickDay are idempotent per day, so a double
-      // call on a save-load boundary is harmless.)
-      const dayNow = dayCount();
-      if (dayNow !== lastDay) {
-        lastDay = dayNow;
-        nightclub.settleDay(dayNow);
-        realestate.tickDay(dayNow);
-        bounty.tickDay(dayNow);
-        // Attempt 9 — graffiti turf, market stalls, studio royalties,
-        // eye cases, court dates and film shoots settle once a day too.
-        graffiti.settleDay(dayNow);
-        nightmarket.tickDay(dayNow);
-        studio.tickDay(dayNow);
-        detective.tickDay(dayNow);
-        lawyer.tickDay(dayNow);
-        film.tickDay(dayNow);
-        // Round 7 — metro passes and delays, firehouse restock, barber
-        // trends, Rex's overnight needs, depot service, truck restock,
-        // alley reset, marina fees, sponsor pay and voice rest, once a day.
-        subway.tickDay(dayNow);
-        firefighter.tickDay(dayNow);
-        barber.tickDay(dayNow);
-        pet.tickDay(dayNow);
-        busdriver.tickDay(dayNow);
-        foodtruck.tickDay(dayNow);
-        bowling.tickDay(dayNow);
-        yacht.tickDay(dayNow);
-        skatepark.tickDay(dayNow);
-        karaoke.tickDay(dayNow);
-        // Round 7b — the eighteen new systems settle once a day where they
-        // support it (the nine B systems expose tickDay; the A ones do not).
-        // Round 7c — the thirty-two new systems all expose tickDay, and the
-        // same guard covers them.
-        for (const s of [casinoroyale, angling, courier, ghosthunting, golf, helitours, prisonbreak, surfing, treasurehunting, recycling, droneRacing, tennis, hospital, restaurant, pawnshop, bodyguard, jetski, farming, hunting, mining, logging, apiary, paleontology, parkRanger, stormChasing, horseRanch, scubaDiving, skydiving, hotAirBalloon, ferry, kayaking, windsurfing, lifeguard, coastGuard, brewery, bakery, sushiBar, coffeeShop, butcher, fishMarket, donutShop, vineyard, museum, esportsArena, comedyClub, streaming, hotel, carWash, stockTrading, politics]) {
-          if (typeof s.tickDay === 'function') s.tickDay(dayNow);
-        }
-      }
-    }
-  }
-  const m = missions.current;
-
-  // Mission timers and waypoint checks.
-  if (state === 'playing' && m && missions.stage === 'active') {
-    const timeout = missions.update(dt);
-    if (timeout === 'timeout') {
-      failMission('The package never arrived — time ran out.');
-    } else {
-      const pos = playerPos();
-      if (m.id === 'homecoming' && missionPhase === 'go' && missions.atWaypoint(pos.x, pos.z, 10)) {
-        completeMission();
-      } else if (m.id === 'hotwheels' && missionPhase === 'escape' && wanted.level === 0 && missions.atWaypoint(pos.x, pos.z, 10)) {
-        completeMission();
-      } else if (m.id === 'thedrop' && missionPhase === 'go' && missions.atWaypoint(pos.x, pos.z, 9)) {
-        completeMission();
-      } else if (m.id === 'payback') {
-        if (missionPhase === 'clear' && combat.aliveCount === 0) {
-          missionPhase = 'escape';
-          wanted.addHeat(80);
-          missions.objective = 'Escape to Voss Garage — the whole city is looking';
-          missions.setWaypoint(PLACES.garage.x, PLACES.garage.z - 14);
-          hud.showBanner('DOCKS CLEAR', 'Silas Crown is finished — now disappear!', 3500);
-        } else if (missionPhase === 'escape' && missions.atWaypoint(pos.x, pos.z, 10)) {
-          completeMission();
-        } else if (missionPhase === 'clear') {
-          missions.objective = `Clear the docks of Crown guards (${combat.aliveCount} left)`;
-        }
-      }
-    }
-  }
-
-  // Player / driving.
-  if (state === 'playing') {
-    if (player.inCar) driving.update(dt, input, traffic);
-    else player.update(dt, input, city);
-    // Attempt 3 — drift payout: a banked drift chain pays cash, $1 per 2
-    // points, the moment the chain ends. The banner names the amount so
-    // the payout is never silent money.
-    if (player.inCar) {
-      const bankedPoints = driving.takeBanked();
-      if (bankedPoints > 0) {
-        const cash = Math.floor(bankedPoints / WORLD.driftBankRate);
-        if (cash > 0) {
-          money += cash;
-          hud.showBanner('DRIFT BANKED', `Clean slides paid +$${cash}`, 2500);
-        }
-      }
-    }
-    // Health comes back slowly once Ria has been out of danger a while.
-    player.regen(dt, effects);
-    combat.update(dt);
-    // Shooting.
-    if (!player.inCar && input.mouseDown) {
-      const result = combat.shoot(camera, hittables());
-      if (result) {
-        lastShotResult = result;
-        shotSeq += 1;
-        wanted.addHeat(4);
-        peds.scare(player.x, player.z, 40);
-        if (result === 'ped') {
-          wanted.addHeat(30);
-          hud.showBanner('CIVILIAN DOWN', 'The cops will come for that.', 2500);
-        } else if (result === 'car') wanted.addHeat(10);
-      }
-    }
-    // (Reload is handled in frame(), next to the other one-shot actions.)
-  }
-
-  traffic.update(dt, player.inCar);
-  // Pedestrians sidestep cars that close in: the player's car, traffic and
-  // police all count as hazards. The rain factor is passed along, so a
-  // shower makes them hurry instead of strolling.
-  peds.update(dt, [
-    ...(player.inCar ? [player.inCar] : []),
-    ...traffic.cars,
-    ...police.cars,
-  ], rainF);
-  effects.update(dt);
-
-  // Enemies shoot back. The radio relay runs first, so a guard who just
-  // spotted Ria (or took a bullet) tips off his neighbours this frame.
-  if (state === 'playing') {
-    combat.relayAlerts();
-    for (const e of combat.enemies) {
-      const shotInfo = e.update(dt, player, audio, effects);
-      if (shotInfo) {
-        audio.enemyShot();
-        const hitChance = shotInfo.distance < 18 ? 0.55 : shotInfo.distance < 32 ? 0.32 : 0.14;
-        if (Math.random() < hitChance) {
-          player.damage(shotInfo.damage);
-          lastHurtFlash = true;
-        }
-      }
-    }
-  }
-
-  // Police + wanted.
-  const px = player.inCar ? player.inCar.x : player.x;
-  const pz = player.inCar ? player.inCar.z : player.z;
-  const near = police.update(dt, wanted, player, player.inCar);
-  wanted.update(dt, near);
-  if (state === 'playing' && police.bustTimer > 1.5) {
-    gameOver('BUSTED', 'The Solara PD caught up with Ria. Time in a cell — or a retry.');
-    return;
-  }
-  if (state === 'playing' && player.health <= 0) {
-    gameOver('WASTED', 'Ria went down. The city keeps moving.');
-    return;
-  }
-
-  // Cameras.
-  if (state === 'playing') {
-    if (player.inCar) driving.placeCamera(camera, dt);
-    else player.placeCamera(camera, dt);
-  }
-
-  // Prompts.
-  if (state === 'playing') {
-    if (sideJobs.offered && !sideJobs.active) {
-      // The side-job offer (set above) keeps its prompt: Q is the only way
-      // to take it, and the enter-car prompt would hide it.
-    } else if (player.inCar) {
-      hud.setPrompt(Math.abs(player.inCar.speed) < 3 ? 'E — Exit car' : '');
-      hud.setCrosshair(false);
-    } else {
-      const car = nearestParked(4.5);
-      hud.setPrompt(car ? `E — Enter the ${car.name}` : '');
-      hud.setCrosshair(true);
-    }
-  }
-
-  // Delayed mission starts / restarts.
-  if (nextMissionTimer > 0) {
-    nextMissionTimer -= dt;
-    if (nextMissionTimer <= 0) startMission(missions.index);
-  }
-  if (failTimer > 0) {
-    failTimer -= dt;
-    if (failTimer <= 0) {
-      resetMissionWorld();
-      startMission(missions.index);
-    }
-  }
-
-  // Side jobs (attempt 2): offered only while no story mission is active
-  // and the player is on foot or driving in free play; a story mission
-  // starting cancels any job or offer, so the two never fight over the
-  // beacon. Q accepts an offer; arrival pays cash and saves.
-  const storyFree = !m || missions.stage !== 'active';
-  sideJobs.update(dt, state === 'playing' && storyFree);
-  if (state === 'playing' && sideJobs.active) {
-    const p = playerPos();
-    const speed = player.inCar ? player.inCar.speed : 0;
-    const done = sideJobs.checkArrival(p.x, p.z, speed);
-    if (done === 'picked') {
-      hud.showBanner('PICKED UP', 'Now deliver it — follow the cyan diamond.', 2500);
-    } else if (done) {
-      // Attempt 3 — a finished job pays its reward plus the streak bonus
-      // and, when it completes a chain, the $500 chain bonus on top.
-      const jobBonus = (done.streakBonus || 0) + (done.chainBonus || 0);
-      money += done.reward + jobBonus;
-      stats.sideJobs += 1;
-      stats.sideEarned += done.reward + jobBonus;
-      hud.showBanner('SIDE JOB DONE', `${done.title} — +$${done.reward}${jobBonus ? ` (+$${jobBonus} bonus)` : ''}${done.chainComplete ? ` — ${done.chainComplete} complete!` : ''}`, 3500);
-      saveGame({ missionIndex: missions.index, money, stats: { ...stats, kills: combat.kills } });
-    }
-  }
-  if (state === 'playing' && sideJobs.offered && !sideJobs.active) {
-    hud.setPrompt(`Q — Accept side job: ${sideJobs.offered.title} ($${sideJobs.offered.reward})`);
-  }
-
-  // Tutorial (attempt 2): one short step at a time, advancing on what the
-  // player actually does — move, then get in a car, then reach the beacon.
-  if (state === 'playing' && tutorialStep >= 0) {
-    const step = tutorialStep;
-    if (step === 0 && (input.down('KeyW') || input.down('KeyA') || input.down('KeyS') || input.down('KeyD'))) {
-      tutorialStep = 1;
-      audio.chime();
-    } else if (step === 1 && player.inCar) {
-      tutorialStep = 2;
-      audio.chime();
-    } else if (step === 2 && missions.waypoint && missions.atWaypoint(playerPos().x, playerPos().z, 12)) {
-      tutorialStep = -1;
-      tutorialSeen = true;
-      audio.chime();
-      saveGame({ missionIndex: missions.index, money, stats: { ...stats, kills: combat.kills }, tutorialSeen: true });
-    }
-    hud.setTutorial(tutorialStep >= 0 ? `${TUTORIAL_STEPS[tutorialStep]}  (T to skip)` : '');
-  }
-
-  // HUD.
-  if (state === 'playing') {
-    const mapCars = [];
-    for (const c of traffic.cars) mapCars.push({ x: c.x, z: c.z, police: false });
-    for (const c of police.cars) mapCars.push({ x: c.x, z: c.z, police: true });
-    hud.update(dt, {
-      money,
-      health: player.health,
-      wanted: wanted.level,
-      speed: player.inCar ? player.inCar.speed : 0,
-      inCar: !!player.inCar,
-      carHealth: player.inCar ? player.inCar.health : 100,
-      ammo: combat.ammo,
-      reloading: combat.reloadTimer > 0,
-      missionTitle: m ? m.title : 'FREE ROAM',
-      objective: missions.stage === 'active' ? missions.objective : missions.message,
-      waypointDist: missions.waypoint ? Math.hypot(missions.waypoint.x - px, missions.waypoint.z - pz) : 0,
-      timeLeft: m && m.id === 'thedrop' && missions.stage === 'active' ? missions.timeLeft : 0,
-      clock: clockText(),
-      dayPhase,
-      hurt: player.hurtTimer > 0,
-      px,
-      pz,
-      heading: player.inCar ? player.inCar.heading : player.heading,
-      waypoint: missions.waypoint,
-      cars: mapCars,
-      parked: parked.map((c) => ({ x: c.x, z: c.z })),
-      // Attempt 2 HUD state: rain icon, side-job diamond, named places.
-      raining: rainF > 0.3,
-      // Attempt 4 HUD state: weather outlook, night contract line, and
-      // the Black Market line (stall prompt or open catalogue).
-      outlook: weather.outlook(),
-      nightops: [nightops.statusLine(), systemsHudLine()].filter(Boolean).join('  '),
-      market: market.open ? market.statusLine(money, rep) : (market.nearStall ? market.statusLine(money, rep) : ''),
-      sideWaypoint: sideJobs.waypoint,
-      // Attempt 3 HUD state: drift meter, heli warning, roadblocks and
-      // heli on the minimap, chain progress, worst damage zone.
-      drift: driving.driftScore,
-      drifting: driving.drifting,
-      driftBanked: driving.bankedTotal,
-      heli: police.heliActive,
-      heliPos: police.heli ? { x: police.heli.x, z: police.heli.z } : null,
-      roadblocks: police.roadblocks.map((c) => ({ x: c.x, z: c.z })),
-      chain: sideJobs.chainStatus(),
-      damage: driving.damageZones,
-      places: [
-        { x: PLACES.garage.x, z: PLACES.garage.z, name: 'Garage' },
-        { x: PLACES.plaza.x, z: PLACES.plaza.z, name: 'Plaza' },
-        { x: PLACES.marina.x, z: PLACES.marina.z, name: 'Marina' },
-        { x: PLACES.docks.x, z: PLACES.docks.z, name: 'Docks' },
-        { x: PLACES.hospital.x, z: PLACES.hospital.z, name: 'Hospital' },
-        { x: PLACES.beach.x, z: PLACES.beach.z, name: 'Beach' },
-      ],
-    });
-  }
-  lastHurtFlash = false;
-}
-
-// --- menus ----------------------------------------------------------------------
-$('btn-continue').addEventListener('click', () => startGame(false));
-$('btn-new').addEventListener('click', () => startGame(true));
-$('btn-how').addEventListener('click', () => $('howto').classList.toggle('hidden'));
-$('btn-resume').addEventListener('click', () => {
-  state = 'playing';
-  showOnly(null);
-  input.lockPointer();
-});
-$('btn-restart').addEventListener('click', () => {
-  resetMissionWorld();
-  startMission(missions.index);
-  state = 'playing';
-  showOnly(null);
-  hudEl.classList.remove('hidden');
-  input.lockPointer();
-});
-$('btn-mute').addEventListener('click', () => {
-  muted = !muted;
-  audio.setMuted(muted);
-  $('btn-mute').textContent = `Mute: ${muted ? 'On' : 'Off'}`;
-});
-$('btn-quit').addEventListener('click', quitToTitle);
-$('btn-retry').addEventListener('click', () => {
-  resetMissionWorld();
-  startMission(missions.index);
-  state = 'playing';
-  showOnly(null);
-  hudEl.classList.remove('hidden');
-  input.lockPointer();
-});
-$('btn-over-title').addEventListener('click', quitToTitle);
-$('btn-freeroam').addEventListener('click', () => {
-  state = 'playing';
-  showOnly(null);
-  hudEl.classList.remove('hidden');
-  input.lockPointer();
-  missions.objective = 'Free roam — Solara Bay is yours.';
-  announce('Free roam.');
-});
-$('btn-continue').style.display = hasSave() ? '' : 'none';
-
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden && state === 'playing') {
-    state = 'paused';
-    showOnly('menu-pause');
-    audio.engine(null);
-  }
-});
+const skyDay = new THREE.Color(0x87b5e0);
+const skyNight = new THREE.Color(0x0b1026);
+const fogDay = new THREE.Color(0x9db8cc);
+const fogNight = new THREE.Color(0x0b1026);
+const skyWork = new THREE.Color();
+const fogWork = new THREE.Color();
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -1721,301 +229,1432 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// --- main loop --------------------------------------------------------------------
-let last = performance.now();
-function frame(now) {
+// ---------------------------------------------------------------------------
+// Clock and calendar state. lastGameHour mirrors the 17:40 start by hand
+// because the minute counter is declared just below it.
+// ---------------------------------------------------------------------------
+
+let lastGameHour = 17;
+let lastGameMinute = 40;
+let lastDay = 1;
+let gameMinutes = 17 * 60 + 40;
+let nightF = 0;
+let lastNightF = -1;
+let titleOrbit = 0;
+
+// Places the HUD minimap names, in config order.
+const namedPlaces = Object.entries(PLACES || {}).map(([name, spot]) => ({
+  name,
+  x: spot.x ?? 0,
+  z: spot.z ?? 0,
+}));
+const startPlace = PLACES.start || PLACES.playerStart || { x: 0, z: 0 };
+const garagePlace = PLACES.garage || PLACES.Garage || { x: 0, z: 0 };
+const docksPlace = PLACES.docks || PLACES.Docks || { x: 0, z: 0 };
+
+// ---------------------------------------------------------------------------
+// Live money / heat accessors. Factories only ever get these closures, never
+// a snapshot, so spending in one system is visible everywhere at once.
+// ---------------------------------------------------------------------------
+
+function getCash() { return money; }
+function addCash(amount) { money += amount; }
+function getHeatLevel() { return wanted.level; }
+function addHeat(amount) {
+  wanted.heat = clamp(wanted.heat + amount, 0, 100);
+  wanted.level = heatToStars(wanted.heat);
+}
+function getWantedLevel() { return wanted.level; }
+
+// The status line writer, and the shared player-position reader. Both are
+// plain function declarations so factory closures built before this point in
+// the file can still reach them.
+let lastAnnounce = '';
+function announce(msg) {
+  lastAnnounce = msg;
+  if (statusEl) statusEl.textContent = msg;
+}
+
+function playerPos() {
+  if (driving.inCar && driving.car) {
+    const c = driving.car;
+    return { x: c.x ?? c.pos?.x ?? 0, z: c.z ?? c.pos?.z ?? 0 };
+  }
+  return { x: player.pos.x, z: player.pos.z };
+}
+
+// ---------------------------------------------------------------------------
+// Class-built core systems, in boot order
+// ---------------------------------------------------------------------------
+
+const city = buildCity(scene);
+const audio = new AudioEngine();
+const effects = new Effects(scene);
+const input = new Input(canvasEl);
+const player = new Player(scene, startPlace.x, startPlace.z);
+const traffic = new TrafficSystem(scene, rngTool, city);
+const peds = new PedestrianSystem(scene, rngTool, city);
+const parkedCars = spawnParkedCars(scene, rngTool);
+const wanted = new WantedSystem();
+const police = new PoliceSystem(scene, rngTool, city, audio, effects);
+const combat = new Combat(scene, audio, effects);
+const missions = new MissionManager(scene, audio);
+const sideJobs = new SideJobs(scene, audio);
+const driving = new Driving(city, audio, effects);
+const hud = new HUD();
+const weather = new WeatherSystem(scene, rngTool, audio, effects);
+const beacons = buildRooftopBeacons(scene);
+
+function onMarketBuy(item) {
+  stats.marketDeals++;
+  hud.showBanner('Deal closed', item && item.name ? item.name : 'Black market');
+  announce('Bought ' + (item && item.name ? item.name : 'an item') + ' at the docks.');
+}
+
+function onNightReward(pay, repGain, label) {
+  const owlCut = Math.round(pay * (market.upgrades?.nightPay || 0));
+  addCash(pay + owlCut);
+  rep += repGain;
+  stats.nightOps++;
+  if (market.addRep) market.addRep(repGain, 'owls');
+  hud.showBanner('Night work paid', (label || 'Contract') + ' +$' + (pay + owlCut));
+  saveGame({ missionIndex, money, rep, stats, tutorialSeen });
+}
+
+function onNightFail() {
+  stats.nightBurned++;
+  hud.showBanner('Contract burned', 'The night saw too much.');
+}
+
+function onNightSpotted() {
+  addHeat(15);
+  hud.showBanner('Spotted', 'A watcher made you.');
+}
+
+const market = new BlackMarket(scene, rngTool, audio, { onBuy: onMarketBuy, announce });
+const nightops = new NightOps(scene, rngTool, audio, effects, {
+  announce,
+  reward: onNightReward,
+  fail: onNightFail,
+  onSpotted: onNightSpotted,
+});
+
+// Mission completion callbacks. The reward handler pays out but deliberately
+// does not save; the caller saves after the index has advanced. It is
+// idempotent per mission object, so a manager that fires both callback
+// spellings can never pay the same mission twice.
+let storyDone = false;
+let lastPaidMission = null;
+function missionRewardHandler(mission, bonus) {
+  const done = mission || missions.current || MISSIONS[missionIndex];
+  if (!done || done === lastPaidMission) return;
+  lastPaidMission = done;
+  const extra = typeof bonus === 'number' ? bonus : (done.bonus || 0);
+  const pay = (done.reward || 0) + extra;
+  addCash(pay);
+  hud.showBanner('Mission complete', done.title + '  +$' + pay);
+}
+missions.onComplete = missionRewardHandler;
+missions.onMissionComplete = missionRewardHandler;
+missions.onStoryComplete = () => { storyDone = true; };
+
+// ---------------------------------------------------------------------------
+// The three pre-registry factories. They are built before the shared time
+// helpers exist, so each gets its own small inline hour reader instead.
+// ---------------------------------------------------------------------------
+
+const inlineHour = () => gameMinutes / 60;
+
+const economy = createEconomySystem({
+  getHour: inlineHour,
+  getCash,
+  addCash,
+  notify: announce,
+  addHeat,
+  onBuy: onMarketBuy,
+  startingCash: 0,
+});
+
+const safehouse = createSafehouseSystem({
+  getStars: getHeatLevel,
+  setStars(n) {
+    wanted.heat = clamp(n * 20, 0, 100);
+    wanted.level = clamp(n, 0, 5);
+  },
+  getCash,
+  addCash,
+  notify: announce,
+  getPosition: playerPos,
+  isChased() { return (police.cars && police.cars.length > 0) || combat.aliveCount > 0; },
+  onHeatChange(heat, stars) {
+    wanted.heat = clamp(heat, 0, 100);
+    wanted.level = stars;
+  },
+});
+
+const streetrace = createStreetRaceSystem({
+  playerName: 'Ria',
+  getPosition: playerPos,
+  getCash,
+  addCash,
+  notify: announce,
+  getSpeed() { return driving.inCar ? Math.abs(driving.speed || 0) : 0; },
+  getHour: inlineHour,
+  getDay() { return Math.floor(gameMinutes / 1440) + 1; },
+  rng: rngFn,
+});
+
+// Shared time readers for every factory built from here on.
+function hourFloat() { return gameMinutes / 60; }
+function dayCount() { return Math.floor(gameMinutes / 1440) + 1; }
+
+// One fresh context per factory. The common fields are the same live
+// closures every time; the extras differ by what each system actually needs.
+function baseCtx() {
+  return {
+    rng: rngFn,
+    getDay: dayCount,
+    getHour: hourFloat,
+    getCash,
+    addCash,
+    addHeat,
+    log: announce,
+    getPlayerPos: playerPos,
+    getWeather: () => (wxSummary ? wxSummary.condition : 'clear'),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Attempt 6 group — eleven systems
+// ---------------------------------------------------------------------------
+
+const fishing = createFishingSystem({
+  ...baseCtx(),
+  onBite() { if (typeof audio.blip === 'function') audio.blip(); },
+  onCatch(fish) { announce('Caught a ' + (fish && fish.name ? fish.name : 'fish') + '.'); },
+});
+const casino = createCasinoSystem(baseCtx());
+const businesses = createBusinessSystem({
+  ...baseCtx(),
+  reduceHeat(n) {
+    wanted.heat = Math.max(0, wanted.heat - n);
+    wanted.level = heatToStars(wanted.heat);
+  },
+});
+const delivery = createDeliverySystem(baseCtx());
+const stunt = createStuntSystem({
+  ...baseCtx(),
+  onCrash() {
+    if (driving.car) driving.car.health = Math.max(10, (driving.car.health ?? 100) - 15);
+  },
+  isAirborne() { return !!(driving.inCar && driving.car && driving.car.airborne); },
+});
+const radio = createRadioSystem({
+  rng: rngFn,
+  log: announce,
+  onStationChange(st) { announce('Radio: ' + (st && st.name ? st.name : '')); },
+  onTrackChange() {},
+  now() { return Date.now(); },
+  getWanted: getWantedLevel,
+  getHour: hourFloat,
+});
+const photo = createPhotoSystem({
+  ...baseCtx(),
+  isAirborne() { return !!(driving.inCar && driving.car && driving.car.airborne); },
+  captureFrame() {
+    try { return renderer.domElement.toDataURL('image/jpeg', 0.6); }
+    catch (e) { return null; }
+  },
+});
+const smuggling = createSmugglingSystem({
+  ...baseCtx(),
+  getDeliveryRep() {
+    if (delivery && typeof delivery.stats === 'function') {
+      const s = delivery.stats();
+      return (s && s.rep) || 0;
+    }
+    return 0;
+  },
+  hasBusiness(id) {
+    return typeof businesses.hasBusiness === 'function' ? businesses.hasBusiness(id) : false;
+  },
+});
+const gym = createGymSystem(baseCtx());
+const chopshop = createChopShopSystem(baseCtx());
+const taxi = createTaxiSystem({
+  rng: rngFn,
+  log: announce,
+  addCash,
+  getPlayerPos: playerPos,
+  getSpeed() { return driving.inCar ? Math.abs(driving.speed || 0) : 0; },
+  getDay: dayCount,
+  onPickup() { if (typeof audio.blip === 'function') audio.blip(); },
+  onFareComplete(fare) { announce('Fare done.' + (fare ? ' +$' + (fare.total || fare.fare || 0) : '')); },
+});
+
+// ---------------------------------------------------------------------------
+// Attempt 7 group — three systems
+// ---------------------------------------------------------------------------
+
+const arcade = createArcadeSystem(baseCtx());
+const bank = createBankSystem(baseCtx());
+const tuning = createTuningSystem(baseCtx());
+
+// ---------------------------------------------------------------------------
+// Attempt 8 group — five systems
+// ---------------------------------------------------------------------------
+
+const nightclub = createNightclubSystem({
+  rng: rngFn,
+  getCash,
+  addCash,
+  addHeat,
+  log: announce,
+  getHour: hourFloat,
+});
+const bounty = createBountySystem(baseCtx());
+const carmeet = createCarMeetSystem(baseCtx());
+const realestate = createRealEstateSystem(baseCtx());
+const fightclub = createFightClubSystem({
+  rng: rngFn,
+  getCash,
+  addCash,
+  addHeat,
+  log: announce,
+});
+
+// ---------------------------------------------------------------------------
+// Attempt 9 group — six systems
+// ---------------------------------------------------------------------------
+
+const graffiti = createGraffitiSystem(baseCtx());
+const nightmarket = createNightMarketSystem(baseCtx());
+const studio = createStudioSystem(baseCtx());
+const detective = createDetectiveSystem(baseCtx());
+const lawyer = createLawyerSystem(baseCtx());
+const film = createFilmSystem(baseCtx());
+
+// ---------------------------------------------------------------------------
+// Round 7 group — ten systems
+// ---------------------------------------------------------------------------
+
+const subway = createSubwaySystem(baseCtx());
+const firefighter = createFirefighterSystem(baseCtx());
+const barber = createBarberSystem(baseCtx());
+const pet = createPetSystem(baseCtx());
+const busdriver = createBusDriverSystem(baseCtx());
+const foodtruck = createFoodTruckSystem(baseCtx());
+const bowling = createBowlingSystem(baseCtx());
+const yacht = createYachtSystem(baseCtx());
+const skatepark = createSkateparkSystem(baseCtx());
+const karaoke = createKaraokeSystem(baseCtx());
+
+// ---------------------------------------------------------------------------
+// Round 7b group — eighteen systems. The first nine report a summary
+// instead of stats, so each gets a stats alias right after it is built.
+// ---------------------------------------------------------------------------
+
+const casinoroyale = createCasinoRoyaleSystem(baseCtx());
+casinoroyale.stats = () => casinoroyale.summary();
+const angling = createAnglingSystem(baseCtx());
+angling.stats = () => angling.summary();
+const courier = createCourierSystem(baseCtx());
+courier.stats = () => courier.summary();
+const ghosthunting = createGhostHuntingSystem(baseCtx());
+ghosthunting.stats = () => ghosthunting.summary();
+const golf = createGolfSystem(baseCtx());
+golf.stats = () => golf.summary();
+const helitours = createHeliTourSystem(baseCtx());
+helitours.stats = () => helitours.summary();
+const prisonbreak = createPrisonBreakSystem(baseCtx());
+prisonbreak.stats = () => prisonbreak.summary();
+const surfing = createSurfingSystem(baseCtx());
+surfing.stats = () => surfing.summary();
+const treasurehunting = createTreasureHuntingSystem(baseCtx());
+treasurehunting.stats = () => treasurehunting.summary();
+
+const recycling = createRecyclingSystem(baseCtx());
+const droneRacing = createDroneRacingSystem(baseCtx());
+const tennis = createTennisSystem(baseCtx());
+const hospital = createHospitalSystem(baseCtx());
+const restaurant = createRestaurantSystem(baseCtx());
+const pawnshop = createPawnshopSystem(baseCtx());
+const bodyguard = createBodyguardSystem(baseCtx());
+const jetski = createJetskiSystem(baseCtx());
+const farming = createFarmingSystem(baseCtx());
+
+// ---------------------------------------------------------------------------
+// Round 7c group — thirty-two systems
+// ---------------------------------------------------------------------------
+
+const hunting = createHuntingSystem(baseCtx());
+const mining = createMiningSystem(baseCtx());
+const logging = createLoggingSystem(baseCtx());
+const apiary = createApiarySystem(baseCtx());
+const paleontology = createPaleontologySystem(baseCtx());
+const parkRanger = createParkRangerSystem(baseCtx());
+const stormChasing = createStormChasingSystem(baseCtx());
+const horseRanch = createHorseRanchSystem(baseCtx());
+const scubaDiving = createScubaDivingSystem(baseCtx());
+const skydiving = createSkydivingSystem(baseCtx());
+const hotAirBalloon = createHotAirBalloonSystem(baseCtx());
+const ferry = createFerrySystem(baseCtx());
+const kayaking = createKayakingSystem(baseCtx());
+const windsurfing = createWindsurfingSystem(baseCtx());
+const lifeguard = createLifeguardSystem(baseCtx());
+const coastGuard = createCoastGuardSystem(baseCtx());
+const brewery = createBrewerySystem(baseCtx());
+const bakery = createBakerySystem(baseCtx());
+const sushiBar = createSushiBarSystem(baseCtx());
+const coffeeShop = createCoffeeShopSystem(baseCtx());
+const butcher = createButcherSystem(baseCtx());
+const fishMarket = createFishMarketSystem(baseCtx());
+const donutShop = createDonutShopSystem(baseCtx());
+const vineyard = createVineyardSystem(baseCtx());
+const museum = createMuseumSystem(baseCtx());
+const esportsArena = createEsportsArenaSystem(baseCtx());
+const comedyClub = createComedyClubSystem(baseCtx());
+const streaming = createStreamingSystem(baseCtx());
+const hotel = createHotelSystem(baseCtx());
+const carWash = createCarWashSystem(baseCtx());
+const stockTrading = createStockTradingSystem(baseCtx());
+const politics = createPoliticsSystem(baseCtx());
+
+// ---------------------------------------------------------------------------
+// The registry: 85 factory systems, in build order.
+// ---------------------------------------------------------------------------
+
+const NEW_SYSTEMS = {
+  fishing, casino, businesses, delivery, stunt, radio, photo, smuggling, gym, chopshop, taxi,
+  arcade, bank, tuning,
+  nightclub, bounty, carmeet, realestate, fightclub,
+  graffiti, nightmarket, studio, detective, lawyer, film,
+  subway, firefighter, barber, pet, busdriver, foodtruck, bowling, yacht, skatepark, karaoke,
+  casinoroyale, angling, courier, ghosthunting, golf, helitours, prisonbreak, surfing, treasurehunting,
+  recycling, droneRacing, tennis, hospital, restaurant, pawnshop, bodyguard, jetski, farming,
+  hunting, mining, logging, apiary, paleontology, parkRanger, stormChasing, horseRanch, scubaDiving,
+  skydiving, hotAirBalloon, ferry, kayaking, windsurfing, lifeguard, coastGuard, brewery, bakery,
+  sushiBar, coffeeShop, butcher, fishMarket, donutShop, vineyard, museum, esportsArena, comedyClub,
+  streaming, hotel, carWash, stockTrading, politics,
+};
+
+// Slices used by the frame and day loops, in registry order.
+const frameTickSystems = Object.values(NEW_SYSTEMS).slice(-60);
+const dayTickSystems = Object.values(NEW_SYSTEMS).slice(-50);
+const round7Systems = [subway, firefighter, barber, pet, busdriver, foodtruck, bowling, yacht, skatepark, karaoke];
+
+// ---------------------------------------------------------------------------
+// Rain timers, weather summary, tutorial and game state, money, stats
+// ---------------------------------------------------------------------------
+
+let rainTimer = 120;
+let rainDuration = 0;
+let rainTarget = 0;
+let rainFactor = 0;
+let effRain = 0;
+
+// Declared after every factory is built. Nothing reads it during
+// construction; the getWeather closures only touch it while ticking.
+let wxSummary = null;
+function refreshWeather() {
+  if (weather && typeof weather.summary === 'function') wxSummary = weather.summary();
+}
+refreshWeather();
+
+let state = 'title';
+let money = 0;
+let rep = 0;
+let stats = emptyStats();
+let tutorialSeen = false;
+let tutorialStep = 0;
+let tutorialMoved = false;
+let missionIndex = 0;
+let missionPhase = 'go';
+let nextMissionTimer = 0;
+let failTimer = 0;
+let shotFired = false;
+let lastShot = '';
+let lastShotPoint = null;
+let lastDamage = 0;
+let shotSeq = 0;
+let driftBanked = 0;
+let sneakHeld = false;
+let photoMode = false;
+let stuntJump = null;
+let playerStartX = startPlace.x || 0;
+let playerStartZ = startPlace.z || 0;
+
+// ---------------------------------------------------------------------------
+// Save / load
+// ---------------------------------------------------------------------------
+
+function saveNewSystems() {
+  const out = {};
+  for (const [name, sys] of Object.entries(NEW_SYSTEMS)) {
+    if (sys && typeof sys.serialize === 'function') out[name] = sys.serialize();
+  }
+  return out;
+}
+
+function restoreNewSystems(data) {
+  if (!data) return;
+  for (const [name, saved] of Object.entries(data)) {
+    const sys = NEW_SYSTEMS[name];
+    if (sys && typeof sys.deserialize === 'function' && saved) sys.deserialize(saved);
+  }
+}
+
+function applySave(saved) {
+  money = typeof saved.money === 'number' ? saved.money : 0;
+  stats = { ...emptyStats(), ...(saved.stats || {}) };
+  tutorialSeen = !!saved.tutorialSeen;
+  rep = typeof saved.rep === 'number' ? saved.rep : (stats.rep || 0);
+  if (saved.market && typeof market.restore === 'function') market.restore(saved.market);
+  if (saved.nightops && typeof nightops.restore === 'function') nightops.restore(saved.nightops);
+  if (saved.weather && typeof weather.restore === 'function') weather.restore(saved.weather);
+  if (saved.economy && typeof economy.deserialize === 'function') economy.deserialize(saved.economy);
+  if (saved.safehouse && typeof safehouse.deserialize === 'function') safehouse.deserialize(saved.safehouse);
+  if (saved.streetrace && typeof streetrace.deserialize === 'function') streetrace.deserialize(saved.streetrace);
+  restoreNewSystems(saved.newSystems);
+  missionIndex = clamp(saved.missionIndex || 0, 0, MISSIONS.length - 1);
+  tutorialStep = tutorialSeen ? 3 : 0;
+}
+
+function resetProgress() {
+  money = 0;
+  rep = 0;
+  stats = emptyStats();
+  tutorialSeen = false;
+  tutorialStep = 0;
+  tutorialMoved = false;
+  missionIndex = 0;
+  missionPhase = 'go';
+  nextMissionTimer = 0;
+  failTimer = 0;
+  storyDone = false;
+  combat.clearEnemies();
+  if (driving.inCar && typeof driving.exitCar === 'function') driving.exitCar();
+  player.health = 100;
+  wanted.heat = 0;
+  wanted.level = 0;
+  player.x = playerStartX;
+  player.z = playerStartZ;
+}
+
+// ---------------------------------------------------------------------------
+// Menus
+// ---------------------------------------------------------------------------
+
+function hideAllMenus() {
+  for (const el of [menuTitleEl, menuPauseEl, menuOverEl, menuCompleteEl]) {
+    if (el) el.style.display = 'none';
+  }
+  if (howtoEl) howtoEl.style.display = 'none';
+}
+
+function showMenu(el) {
+  hideAllMenus();
+  if (el) el.style.display = '';
+}
+
+function refreshContinueButton() {
+  if (!btnContinue) return;
+  let has = false;
+  try { has = !!loadGame(); } catch (e) { has = false; }
+  btnContinue.style.display = has ? '' : 'none';
+}
+
+function pauseGame() {
+  if (state !== 'playing') return;
+  state = 'paused';
+  showMenu(menuPauseEl);
+}
+
+function resumeGame() {
+  if (state !== 'paused') return;
+  state = 'playing';
+  hideAllMenus();
+}
+
+function gameOver(kind) {
+  state = 'over';
+  money = Math.floor(money * 0.9);
+  if (overTitleEl) overTitleEl.textContent = kind === 'busted' ? 'BUSTED' : 'WASTED';
+  if (overTextEl) {
+    overTextEl.textContent = kind === 'busted'
+      ? 'The Solara PD finally caught up with Ria.'
+      : 'Ria went down in the streets of Solara.';
+  }
+  showMenu(menuOverEl);
+}
+
+function quitToTitle() {
+  saveGame({ missionIndex, money, stats });
+  state = 'title';
+  refreshContinueButton();
+  showMenu(menuTitleEl);
+}
+
+// ---------------------------------------------------------------------------
+// Missions
+// ---------------------------------------------------------------------------
+
+function startMission(i) {
+  if (i >= MISSIONS.length) {
+    state = 'complete';
+    showMenu(menuCompleteEl);
+    return;
+  }
+  missionIndex = i;
+  lastPaidMission = null;
+  sideJobs.cancel();
+  const m = MISSIONS[i];
+  missionPhase = m.id === 'hotwheels' ? 'steal' : m.id === 'payback' ? 'clear' : 'go';
+  missions.start(i);
+  if (m.id === 'thedrop') addHeat(55);
+  if (m.id === 'payback') {
+    const spots = [];
+    for (let k = 0; k < 6; k++) {
+      const ang = (k / 6) * Math.PI * 2;
+      spots.push([docksPlace.x + Math.cos(ang) * 10, docksPlace.z + Math.sin(ang) * 10]);
+    }
+    combat.spawnEnemies(spots);
+  }
+  missions.begin();
+  hud.showBanner((i + 1) + ' — ' + m.title, m.briefing || '');
+  announce(m.objective || '');
+}
+
+function completeMission() {
+  const m = missions.current;
+  if (!m) return;
+  const finished = missions.complete();
+  missionIndex = typeof missions.index === 'number' ? missions.index : missionIndex + 1;
+  stats.missions++;
+  if (finished || storyDone) {
+    state = 'complete';
+    showMenu(menuCompleteEl);
+    saveGame({
+      missionIndex, money, rep, stats,
+      market: typeof market.serialize === 'function' ? market.serialize() : undefined,
+      nightops: typeof nightops.serialize === 'function' ? nightops.serialize() : undefined,
+      weather: typeof weather.serialize === 'function' ? weather.serialize() : undefined,
+      economy: typeof economy.serialize === 'function' ? economy.serialize() : undefined,
+      safehouse: typeof safehouse.serialize === 'function' ? safehouse.serialize() : undefined,
+      streetrace: typeof streetrace.serialize === 'function' ? streetrace.serialize() : undefined,
+      newSystems: saveNewSystems(),
+    });
+    return;
+  }
+  saveGame({ missionIndex, money, stats, newSystems: saveNewSystems() });
+  nextMissionTimer = 2.5;
+}
+
+function failMission(reason) {
+  hud.showBanner('Mission failed', reason || 'Try again, Ria.');
+  failTimer = 2.5;
+}
+
+function resetMissionWorld() {
+  combat.clearEnemies();
+  if (driving.inCar && typeof driving.exitCar === 'function') driving.exitCar();
+  player.x = playerStartX;
+  player.z = playerStartZ;
+  player.health = 100;
+  wanted.heat = 0;
+  wanted.level = 0;
+}
+
+function startGame(useSave) {
+  const saved = useSave ? loadGame() : null;
+  if (saved) applySave(saved);
+  else resetProgress();
+  hideAllMenus();
+  state = 'playing';
+  startMission(missionIndex);
+}
+
+function checkMissionProgress() {
+  const m = missions.current;
+  if (!m) return;
+  const p = playerPos();
+  if (m.id === 'homecoming' && missionPhase === 'go') {
+    if (missions.atWaypoint(p.x, p.z, 10)) completeMission();
+    return;
+  }
+  if (m.id === 'hotwheels') {
+    if (missionPhase === 'escape' && wanted.level === 0 && missions.atWaypoint(p.x, p.z, 10)) completeMission();
+    return;
+  }
+  if (m.id === 'thedrop') {
+    if (missions.atWaypoint(p.x, p.z, 9)) completeMission();
+    return;
+  }
+  if (m.id === 'payback') {
+    if (missionPhase === 'clear' && combat.aliveCount === 0) {
+      missionPhase = 'escape';
+      addHeat(80);
+      missions.setWaypoint(garagePlace.x, garagePlace.z);
+      announce('Docks clear. Get back to the garage.');
+      hud.showBanner('Payback', 'All guards down — lose the heat and get home.');
+    } else if (missionPhase === 'escape' && missions.atWaypoint(p.x, p.z, 10)) {
+      completeMission();
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Interaction: fishing first, then registry systems, then the nearest car
+// ---------------------------------------------------------------------------
+
+function nearestParkedCar(maxDist) {
+  const p = playerPos();
+  let best = null;
+  let bestD = maxDist;
+  for (const car of parkedCars) {
+    const cx = car.x ?? car.pos?.x ?? 0;
+    const cz = car.z ?? car.pos?.z ?? 0;
+    const d = dist2d(p.x, p.z, cx, cz);
+    if (d < bestD) { bestD = d; best = car; }
+  }
+  return best;
+}
+
+function fishingAction() {
+  const phase = fishing.state ? fishing.state.phase : null;
+  if (phase === 'bite') {
+    fishing.strike();
+    return true;
+  }
+  const p = playerPos();
+  let spot = null;
+  let bestD = 14;
+  for (const s of FISHING_SPOTS) {
+    const d = dist2d(p.x, p.z, s.x, s.z);
+    if (d < bestD) { bestD = d; spot = s; }
+  }
+  if (spot) {
+    const res = fishing.startFishing(spot);
+    return !!(res && res.ok);
+  }
+  return false;
+}
+
+function handleInteract() {
+  if (fishingAction()) return;
+  for (const sys of Object.values(NEW_SYSTEMS)) {
+    if (sys && typeof sys.interact === 'function') {
+      let res = null;
+      try { res = sys.interact(); } catch (e) { res = null; }
+      if (res && res.ok) return;
+    }
+  }
+  const car = nearestParkedCar(4.5);
+  if (!car) return;
+  const m = missions.current;
+  const model = car.model || car.name || '';
+  if (m && m.id === 'hotwheels' && missionPhase === 'steal' && model === 'Comet GT') {
+    if (typeof driving.enterCar === 'function') driving.enterCar(car);
+    addHeat(45);
+    missionPhase = 'escape';
+    announce('Comet GT stolen. Lose the heat, then get to the garage.');
+    hud.showBanner('Hotwheels', 'Stolen. Now disappear.');
+    return;
+  }
+  if (typeof driving.enterCar === 'function') driving.enterCar(car);
+  if (model !== 'Voss Sedan') addHeat(25);
+}
+
+function handleSafehouseToggle() {
+  const inside = typeof safehouse.inside === 'function' ? safehouse.inside() : null;
+  if (inside) {
+    safehouse.exitSafehouse();
+    return;
+  }
+  const p = playerPos();
+  const found = nearSafehouse(p.x, p.z, 48);
+  if (found && found.house) safehouse.enterSafehouse(found.house);
+  else if (found) safehouse.enterSafehouse(found);
+}
+
+function handleMarketDigit(digit) {
+  const item = MARKET_ITEMS.find((it) => String(it.key) === String(digit));
+  if (!item) return;
+  const res = market.buy(item.id, money, rep);
+  if (res && res.ok) {
+    money -= res.price || 0;
+    if (typeof item.rep === 'number') rep -= item.rep;
+    saveGame({ missionIndex, money, rep, stats, tutorialSeen });
+  } else if (res && res.reason) {
+    announce(res.reason);
+  }
+}
+
+// The systems HUD line: at most two registry lines ever reach the screen.
+function systemsHudLine() {
+  const lines = [];
+  for (const sys of Object.values(NEW_SYSTEMS)) {
+    if (sys && typeof sys.hudLine === 'function') {
+      let line = '';
+      try { line = sys.hudLine(); } catch (e) { line = ''; }
+      if (line) lines.push(line);
+    }
+    if (lines.length >= 2) break;
+  }
+  return lines.join('  ');
+}
+
+function refreshClockAndSky() {
+  const hour = hourFloat();
+  nightF = nightFactorFor(hour);
+  const sunI = lerp(1.25, 0.12, nightF);
+  const hemiI = lerp(1.0, 0.25, nightF);
+  sun.intensity = sunI;
+  hemi.intensity = hemiI;
+  skyWork.copy(skyDay).lerp(skyNight, nightF);
+  fogWork.copy(fogDay).lerp(fogNight, nightF);
+  scene.background = skyWork;
+  if (scene.fog) scene.fog.color.copy(fogWork);
+  if (Math.abs(nightF - lastNightF) > 0.02) {
+    if (city && typeof city.setNightFactor === 'function') city.setNightFactor(nightF);
+    lastNightF = nightF;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// One-shot input actions, in the order the frame consumes them
+// ---------------------------------------------------------------------------
+
+function handleFrameActions(actions) {
+  if (!actions) return;
+  if (actions.pause) {
+    if (state === 'playing') pauseGame();
+    else if (state === 'paused') resumeGame();
+  }
+  if (actions.interact) handleInteract();
+  if (actions.reload && typeof combat.reload === 'function') combat.reload();
+  if (actions.acceptJob && sideJobs.offered) sideJobs.accept();
+  if (actions.skipTutorial) {
+    tutorialSeen = true;
+    tutorialStep = 3;
+    hud.setTutorial('');
+    saveGame({ missionIndex, money, stats, tutorialSeen });
+  }
+  if (actions.toggleMarket && typeof market.toggleShop === 'function') market.toggleShop();
+  if (actions.acceptNightOps && nightops.hasOffer) nightops.acceptOffer();
+  if (actions.fish) fishingAction();
+  if (actions.togglePhoto) photoMode = !photoMode;
+  if (actions.startRace) {
+    if (typeof streetrace.startRace === 'function') streetrace.startRace();
+    else if (typeof streetrace.start === 'function') streetrace.start();
+  }
+  if (actions.safehouse) handleSafehouseToggle();
+  if (actions.digit >= 1 && actions.digit <= 9) handleMarketDigit(actions.digit);
+  sneakHeld = !!actions.sneak;
+  if (player) player.sneaking = sneakHeld;
+  if (actions.horn && typeof driving.horn === 'function') driving.horn();
+  if (actions.mute) {
+    if (typeof audio.toggleMute === 'function') audio.toggleMute();
+    else audio.muted = !audio.muted;
+  }
+}
+
+function runDay(sys, method, d) {
+  if (sys && typeof sys[method] === 'function') sys[method](d);
+}
+
+function tickIf(sys, dt) {
+  if (sys && typeof sys.tick === 'function') sys.tick(dt);
+}
+
+// ---------------------------------------------------------------------------
+// The world step — eighteen stages, in order, once per frame while playing
+// ---------------------------------------------------------------------------
+
+function stepWorld(dt, actions) {
+  const p = playerPos();
+  const hour = hourFloat();
+
+  // 1. Clock and day-night cycle.
+  gameMinutes += dt * 0.5;
+  refreshClockAndSky();
+
+  // 2. Rain timer: start a shower when the timer lapses, end it when its
+  //    duration runs out, and ease the rain factor toward its target.
+  rainTimer -= dt;
+  if (rainTarget === 0 && rainTimer <= 0) {
+    rainTarget = 1;
+    rainDuration = 20 + rngFn() * 40;
+    rainTimer = rainDuration;
+  } else if (rainTarget === 1 && rainTimer <= 0) {
+    rainTarget = 0;
+    rainTimer = 90 + rngFn() * 150;
+  }
+  rainFactor += clamp(rainTarget - rainFactor, -dt * 0.2, dt * 0.2);
+
+  // 3. Dynamic weather, then fan the effective rain out to every system
+  //    that cares: city storm and wetness, rain effects, grip, traffic,
+  //    parked-car glow and the rain audio bed.
+  if (typeof weather.update === 'function') weather.update(dt, p);
+  refreshWeather();
+  effRain = Math.max(rainFactor, (weather.rain || 0));
+  if (city && typeof city.setStorm === 'function') city.setStorm(effRain);
+  if (city && typeof city.setWetness === 'function') city.setWetness(effRain);
+  if (typeof effects.setRain === 'function') effects.setRain(effRain);
+  if (typeof driving.setGrip === 'function') driving.setGrip(1 - effRain * 0.35);
+  if (traffic) {
+    traffic.rainFactor = effRain;
+    traffic.nightFactor = nightF;
+  }
+  if (typeof audio.setRainLevel === 'function') audio.setRainLevel(effRain);
+  for (const car of parkedCars) {
+    if (typeof setCarGlow === 'function') setCarGlow(car, nightF > 0.4);
+  }
+
+  // 4. Beacons, the market stall, and night work.
+  if (beacons && typeof beacons.update === 'function') beacons.update(dt, nightF);
+  if (market && typeof market.update === 'function') market.update(dt, p.x, p.z, nightF);
+  if (nightops && typeof nightops.update === 'function') {
+    const visibility = Math.max(20, 100 - effRain * 50 - nightF * 15);
+    nightops.update(dt, {
+      playerX: p.x,
+      playerZ: p.z,
+      nightF,
+      visibility,
+      speed: Math.abs(driving.speed || 0),
+      sneaking: sneakHeld,
+      shotFired,
+      inCar: !!driving.inCar,
+    });
+  }
+  shotFired = false;
+
+  // 5. Shop economy, safehouse cooling, street racing.
+  if (typeof economy.update === 'function') economy.update(dt / 120);
+  if (typeof safehouse.syncHeat === 'function') safehouse.syncHeat(wanted.heat);
+  if (typeof safehouse.inside === 'function' && safehouse.inside()) {
+    if (typeof safehouse.update === 'function') safehouse.update(dt);
+    const st = safehouse.status();
+    wanted.heat = st.heat;
+    wanted.level = st.stars;
+  }
+  if (typeof streetrace.update === 'function') streetrace.update(dt);
+
+  // 6. Per-frame system ticks, then stunt jumps.
+  if (typeof fishing.tick === 'function') fishing.tick(dt, { reel: !!(actions && actions.space) });
+  tickIf(delivery, dt);
+  tickIf(smuggling, dt);
+  tickIf(taxi, dt);
+  if (typeof radio.tick === 'function') radio.tick(dt, { wanted: wanted.level, hour: hourFloat() });
+  tickIf(gym, dt);
+  for (const sys of frameTickSystems) tickIf(sys, dt);
+  if (driving.inCar && driving.car && driving.car.airborne) {
+    if (!stuntJump) {
+      let ramp = null;
+      let bestD = 14;
+      const cp = playerPos();
+      for (const r of STUNT_RAMPS) {
+        const d = dist2d(cp.x, cp.z, r.x, r.z);
+        if (d < bestD) { bestD = d; ramp = r; }
+      }
+      if (ramp) stuntJump = { ramp, air: 0 };
+    } else {
+      stuntJump.air += dt;
+    }
+  } else if (stuntJump) {
+    const done = stuntJump;
+    stuntJump = null;
+    if (typeof stunt.scoreJump === 'function') stunt.scoreJump(done.ramp, done.air);
+    else if (typeof stunt.landJump === 'function') stunt.landJump(done.ramp, done.air);
+  }
+
+  // 7. Hour change, then — nested inside it — the day change.
+  const wholeHour = Math.floor(gameMinutes / 60);
+  if (wholeHour !== lastGameHour) {
+    lastGameHour = wholeHour;
+    if (typeof businesses.settleHour === 'function') businesses.settleHour(wholeHour);
+    if (typeof chopshop.settleHour === 'function') chopshop.settleHour(wholeHour);
+    const d = dayCount();
+    if (d !== lastDay) {
+      lastDay = d;
+      runDay(nightclub, 'settleDay', d);
+      runDay(realestate, 'tickDay', d);
+      runDay(bounty, 'tickDay', d);
+      runDay(graffiti, 'settleDay', d);
+      runDay(nightmarket, 'tickDay', d);
+      runDay(studio, 'tickDay', d);
+      runDay(detective, 'tickDay', d);
+      runDay(lawyer, 'tickDay', d);
+      runDay(film, 'tickDay', d);
+      for (const sys of round7Systems) runDay(sys, 'tickDay', d);
+      for (const sys of dayTickSystems) runDay(sys, 'tickDay', d);
+    }
+  }
+
+  // 8. Story mission timer and waypoint checks.
+  if (missions.current) {
+    const timedOut = missions.update(dt);
+    if (timedOut === 'timeout') failMission('Out of time.');
+    else checkMissionProgress();
+  }
+
+  // 9. Move the player or the car, bank finished drift, heal slowly,
+  //    and fire the pistol while the mouse is held on foot.
+  if (driving.inCar) {
+    if (typeof driving.update === 'function') driving.update(dt, input);
+  } else if (typeof player.update === 'function') {
+    player.update(dt, input);
+  }
+  const driftPts = driving.driftPoints || 0;
+  if (!driving.drifting && driftPts > 0) {
+    const payout = Math.floor(driftPts / 2);
+    addCash(payout);
+    driftBanked = payout;
+    if (typeof driving.clearDrift === 'function') driving.clearDrift();
+    else driving.driftPoints = 0;
+  }
+  if (player.health < 100) player.health = Math.min(100, player.health + dt * 1.5);
+  const here = playerPos();
+  if (dist2d(here.x, here.z, playerStartX, playerStartZ) > 2) tutorialMoved = true;
+  if (typeof combat.update === 'function') combat.update(dt);
+  if (actions && actions.mouse && !driving.inCar) {
+    const hittables = [];
+    for (const c of parkedCars) if (c.mesh) hittables.push(c.mesh);
+    if (traffic.cars) for (const c of traffic.cars) if (c.mesh) hittables.push(c.mesh);
+    const res = combat.shoot(camera, hittables);
+    if (res) {
+      shotSeq++;
+      shotFired = true;
+      lastShot = res;
+      lastShotPoint = combat.lastHitPoint || null;
+      lastDamage = combat.lastDamage || 0;
+      addHeat(1);
+      if (res === 'car' || res === 'pedestrian') addHeat(3);
+    }
+  }
+
+  // 10. Traffic, pedestrians and effects.
+  if (typeof traffic.update === 'function') traffic.update(dt);
+  if (typeof peds.update === 'function') {
+    peds.update(dt, {
+      car: driving.car || null,
+      traffic: traffic.cars || [],
+      police: police.cars || [],
+    }, effRain);
+  }
+  if (typeof effects.update === 'function') effects.update(dt);
+
+  // 11. Guards relay alerts, then each living guard takes its turn.
+  if (typeof combat.relayAlerts === 'function') combat.relayAlerts();
+  for (const enemy of combat.enemies) {
+    const shot = enemy.update(dt, player, audio, effects);
+    if (!shot) continue;
+    if (typeof audio.enemyShot === 'function') audio.enemyShot();
+    const d = shot.distance ?? 20;
+    const chance = d < 18 ? 0.55 : d < 32 ? 0.32 : 0.14;
+    if (rngFn() < chance) {
+      player.health -= shot.damage;
+      lastDamage = shot.damage;
+    }
+  }
+
+  // 12. Police and wanted, then the two game-over checks.
+  if (typeof police.update === 'function') police.update(dt, playerPos(), wanted.level);
+  if (typeof wanted.update === 'function') wanted.update(dt, playerPos());
+  if (wanted.bustTimer > 1.5) { gameOver('busted'); return; }
+  if (player.health <= 0) { gameOver('wasted'); return; }
+
+  // 13. Camera follows the car or the player on foot.
+  if (driving.inCar) {
+    if (typeof driving.updateCamera === 'function') driving.updateCamera(camera);
+    else {
+      const cp = playerPos();
+      const heading = player.heading || 0;
+      camera.position.set(cp.x - Math.sin(heading) * 11, 6, cp.z - Math.cos(heading) * 11);
+      camera.lookAt(cp.x, 1.6, cp.z);
+    }
+  } else {
+    const pp = playerPos();
+    const heading = player.heading || 0;
+    camera.position.set(pp.x - Math.sin(heading) * 9, 5.5, pp.z - Math.cos(heading) * 9);
+    camera.lookAt(pp.x, 1.6, pp.z);
+  }
+
+  // 14. Interaction prompt. A side-job offer wins over everything else.
+  if (sideJobs.offered) {
+    hud.setPrompt('Side job: ' + (sideJobs.offered.title || 'work') + ' — take it?');
+  } else if (driving.inCar && Math.abs(driving.speed || 0) < 2) {
+    hud.setPrompt('Exit car');
+  } else if (nearestParkedCar(4.5)) {
+    hud.setPrompt('Enter car');
+  } else {
+    hud.setPrompt('');
+  }
+  hud.setCrosshair(!driving.inCar);
+
+  // 15. Delayed timers: next mission, and the fail-and-retry timer.
+  if (nextMissionTimer > 0) {
+    nextMissionTimer -= dt;
+    if (nextMissionTimer <= 0) startMission(missionIndex);
+  }
+  if (failTimer > 0) {
+    failTimer -= dt;
+    if (failTimer <= 0) {
+      resetMissionWorld();
+      startMission(missionIndex);
+    }
+  }
+
+  // 16. Side jobs: offer while free, pay out on arrival.
+  const free = !missions.current;
+  if (typeof sideJobs.update === 'function') sideJobs.update(dt, free);
+  if (sideJobs.active && typeof sideJobs.checkArrival === 'function') {
+    const done = sideJobs.checkArrival(playerPos(), Math.abs(driving.speed || 0));
+    if (done && done !== 'picked') {
+      const streakBonus = 25 * Math.max(0, (sideJobs.streak || 1) - 1);
+      const chainBonus = sideJobs.lastChainBonus || 0;
+      const pay = (done.reward || 0) + streakBonus + chainBonus;
+      addCash(pay);
+      stats.sideJobs++;
+      stats.sideEarned += pay;
+      hud.showBanner('Side job done', (done.title || 'Job') + '  +$' + pay);
+      saveGame({ missionIndex, money, stats });
+    }
+  }
+
+  // 17. Tutorial, one real action at a time.
+  if (!tutorialSeen) {
+    if (tutorialStep === 0) {
+      hud.setTutorial('Move with WASD');
+      if (tutorialMoved) tutorialStep = 1;
+    } else if (tutorialStep === 1) {
+      hud.setTutorial('Get in a car');
+      if (driving.inCar) tutorialStep = 2;
+    } else if (tutorialStep === 2) {
+      hud.setTutorial('Reach the waypoint');
+      const wd = typeof missions.waypointDistance === 'function' ? missions.waypointDistance(playerPos().x, playerPos().z) : null;
+      if (wd !== null && wd !== undefined && wd < 12) {
+        tutorialSeen = true;
+        tutorialStep = 3;
+        hud.setTutorial('');
+        saveGame({ missionIndex, money, stats, tutorialSeen });
+      }
+    }
+  }
+
+  // 18. The HUD gets the whole picture at once.
+  const cur = missions.current;
+  const pp = playerPos();
+  hud.update(dt, {
+    money,
+    health: player.health,
+    wanted: wanted.level,
+    speed: Math.abs(driving.speed || 0),
+    inCar: !!driving.inCar,
+    ammo: combat.ammo,
+    reloading: combat.reloading || false,
+    carHealth: driving.car ? (driving.car.health ?? 100) : 0,
+    damageZones: driving.damageZones || {},
+    missionTitle: cur ? cur.title : 'Free roam',
+    objective: cur ? (cur.objective || '') : (sideJobs.objective || ''),
+    waypointDist: typeof missions.waypointDistance === 'function' ? missions.waypointDistance(pp.x, pp.z) : null,
+    timeLeft: missions.timeLeft,
+    dayPhase: phaseNameFor(hourFloat()),
+    clock: fmtClock(gameMinutes),
+    raining: effRain > 0.05,
+    heli: !!police.heli,
+    outlook: wxSummary ? (wxSummary.outlook || '') : '',
+    nightops: typeof nightops.statusLine === 'function' ? nightops.statusLine() : '',
+    market: typeof market.statusLine === 'function' ? market.statusLine() : '',
+    drift: driving.driftPoints || 0,
+    driftBanked,
+    drifting: !!driving.drifting,
+    chain: typeof sideJobs.chainStatus === 'function' ? sideJobs.chainStatus() : null,
+    places: namedPlaces,
+    cars: traffic.cars || [],
+    parked: parkedCars,
+    roadblocks: police.roadblocks || [],
+    heliPos: police.heliPos || null,
+    playerX: pp.x,
+    playerZ: pp.z,
+    heading: player.heading || 0,
+    hurt: player.health < 30,
+    systems: systemsHudLine(),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// The frame loop
+// ---------------------------------------------------------------------------
+
+const threeClock = new THREE.Clock();
+
+function frame() {
   requestAnimationFrame(frame);
-  const dt = Math.min((now - last) / 1000, 0.05);
-  last = now;
+  const dt = Math.min(threeClock.getDelta(), 0.05);
   if (state === 'playing') {
-    const actions = input.takeActions();
-    if (actions & ACT_PAUSE) {
-      state = 'paused';
-      showOnly('menu-pause');
-      audio.engine(null);
-      input.unlockPointer();
-    } else if (actions & ACT_INTERACT) {
-      handleInteract();
-    }
-    // Reload is checked here, next to the other one-shot actions: stepWorld
-    // used to check it with a second takeActions(), but frame() had already
-    // consumed the queue, so R never reloaded anything (found by playtest:
-    // the pistol could only reload by firing the magazine dry).
-    if (actions & ACT_RELOAD) combat.reload();
-    // Q accepts an offered side job (attempt 2): the job's waypoint takes
-    // over the cyan minimap diamond and the HUD objective line.
-    if (actions & ACT_SIDEJOB && sideJobs.offered) {
-      const job = sideJobs.accept();
-      if (job) hud.showBanner(job.title, `${job.text}${job.chainNote ? ` (${job.chainNote})` : ''} Follow the cyan diamond on the minimap.`, 4000);
-    }
-    // T skips the tutorial (attempt 2) and remembers the skip in the save.
-    if (actions & ACT_TUTORIAL && tutorialStep >= 0) {
-      tutorialStep = -1;
-      tutorialSeen = true;
-      hud.setTutorial('');
-      saveGame({ missionIndex: missions.index, money, stats: { ...stats, kills: combat.kills }, tutorialSeen: true });
-    }
-    // B opens/closes the Black Market while standing at the stall; N
-    // takes the burner-phone contract when one is offered at night.
-    if (actions & ACT_MARKET) {
-      if (market.toggleShop()) hud.showBanner('BLACK MARKET', 'Press 1-9 to buy, B to leave. Prices move with crew standing.', 4000);
-    }
-    if (actions & ACT_NIGHTOPS && nightops.hasOffer) {
-      nightops.acceptOffer();
-    }
-    // J casts / strikes while fishing (attempt 6); V toggles photo mode.
-    if (actions & ACT_FISH) {
-      if (fishing.state.phase === 'bite' || fishing.state.phase === 'waiting') fishing.strike();
-      else if (fishing.state.phase === 'idle') {
-        const spot = FISHING_SPOTS.find((s) => Math.hypot(s.x - playerPos().x, s.z - playerPos().z) < 14);
-        if (spot) fishing.startFishing(spot);
-        else hud.showBanner('FISHING', 'No fishing spot nearby — head to the waterfront.', 2500);
-      }
-    }
-    if (actions & ACT_PHOTO) {
-      if (photo.state.active) photo.exit();
-      else photo.enter();
-    }
-    // G starts a street race when the player is in a car near a route
-    // start (attempt 5); U slips into / out of an owned safehouse.
-    if (actions & ACT_RACE && player.inCar) {
-      const p = playerPos();
-      let best = null;
-      let bestD = 60;
-      for (const r of ROUTES) {
-        const d = Math.hypot(r.start.x - p.x, r.start.y - p.z);
-        if (d < bestD) {
-          bestD = d;
-          best = r;
-        }
-      }
-      if (best) {
-        const res = streetrace.startRace(best.id);
-        if (!res.ok) hud.showBanner('NO RACE', `Cannot start ${best.name}: ${res.reason}.`, 3000);
-      } else {
-        hud.showBanner('NO RACE', 'No race start line nearby — find a start on the map.', 3000);
-      }
-    }
-    if (actions & ACT_SAFEHOUSE) {
-      if (safehouse.inside()) {
-        safehouse.exitSafehouse();
-      } else {
-        const p = playerPos();
-        let best = null;
-        let bestD = 48;
-        for (const s of SAFEHOUSES) {
-          const d = Math.hypot(s.x - p.x, s.y - p.z);
-          if (d < bestD) {
-            bestD = d;
-            best = s;
-          }
-        }
-        if (!best) hud.showBanner('NO SAFEHOUSE', 'No safehouse door nearby.', 2500);
-        else {
-          const res = safehouse.enterSafehouse(best.id);
-          if (!res.ok) hud.showBanner('SAFEHOUSE', res.reason === 'not-owned' ? `${best.name} costs $${best.price} — buy it first.` : `Cannot hide: ${res.reason}.`, 3000);
-        }
-      }
-    }
-    // Digits 1-9 buy from the open shop; the digit queue holds one key.
-    if (market.open) {
-      const digit = input.takeDigit();
-      if (digit >= 1 && digit <= 9) {
-        const item = MARKET_ITEMS[digit - 1];
-        if (item) {
-          const result = market.buy(item.id, money, rep);
-          if (result.ok) {
-            money -= result.price;
-            saveGame({ missionIndex: missions.index, money, rep, stats: { ...stats, kills: combat.kills }, tutorialSeen });
-          } else {
-            hud.showBanner('NO DEAL', `${item.name}: ${result.reason}.`, 3000);
-          }
-        }
-      }
-    }
-    // C is sneak (attempt 4): crouch-walk on foot, half speed, half
-    // noise — the Night Shift way to move. Driving never sneaks.
-    player.setSneak(!player.inCar && input.down('KeyC'));
-    if (actions & ACT_HORN && player.inCar) audio.horn();
-    if (actions & ACT_MUTE) {
-      muted = !muted;
-      audio.setMuted(muted);
-      $('btn-mute').textContent = `Mute: ${muted ? 'On' : 'Off'}`;
-    }
-    stepWorld(dt);
+    const actions = input.consumeActions();
+    handleFrameActions(actions);
+    stepWorld(dt, actions);
   } else if (state === 'title') {
-    orbitAngle += dt * 0.045;
-    camera.position.set(29 + Math.cos(orbitAngle) * 150, 48, 29 + Math.sin(orbitAngle) * 150);
-    camera.lookAt(29, 10, 29);
-    traffic.update(dt, null);
-    peds.update(dt);
-    effects.update(dt);
+    titleOrbit += dt * 0.05;
+    camera.position.set(Math.sin(titleOrbit) * 70, 32, Math.cos(titleOrbit) * 70);
+    camera.lookAt(0, 0, 0);
+    if (typeof traffic.update === 'function') traffic.update(dt);
+    if (typeof peds.update === 'function') {
+      peds.update(dt, { car: null, traffic: traffic.cars || [], police: police.cars || [] }, 0);
+    }
+    if (typeof effects.update === 'function') effects.update(dt);
   }
   renderer.render(scene, camera);
 }
 
-// --- screenshot staging -------------------------------------------------------------
-const fakeDriveInput = {
-  moveAxes: () => ({ forward: 1, strafe: 0 }),
-  down: () => false,
-  takeMouseDelta: () => ({ dx: 0, dy: 0 }),
-  takeActions: () => 0,
-  mouseDown: false,
+// ---------------------------------------------------------------------------
+// Playtest handle. Read-only getters plus one dispatcher into the registry.
+// ---------------------------------------------------------------------------
+
+window.__solara = {
+  get state() { return state; },
+  get money() { return money; },
+  get missionIndex() { return missionIndex; },
+  get missionPhase() { return missionPhase; },
+  get missionStage() { return missions.stage; },
+  get objective() {
+    const cur = missions.current;
+    if (cur) return cur.objective || '';
+    return sideJobs.objective || '';
+  },
+  get waypoint() { return missions.waypoint || null; },
+  get timeLeft() { return missions.timeLeft; },
+  get wanted() { return wanted.level; },
+  get health() { return player.health; },
+  get ammo() { return combat.ammo; },
+  get lastShot() { return lastShot; },
+  get lastShotPoint() { return lastShotPoint; },
+  get lastDamage() { return lastDamage; },
+  get shotSeq() { return shotSeq; },
+  get alive() { return player.health > 0 && state !== 'over'; },
+  get kills() { return combat.kills; },
+  get dayPhase() { return phaseNameFor(hourFloat()); },
+  get nightF() { return nightF; },
+  get clock() { return fmtClock(gameMinutes); },
+  get police() { return police.cars ? police.cars.length : 0; },
+  get carHealth() { return driving.car ? (driving.car.health ?? 0) : 0; },
+  get headlight() { return !!driving.headlight; },
+  get stats() { return stats; },
+  get parked() { return parkedCars.length; },
+  get drift() { return driving.driftPoints || 0; },
+  get heli() { return !!police.heli; },
+  get heliPos() { return police.heliPos || null; },
+  get roadblocks() { return police.roadblocks || []; },
+  get damage() { return driving.damageZones || {}; },
+  get chain() { return typeof sideJobs.chainStatus === 'function' ? sideJobs.chainStatus() : null; },
+  get rain() { return effRain; },
+  get raining() { return effRain > 0.05; },
+  get sideJob() { return sideJobs.active || null; },
+  get sideOffer() { return sideJobs.offered || null; },
+  get weather() { return wxSummary ? wxSummary.condition : 'clear'; },
+  get nightops() { return typeof nightops.statusLine === 'function' ? nightops.statusLine() : ''; },
+  get market() { return typeof market.statusLine === 'function' ? market.statusLine() : ''; },
+  get economy() { return typeof economy.summary === 'function' ? economy.summary() : null; },
+  get economyShops() { return typeof economy.openShops === 'function' ? economy.openShops() : []; },
+  get safehouse() { return typeof safehouse.status === 'function' ? safehouse.status() : null; },
+  get safehouses() { return SAFEHOUSES; },
+  get streetrace() { return typeof streetrace.status === 'function' ? streetrace.status() : null; },
+  get raceBoard() { return streetrace.board || streetrace.leaderboard || []; },
+  get systems() { return NEW_SYSTEMS; },
+  get systemsOk() {
+    const statsOk = Object.values(NEW_SYSTEMS).every((s) => s && typeof s.stats === 'function');
+    return statsOk
+      // Attempt 6 data
+      && FISHING_SPOTS.length === 5 && BUSINESS_TYPES.length === 5 && STUNT_RAMPS.length === 6
+      && STATIONS.length === 5 && EXERCISES.length === 6 && CAR_VALUES.length === 10
+      // Attempt 7 data
+      && ARCADE_CABINETS.length === 4 && HEIST_TARGETS.length === 3 && TUNING_CATEGORIES.length === 5
+      // Attempt 8 data
+      && NIGHTCLUBS.length === 4 && BOUNTY_TARGETS.length === 6 && CAR_MEETS.length === 4
+      && PROPERTIES.length === 6 && FIGHTERS.length === 5
+      // Attempt 9 data
+      && GRAFFITI_DISTRICTS.length === 8 && SPRAY_BRANDS.length === 4 && RIVAL_CREWS.length === 4
+      && MARKET_GOODS.length === 10 && STUDIO_GENRES.length === 5 && STUDIO_FEATURES.length === 6
+      && STUDIO_VENUES.length === 4 && EYE_CASES.length === 6 && TAIL_TARGETS.length === 6
+      && LAWYERS.length === 3 && CHARGES.length === 6 && FILMS.length === 4
+      && STUNT_SCRIPTS.length === 6 && FILM_DRIVERS.length === 4
+      // Round 7 data
+      && SUBWAY_STATIONS.length === 8 && SUBWAY_LINES.length === 3 && FIRE_TYPES.length === 8
+      && FIRE_RANKS.length === 5 && HAIRCUTS.length === 10 && TATTOOS.length === 12
+      && PET_BREEDS.length === 6 && PET_TRICKS.length === 10 && BUS_ROUTES.length === 5
+      && BUS_MODELS.length === 5 && FOOD_MENU.length === 10 && FOOD_TRUCK_SPOTS.length === 7
+      && BOWLING_LANES.length === 6 && BOWLING_OPPONENTS.length === 6 && BOATS.length === 7
+      && SEA_ROUTES.length === 8 && SKATE_PARKS.length === 4 && SKATE_TRICKS.length === 20
+      && KARAOKE_SONGS.length === 17 && KARAOKE_BATTLERS.length === 5
+      // Round 7b data
+      && CHIP_PACKS.length === 4 && SLOT_MACHINES.length === 4 && BLACKJACK_TABLES.length === 3
+      && VIP_TIERS.length === 5 && CASINO_MISSIONS.length === 10
+      && FISH_SPECIES.length === 18 && RODS.length === 5 && BAITS.length === 7
+      && ANGLER_RANKS.length === 6 && TOURNAMENTS.length === 3
+      && DISTRICTS.length === 12 && PARCEL_TYPES.length === 20 && COURIER_VEHICLES.length === 6
+      && COURIER_RANKS.length === 5 && URGENCY.length === 4
+      && EVIDENCE_TYPES.length === 8 && GHOST_TYPES.length === 14 && HAUNTED_LOCATIONS.length === 12
+      && GHOST_EQUIPMENT.length === 14 && HUNTER_RANKS.length === 5
+      && CLUBS.length === 12 && GOLF_BALLS.length === 5 && COURSES.length === 5 && GOLF_OPPONENTS.length === 8
+      && HELICOPTERS.length === 6 && TOUR_ROUTES.length === 12 && PHOTO_SPOTS.length === 16
+      && PASSENGER_TYPES.length === 8
+      && CELL_BLOCKS.length === 8 && ESCAPE_PLANS.length === 10 && CONTRABAND.length === 15
+      && CRAFT_RECIPES.length === 8 && GUARDS.length === 8 && ALLIES.length === 8
+      && SURF_BEACHES.length === 12 && SURFBOARDS.length === 10 && SURF_TRICKS.length === 20
+      && WETSUITS.length === 5 && SURF_COMPS.length === 8
+      && DIG_SITES.length === 12 && TREASURE_MAPS.length === 12 && DETECTORS.length === 5
+      && SHOVELS.length === 5 && FIND_TABLE.length === 20
+      && RECYCLING_MATERIALS.length === 12 && RECYCLING_BINS.length === 9 && RECYCLING_ROUTES.length === 8
+      && DRONE_MODELS.length === 8 && DRONE_TRACKS.length === 8 && DRONE_PARTS.length === 10
+      && TENNIS_COURTS.length === 8 && TENNIS_RACKETS.length === 8 && TENNIS_SHOES.length === 4
+      && HOSPITAL_WARDS.length === 8 && TRIAGE_LEVELS.length === 5 && HOSPITAL_CONDITIONS.length === 16
+      && RESTAURANT_DISHES.length === 12 && RESTAURANT_INGREDIENTS.length === 12
+      && RESTAURANT_CUSTOMERS.length === 8
+      && PAWN_CATEGORIES.length === 16 && PAWN_CUSTOMERS.length === 8 && PAWN_AUCTIONS.length === 6
+      && BODYGUARD_CLIENTS.length === 10 && BODYGUARD_ROUTES.length === 8 && BODYGUARD_THREATS.length === 10
+      && JETSKI_MODELS.length === 8 && JETSKI_COURSES.length === 8 && JETSKI_TRICKS.length === 10
+      && FARM_CROPS.length === 14 && FARM_ANIMALS.length === 8 && FARM_PLOTS.length === 8
+      // Round 7c data
+      && HUNTING_ANIMALS.length === 12 && MINING_ORES.length === 12 && LOGGING_TREES.length === 10
+      && APIARY_HIVES.length === 10 && FOSSIL_SITES.length === 10 && RANGER_PATROLS.length === 10
+      && STORM_TYPES.length === 10 && HORSE_BREEDS.length === 12 && DIVE_SITES.length === 10
+      && DROP_ZONES.length === 10 && BALLOON_ROUTES.length === 10 && FERRY_ROUTES.length === 12
+      && KAYAK_RIVERS.length === 10 && WINDSURF_SPOTS.length === 10 && BEACH_PATROLS.length === 10
+      && RESCUE_MISSIONS.length === 10 && BREW_RECIPES.length === 12 && BAKED_GOODS.length === 12
+      && SUSHI_MENU.length === 12 && COFFEE_MENU.length === 12 && MEAT_CUTS.length === 10
+      && MARKET_CATCH.length === 12 && DONUT_FLAVORS.length === 12 && WINE_VARIETALS.length === 10
+      && EXHIBITS.length === 12 && ESPORTS_TOURNAMENTS.length === 10 && COMEDY_ACTS.length === 12
+      && STREAM_CATEGORIES.length === 12 && ROOM_TYPES.length === 10 && WASH_PACKAGES.length === 10
+      && STOCKS.length === 12 && CAMPAIGN_EVENTS.length === 10;
+  },
+  get fishingSpots() { return FISHING_SPOTS; },
+  get businessTypes() { return BUSINESS_TYPES; },
+  get radioStations() { return STATIONS; },
+  get rep() { return rep; },
+  get sneaking() { return sneakHeld; },
+  get tutorial() { return { seen: tutorialSeen, step: tutorialStep }; },
+  get stamina() { return player.stamina ?? 100; },
+  get player() {
+    const pp = playerPos();
+    return { x: pp.x, z: pp.z, health: player.health, heading: player.heading || 0 };
+  },
+  get enemies() {
+    return combat.enemies.map((e) => ({
+      x: e.x ?? e.pos?.x ?? 0,
+      z: e.z ?? e.pos?.z ?? 0,
+      health: e.health ?? 0,
+      alive: !!e.alive,
+    }));
+  },
+  get audio() { return audio; },
+  act(systemName, methodName, ...args) {
+    const sys = NEW_SYSTEMS[systemName];
+    if (!sys) return { ok: false, reason: 'unknown system: ' + systemName };
+    const fn = sys[methodName];
+    if (typeof fn !== 'function') return { ok: false, reason: 'unknown method: ' + methodName };
+    try { return fn.apply(sys, args); }
+    catch (e) { return { ok: false, reason: e && e.message ? e.message : String(e) }; }
+  },
 };
 
-function stepFor(seconds) {
-  const steps = Math.round(seconds * 60);
-  for (let i = 0; i < steps; i += 1) stepWorld(1 / 60);
-}
+window.__shotReady = false;
 
-function runShot(name) {
-  showOnly(null);
-  hudEl.classList.remove('hidden');
-  state = 'playing';
+// ---------------------------------------------------------------------------
+// Screenshot staging. Runs instead of the normal loop when ?shot= is set.
+// ---------------------------------------------------------------------------
+
+function stageShot(kind) {
+  resetProgress();
   money = 1250;
-  if (name === 'start') {
-    state = 'title';
-    showOnly('menu-title');
-    hudEl.classList.add('hidden');
-    orbitAngle = 0.6;
-    camera.position.set(29 + Math.cos(orbitAngle) * 150, 48, 29 + Math.sin(orbitAngle) * 150);
-    camera.lookAt(29, 10, 29);
-    stepFor(3);
-  } else if (name === 'onfoot') {
-    resetMissionWorld();
-    startMission(0);
+  hideAllMenus();
+  state = 'playing';
+  startMission(0);
+  if (kind === 'onfoot') {
     player.x = 38;
     player.z = 48;
-    player.heading = Math.PI * 0.9;
-    player.camYaw = Math.PI * 0.95;
-    player.mesh.position.set(player.x, 0, player.z);
-    player.mesh.rotation.y = player.heading;
-    player.snapCamera(camera);
-    stepFor(3);
-  } else if (name === 'drive') {
-    resetMissionWorld();
-    startMission(0);
-    const comet = parked.find((c) => c.name === 'Comet GT');
-    comet.x = 0;
-    comet.z = 140;
-    comet.heading = Math.PI;
-    comet.speed = 26;
-    driving.enter(comet);
-    player.inCar = comet;
-    player.mesh.visible = false;
-    driving.snapCamera(camera);
-    for (let i = 0; i < 150; i += 1) {
-      driving.update(1 / 60, fakeDriveInput, traffic);
-      traffic.update(1 / 60, comet);
-      peds.update(1 / 60);
-      driving.placeCamera(camera, 1 / 60);
+  }
+  if (kind === 'drive' || kind === 'chase') {
+    const comet = parkedCars.find((c) => (c.model || c.name || '') === 'Comet GT') || parkedCars[0];
+    if (comet && typeof driving.enterCar === 'function') {
+      driving.enterCar(comet);
+      const targetSpeed = kind === 'chase' ? 30 : 26;
+      if (typeof driving.setSpeed === 'function') driving.setSpeed(targetSpeed);
+      else driving.speed = targetSpeed;
     }
-    hud.update(1 / 60, {
-      money,
-      health: player.health,
-      wanted: wanted.level,
-      speed: comet.speed,
-      inCar: true,
-      carHealth: comet.health,
-      ammo: combat.ammo,
-      reloading: false,
-      missionTitle: '1 — Homecoming',
-      objective: missions.objective,
-      waypointDist: missions.waypoint ? Math.hypot(missions.waypoint.x - comet.x, missions.waypoint.z - comet.z) : 0,
-      timeLeft: 0,
-      clock: clockText(),
-      dayPhase,
-      hurt: false,
-      px: comet.x,
-      pz: comet.z,
-      heading: comet.heading,
-      waypoint: missions.waypoint,
-      cars: [...traffic.cars.map((c) => ({ x: c.x, z: c.z, police: false })), ...police.cars.map((c) => ({ x: c.x, z: c.z, police: true }))],
-      parked: parked.map((c) => ({ x: c.x, z: c.z })),
-    });
-  } else if (name === 'chase') {
-    resetMissionWorld();
-    // Stage this one at dusk (18:45) so the shot shows the day/night cycle
-    // and the headlights, which switch on past a night factor of 0.25.
-    gameMinutes = 18 * 60 + 45;
-    applyDayNight();
-    driving.setNight(nightF);
-    missions.start(1);
-    missions.begin();
-    missionPhase = 'escape';
-    missions.objective = 'Lose the cops, then return to Voss Garage';
-    missions.setWaypoint(PLACES.garage.x, PLACES.garage.z - 14);
-    wanted.addHeat(65);
-    const comet = parked.find((c) => c.name === 'Comet GT');
-    comet.x = 0;
-    comet.z = 140;
-    comet.heading = Math.PI;
-    comet.speed = 30;
-    driving.enter(comet);
-    player.inCar = comet;
-    player.mesh.visible = false;
-    driving.snapCamera(camera);
-    for (let i = 0; i < 210; i += 1) {
-      driving.update(1 / 60, fakeDriveInput, traffic);
-      traffic.update(1 / 60, comet);
-      peds.update(1 / 60);
-      const near = police.update(1 / 60, wanted, player, comet);
-      wanted.update(1 / 60, near);
-      driving.placeCamera(camera, 1 / 60);
+    const fakeInput = {
+      held(key) { return key === 'forward' || key === 'KeyW' || key === 'ArrowUp'; },
+      sneak: false,
+      mouse: false,
+    };
+    for (let f = 0; f < 150; f++) {
+      if (typeof driving.update === 'function') driving.update(1 / 60, fakeInput);
     }
-    // Stage the nearest police car ahead on the road so the chase reads in frame.
-    if (police.cars.length) {
-      let nearest = police.cars[0];
-      let best = Infinity;
-      for (const c of police.cars) {
-        const d = Math.hypot(c.x - comet.x, c.z - comet.z);
-        if (d < best) {
-          best = d;
-          nearest = c;
-        }
+    if (kind === 'chase') {
+      gameMinutes = 18 * 60 + 45;
+      addHeat(65);
+      for (let f = 0; f < 210; f++) {
+        if (typeof police.update === 'function') police.update(1 / 60, playerPos(), wanted.level);
       }
-      nearest.x = comet.x - 4;
-      nearest.z = comet.z - 32;
-      nearest.heading = 0;
-      nearest.speed = 12;
-      syncCarMesh(nearest);
+      const pp = playerPos();
+      let nearest = null;
+      let bestD = Infinity;
+      for (const pc of (police.cars || [])) {
+        const d = dist2d(pp.x, pp.z, pc.x ?? pc.pos?.x ?? 0, pc.z ?? pc.pos?.z ?? 0);
+        if (d < bestD) { bestD = d; nearest = pc; }
+      }
+      if (nearest) {
+        const heading = player.heading || 0;
+        const nx = pp.x + Math.sin(heading) * 12;
+        const nz = pp.z + Math.cos(heading) * 12;
+        if ('x' in nearest) { nearest.x = nx; nearest.z = nz; }
+        else if (nearest.pos) { nearest.pos.x = nx; nearest.pos.z = nz; }
+        if (typeof syncCarMesh === 'function') syncCarMesh(nearest);
+      }
     }
-    hud.update(1 / 60, {
-      money,
-      health: player.health,
-      wanted: wanted.level,
-      speed: comet.speed,
-      inCar: true,
-      carHealth: comet.health,
-      ammo: combat.ammo,
-      reloading: false,
-      missionTitle: '2 — Hot Wheels',
-      objective: missions.objective,
-      waypointDist: missions.waypoint ? Math.hypot(missions.waypoint.x - comet.x, missions.waypoint.z - comet.z) : 0,
-      timeLeft: 0,
-      clock: clockText(),
-      dayPhase,
-      hurt: false,
-      px: comet.x,
-      pz: comet.z,
-      heading: comet.heading,
-      waypoint: missions.waypoint,
-      cars: [...traffic.cars.map((c) => ({ x: c.x, z: c.z, police: false })), ...police.cars.map((c) => ({ x: c.x, z: c.z, police: true }))],
-      parked: parked.map((c) => ({ x: c.x, z: c.z })),
-    });
   }
-  let painted = 0;
-  function paint() {
-    renderer.render(scene, camera);
-    painted += 1;
-    if (painted < 2) requestAnimationFrame(paint);
-    else window.__shotReady = true;
-  }
-  requestAnimationFrame(paint);
+  refreshClockAndSky();
+  renderer.render(scene, camera);
+  renderer.render(scene, camera);
+  window.__shotReady = true;
 }
 
-if (shot) runShot(shot);
-else {
-  announce('Solara Nights. Choose New Game or Continue.');
-  requestAnimationFrame(frame);
-}
+// ---------------------------------------------------------------------------
+// Buttons, visibility auto-pause, boot
+// ---------------------------------------------------------------------------
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && state === 'playing') pauseGame();
+});
+
+if (btnContinue) btnContinue.addEventListener('click', () => startGame(true));
+if (btnNew) btnNew.addEventListener('click', () => startGame(false));
+if (btnHow) btnHow.addEventListener('click', () => {
+  if (howtoEl) howtoEl.style.display = howtoEl.style.display === 'none' ? '' : 'none';
+});
+if (btnResume) btnResume.addEventListener('click', resumeGame);
+if (btnRestart) btnRestart.addEventListener('click', () => startGame(false));
+if (btnMute) btnMute.addEventListener('click', () => {
+  if (typeof audio.toggleMute === 'function') audio.toggleMute();
+  else audio.muted = !audio.muted;
+});
+if (btnQuit) btnQuit.addEventListener('click', quitToTitle);
+if (btnRetry) btnRetry.addEventListener('click', () => startGame(false));
+if (btnOverTitle) btnOverTitle.addEventListener('click', () => {
+  state = 'title';
+  refreshContinueButton();
+  showMenu(menuTitleEl);
+});
+if (btnFreeroam) btnFreeroam.addEventListener('click', () => {
+  resetProgress();
+  hideAllMenus();
+  state = 'playing';
+  missionIndex = MISSIONS.length;
+  missions.index = MISSIONS.length;
+});
+
+refreshContinueButton();
+
+if (SHOT) stageShot(SHOT);
+else requestAnimationFrame(frame);

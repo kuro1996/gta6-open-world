@@ -1,158 +1,457 @@
-// angling.js — Deep-Sea Angling: pier fishing, tackle shop, fish market.
-// A full fishing loop distinct from the basic rod minigame: buy rods and
-// bait, pick a spot and a time of day, fight the fish on the line, then sell
-// the catch at the market or mount trophies. Rarity drives price; weather
-// and hour drive which species bite. Pure logic, no rendering, no imports.
-// Factory: createAnglingSystem(deps) with deps { rng, getHour, getDay,
-// getCash, addCash, addHeat, log, getPlayerPos, getWeather }.
-
-// ---------------------------------------------------------------------------
-// Data tables
-// ---------------------------------------------------------------------------
-
-// Fish species. weight = bite rarity, basePrice = market price per kg,
-// depth = preferred water, bestHours = when they bite, fight = difficulty.
 export const FISH_SPECIES = [
-  { id: 'sardine', name: 'Sardine', rarity: 'common', weight: 30, basePrice: 2, minKg: 0.1, maxKg: 0.4, depth: 'shallow', bestHours: [6, 7, 8, 17, 18], fight: 1, xp: 5 },
-  { id: 'mackerel', name: 'Mackerel', rarity: 'common', weight: 26, basePrice: 4, minKg: 0.3, maxKg: 1.2, depth: 'shallow', bestHours: [5, 6, 7, 18, 19], fight: 1, xp: 8 },
-  { id: 'anchovy', name: 'Anchovy', rarity: 'common', weight: 24, basePrice: 3, minKg: 0.1, maxKg: 0.3, depth: 'shallow', bestHours: [6, 7, 8, 9], fight: 1, xp: 5 },
-  { id: 'bluegill', name: 'Bluegill', rarity: 'common', weight: 20, basePrice: 5, minKg: 0.2, maxKg: 0.8, depth: 'shallow', bestHours: [8, 9, 10, 15, 16], fight: 1, xp: 8 },
-  { id: 'catfish', name: 'Catfish', rarity: 'common', weight: 18, basePrice: 6, minKg: 0.5, maxKg: 3.0, depth: 'shallow', bestHours: [19, 20, 21, 22], fight: 2, xp: 12 },
-  { id: 'red-snapper', name: 'Red Snapper', rarity: 'uncommon', weight: 14, basePrice: 12, minKg: 0.5, maxKg: 2.5, depth: 'mid', bestHours: [7, 8, 9, 16, 17], fight: 2, xp: 18 },
-  { id: 'sea-bass', name: 'Sea Bass', rarity: 'uncommon', weight: 12, basePrice: 14, minKg: 0.8, maxKg: 4.0, depth: 'mid', bestHours: [6, 7, 17, 18, 19], fight: 2, xp: 20 },
-  { id: 'flounder', name: 'Flounder', rarity: 'uncommon', weight: 10, basePrice: 11, minKg: 0.4, maxKg: 2.0, depth: 'mid', bestHours: [9, 10, 11, 14, 15], fight: 2, xp: 16 },
-  { id: 'squid', name: 'Squid', rarity: 'uncommon', weight: 9, basePrice: 16, minKg: 0.3, maxKg: 1.5, depth: 'mid', bestHours: [20, 21, 22, 23], fight: 3, xp: 22 },
-  { id: 'tuna', name: 'Yellowfin Tuna', rarity: 'rare', weight: 7, basePrice: 35, minKg: 5, maxKg: 40, depth: 'deep', bestHours: [5, 6, 7, 17, 18], fight: 4, xp: 40 },
-  { id: 'marlin', name: 'Blue Marlin', rarity: 'rare', weight: 5, basePrice: 60, minKg: 20, maxKg: 120, depth: 'deep', bestHours: [6, 7, 8], fight: 5, xp: 60 },
-  { id: 'swordfish', name: 'Swordfish', rarity: 'rare', weight: 4, basePrice: 55, minKg: 15, maxKg: 90, depth: 'deep', bestHours: [18, 19, 20], fight: 5, xp: 55 },
-  { id: 'mahi', name: 'Mahi-Mahi', rarity: 'rare', weight: 5, basePrice: 40, minKg: 3, maxKg: 18, depth: 'deep', bestHours: [9, 10, 11, 15, 16], fight: 4, xp: 45 },
-  { id: 'grouper', name: 'Goliath Grouper', rarity: 'epic', weight: 3, basePrice: 90, minKg: 10, maxKg: 80, depth: 'deep', bestHours: [7, 8, 16, 17], fight: 5, xp: 80 },
-  { id: 'sailfish', name: 'Sailfish', rarity: 'epic', weight: 2, basePrice: 120, minKg: 8, maxKg: 45, depth: 'deep', bestHours: [6, 7], fight: 5, xp: 100 },
-  { id: 'golden-koi', name: 'Golden Koi', rarity: 'legendary', weight: 1, basePrice: 500, minKg: 1, maxKg: 3, depth: 'shallow', bestHours: [12], fight: 3, xp: 200 },
-  { id: 'ghost-eel', name: 'Ghost Eel', rarity: 'legendary', weight: 1, basePrice: 750, minKg: 2, maxKg: 6, depth: 'deep', bestHours: [0, 1, 2, 3], fight: 5, xp: 250 },
-  { id: 'kraken-calf', name: 'Kraken Calf', rarity: 'mythic', weight: 1, basePrice: 5000, minKg: 50, maxKg: 200, depth: 'deep', bestHours: [0], fight: 6, xp: 500 },
+  { id: 'bluegill', name: 'Bluegill', rarity: 'common', weight: 10, basePrice: 5, minKg: 0.2, maxKg: 0.8, depth: 'shallow', bestHours: [6, 7, 17], fight: 2, xp: 5 },
+  { id: 'perch', name: 'Perch', rarity: 'common', weight: 10, basePrice: 6, minKg: 0.3, maxKg: 1.1, depth: 'shallow', bestHours: [7, 8, 18], fight: 2, xp: 5 },
+  { id: 'catfish', name: 'Catfish', rarity: 'common', weight: 9, basePrice: 9, minKg: 1, maxKg: 6, depth: 'mid', bestHours: [20, 21, 22], fight: 4, xp: 10 },
+  { id: 'bass', name: 'Bass', rarity: 'common', weight: 9, basePrice: 12, minKg: 0.5, maxKg: 3, depth: 'shallow', bestHours: [6, 17, 18], fight: 4, xp: 10 },
+  { id: 'trout', name: 'Trout', rarity: 'uncommon', weight: 8, basePrice: 18, minKg: 0.5, maxKg: 2.5, depth: 'mid', bestHours: [6, 7, 19], fight: 5, xp: 15 },
+  { id: 'salmon', name: 'Salmon', rarity: 'uncommon', weight: 7, basePrice: 25, minKg: 1, maxKg: 5, depth: 'mid', bestHours: [6, 7, 8], fight: 6, xp: 20 },
+  { id: 'mackerel', name: 'Mackerel', rarity: 'common', weight: 10, basePrice: 8, minKg: 0.3, maxKg: 1.2, depth: 'shallow', bestHours: [9, 10, 15], fight: 3, xp: 8 },
+  { id: 'snapper', name: 'Snapper', rarity: 'uncommon', weight: 7, basePrice: 30, minKg: 0.8, maxKg: 4, depth: 'mid', bestHours: [10, 11, 16], fight: 6, xp: 20 },
+  { id: 'tuna', name: 'Tuna', rarity: 'rare', weight: 5, basePrice: 80, minKg: 5, maxKg: 40, depth: 'deep', bestHours: [8, 9, 10], fight: 8, xp: 40 },
+  { id: 'marlin', name: 'Marlin', rarity: 'epic', weight: 3, basePrice: 200, minKg: 20, maxKg: 120, depth: 'deep', bestHours: [7, 8, 9], fight: 9, xp: 80 },
+  { id: 'swordfish', name: 'Swordfish', rarity: 'epic', weight: 3, basePrice: 250, minKg: 15, maxKg: 90, depth: 'deep', bestHours: [5, 6, 7], fight: 10, xp: 90 },
+  { id: 'shark', name: 'Reef Shark', rarity: 'rare', weight: 4, basePrice: 150, minKg: 10, maxKg: 80, depth: 'deep', bestHours: [19, 20, 21], fight: 9, xp: 60 },
+  { id: 'eel', name: 'Moray Eel', rarity: 'uncommon', weight: 6, basePrice: 35, minKg: 0.5, maxKg: 3, depth: 'mid', bestHours: [22, 23, 0], fight: 5, xp: 18 },
+  { id: 'stingray', name: 'Stingray', rarity: 'rare', weight: 4, basePrice: 60, minKg: 2, maxKg: 15, depth: 'mid', bestHours: [12, 13, 14], fight: 7, xp: 35 },
+  { id: 'golden-koi', name: 'Golden Koi', rarity: 'legendary', weight: 1, basePrice: 500, minKg: 1, maxKg: 3, depth: 'shallow', bestHours: [12], fight: 7, xp: 150 },
+  { id: 'kraken-calf', name: 'Kraken Calf', rarity: 'mythic', weight: 1, basePrice: 1000, minKg: 30, maxKg: 80, depth: 'deep', bestHours: [0], fight: 10, xp: 300 },
+  { id: 'ghost-eel', name: 'Ghost Eel', rarity: 'legendary', weight: 1, basePrice: 700, minKg: 0.5, maxKg: 2, depth: 'mid', bestHours: [1, 2, 3], fight: 8, xp: 200 },
+  { id: 'clownfish', name: 'Clownfish', rarity: 'common', weight: 8, basePrice: 15, minKg: 0.1, maxKg: 0.3, depth: 'shallow', bestHours: [11, 12, 13], fight: 1, xp: 5 },
 ];
 
-export const RARITY_MULT = { common: 1, uncommon: 1.6, rare: 2.8, epic: 5, legendary: 12, mythic: 40 };
+export const RARITY_MULT = {
+  common: 1,
+  uncommon: 1.5,
+  rare: 2.5,
+  epic: 4,
+  legendary: 8,
+  mythic: 15,
+};
 
-// Fishing spots around the map. depth gates species, crowd affects bite rate.
 export const FISHING_SPOTS = [
-  { id: 'pier-south', name: 'South Pier', depth: 'shallow', crowd: 3, fee: 0, bonus: 0, desc: 'The free public pier. Crowded but reliable.' },
-  { id: 'pier-north', name: 'North Pier', depth: 'shallow', crowd: 1, fee: 0, bonus: 0.1, desc: 'Quieter pier, slightly better bites.' },
-  { id: 'marina', name: 'Marina Dock', depth: 'mid', crowd: 2, fee: 20, bonus: 0.15, desc: 'Pay the dock fee, fish the deeper channel.' },
-  { id: 'rocky-point', name: 'Rocky Point', depth: 'mid', crowd: 1, fee: 0, bonus: 0.2, desc: 'Rocky shore, strong current, strong fish.' },
-  { id: 'deep-charter', name: 'Deep Charter Boat', depth: 'deep', crowd: 0, fee: 300, bonus: 0.5, desc: 'Charter out to the deep water. Big fish only.' },
-  { id: 'lagoon', name: 'Hidden Lagoon', depth: 'shallow', crowd: 0, fee: 0, bonus: 0.35, desc: 'A secret lagoon. Rumour says a golden koi lives here.' },
+  { id: 'north-pier', name: 'North Pier', depth: 'shallow', crowd: 4, fee: 0, bonus: 0.1, desc: 'A busy public pier' },
+  { id: 'rocky-point', name: 'Rocky Point', depth: 'mid', crowd: 2, fee: 10, bonus: 0.2, desc: 'Rocks and strong currents' },
+  { id: 'deep-charter', name: 'Deep Charter', depth: 'deep', crowd: 1, fee: 100, bonus: 0.4, desc: 'A charter boat to deep water' },
+  { id: 'mangrove', name: 'Mangrove Creek', depth: 'shallow', crowd: 2, fee: 5, bonus: 0.15, desc: 'Calm mangrove water' },
+  { id: 'reef-edge', name: 'Reef Edge', depth: 'mid', crowd: 3, fee: 25, bonus: 0.3, desc: 'The edge of the coral reef' },
+  { id: 'storm-bay', name: 'Storm Bay', depth: 'deep', crowd: 1, fee: 60, bonus: 0.35, desc: 'Rough water, big fish' },
 ];
 
-// Rods: longer cast, stronger line, better fight control.
 export const RODS = [
-  { id: 'stick', name: 'Bamboo Stick', price: 0, castBonus: 0, lineStrength: 5, fightBonus: 0, desc: 'A stick and some string. It works, barely.' },
-  { id: 'basic', name: 'Basic Rod', price: 50, castBonus: 0.1, lineStrength: 12, fightBonus: 0.1, desc: 'A real rod. A real reel. A real start.' },
-  { id: 'carbon', name: 'Carbon Pro', price: 300, castBonus: 0.25, lineStrength: 30, fightBonus: 0.25, desc: 'Light, stiff, and hard to snap.' },
-  { id: 'tournament', name: 'Tournament Elite', price: 1200, castBonus: 0.4, lineStrength: 60, fightBonus: 0.45, desc: 'The rod the pros use on TV.' },
-  { id: 'titan', name: 'Titan Deep-Sea', price: 5000, castBonus: 0.6, lineStrength: 150, fightBonus: 0.7, desc: 'Built for marlin. Built for monsters.' },
+  { id: 'stick', name: 'Stick Rod', price: 0, castBonus: 0, lineStrength: 5, fightBonus: 0, desc: 'A stick with string' },
+  { id: 'basic', name: 'Basic Rod', price: 50, castBonus: 0.1, lineStrength: 10, fightBonus: 0.1, desc: 'A decent starter rod' },
+  { id: 'carbon', name: 'Carbon Rod', price: 200, castBonus: 0.2, lineStrength: 25, fightBonus: 0.25, desc: 'Light and strong carbon fibre' },
+  { id: 'pro', name: 'Pro Rod', price: 500, castBonus: 0.3, lineStrength: 50, fightBonus: 0.4, desc: 'Tournament grade gear' },
+  { id: 'legend', name: 'Legend Rod', price: 1500, castBonus: 0.5, lineStrength: 100, fightBonus: 0.6, desc: 'The rod the old anglers whisper about' },
 ];
 
-// Bait: each species has a favourite; matching bait doubles the bite rate.
 export const BAITS = [
-  { id: 'bread', name: 'Bread Crumbs', price: 2, favours: ['sardine', 'anchovy', 'bluegill'], desc: 'Cheap and cheerful.' },
-  { id: 'worm', name: 'Worms', price: 5, favours: ['catfish', 'bluegill', 'flounder'], desc: 'The classic all-rounder.' },
-  { id: 'shrimp', name: 'Shrimp', price: 12, favours: ['red-snapper', 'sea-bass', 'squid'], desc: 'Saltwater favourite.' },
-  { id: 'squid-bait', name: 'Squid Strips', price: 25, favours: ['tuna', 'grouper', 'swordfish'], desc: 'Big bait for big fish.' },
-  { id: 'lure', name: 'Shiny Lure', price: 40, favours: ['marlin', 'sailfish', 'mahi'], desc: 'Flashy. Predators cannot resist.' },
-  { id: 'glow', name: 'Glow Bait', price: 80, favours: ['ghost-eel', 'squid', 'kraken-calf'], desc: 'Glows in the dark. Night fish love it.' },
-  { id: 'golden', name: 'Golden Corn', price: 150, favours: ['golden-koi'], desc: 'For the one fish that matters.' },
+  { id: 'bread', name: 'Bread', price: 1, favours: ['bluegill', 'perch', 'clownfish'], desc: 'Simple and cheap' },
+  { id: 'worm', name: 'Worm', price: 2, favours: ['bass', 'trout', 'catfish'], desc: 'Wiggly and reliable' },
+  { id: 'shrimp', name: 'Shrimp', price: 5, favours: ['snapper', 'mackerel', 'stingray'], desc: 'Fresh sea shrimp' },
+  { id: 'squid', name: 'Squid', price: 10, favours: ['tuna', 'swordfish', 'shark'], desc: 'Big bait for big fish' },
+  { id: 'lure', name: 'Spinner Lure', price: 8, favours: ['salmon', 'trout', 'bass'], desc: 'Flashy and fast' },
+  { id: 'crab', name: 'Crab', price: 12, favours: ['eel', 'stingray', 'catfish'], desc: 'Hard shell, big reward' },
+  { id: 'gold-fly', name: 'Golden Fly', price: 25, favours: ['golden-koi', 'marlin', 'ghost-eel'], desc: 'A fly that glints like gold' },
 ];
 
-// Angler ranks: XP from catches unlocks spots, rods and tournaments.
 export const ANGLER_RANKS = [
-  { id: 'novice', name: 'Novice', xpNeeded: 0, perk: 'Can fish the piers.' },
-  { id: 'hobbyist', name: 'Hobbyist', xpNeeded: 100, perk: 'Marina access unlocked.' },
-  { id: 'angler', name: 'Angler', xpNeeded: 300, perk: 'Rocky Point access unlocked.' },
-  { id: 'pro', name: 'Pro Angler', xpNeeded: 800, perk: 'Deep charter unlocked, +10% sell price.' },
-  { id: 'master', name: 'Master Angler', xpNeeded: 2000, perk: '+20% sell price, tournament entry.' },
-  { id: 'legend', name: 'Legend of the Sea', xpNeeded: 5000, perk: '+35% sell price, golden koi odds up.' },
+  { id: 'novice', name: 'Novice', xpNeeded: 0, perk: 'Pier access' },
+  { id: 'angler', name: 'Angler', xpNeeded: 100, perk: 'Better bite rate' },
+  { id: 'fisher', name: 'Fisher', xpNeeded: 300, perk: 'Rocky Point access' },
+  { id: 'expert', name: 'Expert', xpNeeded: 700, perk: 'Deep Charter access' },
+  { id: 'master', name: 'Master', xpNeeded: 1500, perk: 'Storm Bay access' },
+  { id: 'legend', name: 'Legend', xpNeeded: 3000, perk: 'Legendary catches pay double' },
 ];
 
-// Weekly fishing tournaments: biggest single fish wins.
 export const TOURNAMENTS = [
-  { id: 'pier-cup', name: 'Pier Cup', dayOfWeek: 6, entryFee: 50, prize: 1000, species: null, minRank: 'novice', desc: 'Biggest fish off any pier wins.' },
-  { id: 'tuna-run', name: 'Tuna Run', dayOfWeek: 3, entryFee: 200, prize: 5000, species: 'tuna', minRank: 'pro', desc: 'Biggest yellowfin tuna takes the pot.' },
-  { id: 'marlin-masters', name: 'Marlin Masters', dayOfWeek: 0, entryFee: 500, prize: 20000, species: 'marlin', minRank: 'master', desc: 'The big one. Biggest marlin wins $20,000.' },
+  { id: 'pier-cup', name: 'Pier Cup', dayOfWeek: 6, entryFee: 20, prize: 500, species: null, minRank: 'novice', desc: 'A friendly weekend contest' },
+  { id: 'big-catch', name: 'Big Catch Open', dayOfWeek: 0, entryFee: 100, prize: 2000, species: null, minRank: 'angler', desc: 'Biggest fish takes the pot' },
+  { id: 'marlin-masters', name: 'Marlin Masters', dayOfWeek: 3, entryFee: 500, prize: 10000, species: 'marlin', minRank: 'expert', desc: 'Only marlin count' },
 ];
 
-// Angling missions.
 export const ANGLING_MISSIONS = [
-  { id: 'first-catch', name: 'First Catch', desc: 'Catch any fish.', reward: 50 },
-  { id: 'ten-fish', name: 'Ten Fish', desc: 'Catch 10 fish in total.', reward: 150 },
-  { id: 'rare-one', name: 'Rare One', desc: 'Catch a rare fish or better.', reward: 400 },
-  { id: 'epic-one', name: 'Epic Catch', desc: 'Catch an epic fish.', reward: 1000 },
-  { id: 'legendary-one', name: 'Legendary Catch', desc: 'Catch a legendary fish.', reward: 5000 },
-  { id: 'collection-8', name: 'Collector', desc: 'Catch 8 different species.', reward: 800 },
-  { id: 'collection-all', name: 'Full Collection', desc: 'Catch every species at least once.', reward: 20000 },
-  { id: 'sell-1000', name: 'Fishmonger', desc: 'Earn $1,000 total from selling fish.', reward: 500 },
-  { id: 'sell-10000', name: 'Fish Baron', desc: 'Earn $10,000 total from selling fish.', reward: 3000 },
-  { id: 'tournament-win', name: 'Tournament Champion', desc: 'Win any fishing tournament.', reward: 2000 },
+  { id: 'first-catch', name: 'First Catch', desc: 'Catch your first fish', reward: 50 },
+  { id: 'catch-10', name: 'Ten Fish', desc: 'Catch 10 fish', reward: 100 },
+  { id: 'catch-50', name: 'Fifty Fish', desc: 'Catch 50 fish', reward: 300 },
+  { id: 'sell-1000', name: 'Thousand Dollar Day', desc: 'Earn 1000 from selling fish', reward: 200 },
+  { id: 'rare-catch', name: 'Rare Catch', desc: 'Catch a rare fish', reward: 150 },
+  { id: 'epic-catch', name: 'Epic Catch', desc: 'Catch an epic fish', reward: 400 },
+  { id: 'legendary-catch', name: 'Legendary Catch', desc: 'Catch a legendary fish', reward: 1000 },
+  { id: 'tournament-win', name: 'Tournament Winner', desc: 'Win a fishing tournament', reward: 500 },
+  { id: 'mount-trophy', name: 'Trophy Mount', desc: 'Mount your first trophy', reward: 150 },
+  { id: 'perfect-fight', name: 'Perfect Fight', desc: 'Land a fish perfectly', reward: 250 },
 ];
 
-// Market price modifiers by time of day (fresh catch sells best at dawn).
 export const MARKET_HOUR_MULT = [
-  1.0, 1.0, 1.0, 1.0, 1.0, 1.1, 1.25, 1.2, 1.1, 1.0, 1.0, 1.0,
-  1.0, 1.0, 1.0, 1.0, 1.05, 1.15, 1.1, 1.0, 1.0, 1.0, 1.0, 1.0,
+  0.8, 0.8, 0.8, 0.8, 0.8, 0.9, 1.0, 1.1, 1.2, 1.2, 1.1, 1.0,
+  1.0, 1.0, 1.0, 1.1, 1.2, 1.3, 1.3, 1.2, 1.1, 1.0, 0.9, 0.8,
 ];
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+export const ANGLING_WEATHER = [
+  { weather: 'clear', biteMult: 1, note: 'Clear skies, steady fishing' },
+  { weather: 'cloudy', biteMult: 1.1, note: 'Cloud cover brings fish up' },
+  { weather: 'rain', biteMult: 1.3, note: 'Rain stirs the water' },
+  { weather: 'storm', biteMult: 1.5, note: 'Storm feeding frenzy' },
+  { weather: 'fog', biteMult: 0.9, note: 'Fog keeps the fish shy' },
+];
 
-function clampNum(v, lo, hi) {
-  return v < lo ? lo : v > hi ? hi : v;
+export const BAIT_RECIPES = [
+  { id: 'chum-mix', name: 'Chum Mix', needs: { bread: 3, worm: 2 }, result: 'shrimp', qty: 2, desc: 'A stinky mix that draws fish in' },
+  { id: 'gold-paste', name: 'Gold Paste', needs: { bread: 5, shrimp: 2 }, result: 'gold-fly', qty: 1, desc: 'Shiny paste for shiny fish' },
+  { id: 'squid-bait', name: 'Squid Bait', needs: { shrimp: 3, worm: 3 }, result: 'squid', qty: 2, desc: 'Homemade squid bait' },
+  { id: 'crab-cake', name: 'Crab Cake', needs: { bread: 2, shrimp: 2 }, result: 'crab', qty: 1, desc: 'A cake no crab can resist' },
+];
+
+export const TACKLE_EXTRAS = [
+  { id: 'net', name: 'Landing Net', price: 30, desc: 'Scoop fish out with ease' },
+  { id: 'tackle-box', name: 'Tackle Box', price: 40, desc: 'Keep your gear organised' },
+  { id: 'cooler', name: 'Big Cooler', price: 60, desc: 'Keep the catch fresh longer' },
+  { id: 'wading-boots', name: 'Wading Boots', price: 80, desc: 'Wade into the shallows' },
+  { id: 'fish-finder', name: 'Fish Finder', price: 250, desc: 'Spot fish under the water' },
+  { id: 'rod-holder', name: 'Rod Holder', price: 25, desc: 'Rest your rod between casts' },
+  { id: 'bait-bucket', name: 'Bait Bucket', price: 15, desc: 'Keep live bait alive' },
+  { id: 'sunglasses', name: 'Polarised Sunglasses', price: 90, desc: 'See through the glare' },
+];
+
+export const FISH_LORE = [
+  { species: 'golden-koi', note: 'Said to grant luck to whoever catches it at noon.' },
+  { species: 'kraken-calf', note: 'Its mother is out there somewhere. Do not linger.' },
+  { species: 'ghost-eel', note: 'Only appears in the small hours, glowing faintly.' },
+  { species: 'marlin', note: 'The fastest fish in these waters.' },
+  { species: 'swordfish', note: 'Its bill can cut a line clean through.' },
+  { species: 'shark', note: 'Respect the shark and it respects the boat.' },
+  { species: 'catfish', note: 'The old-timers say the biggest one lives under the pier.' },
+  { species: 'salmon', note: 'Swims upstream every spring without fail.' },
+  { species: 'tuna', note: 'A torpedo with fins.' },
+  { species: 'bass', note: 'The pier regulars favourite fight.' },
+  { species: 'trout', note: 'Loves cold, clear water at dawn.' },
+  { species: 'stingray', note: 'Glides along the bottom like a shadow.' },
+];
+
+export const MOON_PHASES = [
+  { phase: 'new', biteMult: 0.9, note: 'Dark nights, quiet water' },
+  { phase: 'crescent', biteMult: 1.0, note: 'A sliver of moon, steady bites' },
+  { phase: 'half', biteMult: 1.1, note: 'Half moon, half luck' },
+  { phase: 'gibbous', biteMult: 1.2, note: 'Brightening nights, feeding fish' },
+  { phase: 'full', biteMult: 1.4, note: 'Full moon frenzy' },
+];
+
+export const FISHING_RECORDS = [
+  { species: 'marlin', recordKg: 110, holder: 'Old Man Reyes', note: 'Caught in 1987, still unbeaten' },
+  { species: 'tuna', recordKg: 38, holder: 'Captain Diaz', note: 'A monster from the deep charter' },
+  { species: 'catfish', recordKg: 5.8, holder: 'Marta Luz', note: 'Pulled from under the pier' },
+  { species: 'salmon', recordKg: 4.6, holder: 'Young Pete', note: 'A lucky dawn catch' },
+  { species: 'shark', recordKg: 75, holder: 'Captain Diaz', note: 'Released after the photo' },
+];
+
+export const FISHING_SEASONS = [
+  { season: 'spring', months: [3, 4, 5], note: 'Spawning season, fish are hungry', bonus: ['trout', 'salmon', 'bass'] },
+  { season: 'summer', months: [6, 7, 8], note: 'Warm water, deep fish rise', bonus: ['tuna', 'marlin', 'mackerel'] },
+  { season: 'autumn', months: [9, 10, 11], note: 'Cooling water, feeding before winter', bonus: ['catfish', 'snapper', 'eel'] },
+  { season: 'winter', months: [12, 1, 2], note: 'Cold and slow, but the big ones bite', bonus: ['swordfish', 'shark', 'ghost-eel'] },
+];
+
+export const BAIT_SPECIALS = [
+  { bait: 'worm', discount: 0.5, day: 1, note: 'Monday worm sale' },
+  { bait: 'shrimp', discount: 0.3, day: 3, note: 'Wednesday shrimp deal' },
+  { bait: 'squid', discount: 0.25, day: 5, note: 'Friday squid special' },
+  { bait: 'bread', discount: 0.5, day: 0, note: 'Sunday bread giveaway' },
+];
+
+export const ANGLER_ACHIEVEMENTS = [
+  { id: 'first-fish', name: 'First Fish', desc: 'Catch your first fish' },
+  { id: 'deep-diver', name: 'Deep Diver', desc: 'Fish the deep charter' },
+  { id: 'night-owl', name: 'Night Owl', desc: 'Fish past midnight' },
+  { id: 'big-haul', name: 'Big Haul', desc: 'Fill the cooler' },
+  { id: 'trophy-room', name: 'Trophy Room', desc: 'Mount five trophies' },
+  { id: 'tournament-champ', name: 'Tournament Champ', desc: 'Win a tournament' },
+  { id: 'legend-catcher', name: 'Legend Catcher', desc: 'Catch a legendary fish' },
+  { id: 'hundred-club', name: 'Hundred Club', desc: 'Catch 100 fish' },
+  { id: 'master-angler', name: 'Master Angler', desc: 'Reach master rank' },
+  { id: 'full-collection', name: 'Full Collection', desc: 'Catch every species' },
+];
+
+export const ANGLER_SAYINGS = [
+  'A bad day fishing beats a good day working.',
+  'The fish are always biting somewhere.',
+  'Patience is the angler\'s best tackle.',
+  'You should have seen the one that got away.',
+  'Early bird gets the worm, early angler gets the fish.',
+  'The sea gives, and the sea takes.',
+];
+
+export const FISHING_KNOTS = [
+  { name: 'Clinch Knot', strength: 0.8, desc: 'The classic all-rounder' },
+  { name: 'Palomar Knot', strength: 0.95, desc: 'Strong and simple' },
+  { name: 'Blood Knot', strength: 0.85, desc: 'Joins two lines neatly' },
+  { name: 'Loop Knot', strength: 0.7, desc: 'Lets the lure move freely' },
+  { name: 'Snell Knot', strength: 0.9, desc: 'A hook knot that never slips' },
+];
+
+export const TIDE_TABLE = [
+  { tide: 'rising', biteMult: 1.2, note: 'Fish move in with the tide' },
+  { tide: 'falling', biteMult: 1.1, note: 'Fish feed as the water drops' },
+  { tide: 'high', biteMult: 1.0, note: 'Steady water, steady bites' },
+  { tide: 'low', biteMult: 0.8, note: 'Shallow water, shy fish' },
+];
+
+export const OLD_ANGLER_RECORDS = [
+  { angler: 'Old Man Reyes', fish: 'marlin', year: 1987 },
+  { angler: 'Captain Diaz', fish: 'shark', year: 1995 },
+  { angler: 'Marta Luz', fish: 'catfish', year: 2003 },
+  { angler: 'Young Pete', fish: 'salmon', year: 2019 },
+];
+
+export const FISHING_BOAT_NAMES = [
+  'Sea Breeze', 'Lucky Catch', 'Reel Deal', 'Nauti Buoy', 'Fish On', 'The Wanderer',
+];
+
+export const ANGLER_SUPERSTITIONS = [
+  'Never whistle on a boat.',
+  'Bananas on board bring bad luck.',
+  'Always spit on your bait for luck.',
+  'A red hat keeps the fish biting.',
+];
+
+export const LUCKY_LURES = ['Golden Spoon', 'Silver Minnow', 'Red Devil', 'Blue Flash'];
+
+export const FISHING_PROVERBS = [
+  'Give a man a fish and he eats for a day.',
+  'Teach a man to fish and he eats for a lifetime.',
+  'The best time to fish is whenever you can.',
+  'A fisherman\'s luck is written in the water.',
+];
+
+function speciesById(id) {
+  return FISH_SPECIES.find((s) => s.id === id);
 }
 
-function pickWeighted(rng, items) {
-  let total = 0;
-  for (const it of items) total += it.weight;
-  let roll = rng() * total;
-  for (const it of items) {
-    roll -= it.weight;
-    if (roll <= 0) return it;
-  }
-  return items[items.length - 1];
+function rodById(id) {
+  return RODS.find((r) => r.id === id) || RODS[0];
+}
+
+function baitById(id) {
+  return BAITS.find((b) => b.id === id);
+}
+
+function spotById(id) {
+  return FISHING_SPOTS.find((s) => s.id === id);
+}
+
+function rankById(id) {
+  return ANGLER_RANKS.find((r) => r.id === id) || ANGLER_RANKS[0];
+}
+
+function rankIndex(id) {
+  const i = ANGLER_RANKS.findIndex((r) => r.id === id);
+  return i < 0 ? 0 : i;
+}
+
+function weatherMult(word) {
+  const row = ANGLING_WEATHER.find((w) => w.weather === word);
+  return row ? row.biteMult : 1;
 }
 
 export function fishPrice(species, kg, hour, rankMult) {
-  const hourMult = MARKET_HOUR_MULT[Math.floor(hour) % 24] || 1;
-  const rarityMult = RARITY_MULT[species.rarity] || 1;
-  return Math.max(1, Math.round(species.basePrice * kg * rarityMult * hourMult * rankMult));
+  const hourMult = MARKET_HOUR_MULT[((hour % 24) + 24) % 24] || 1;
+  const mult = RARITY_MULT[species.rarity] || 1;
+  const price = Math.round(species.basePrice * kg * mult * hourMult * (rankMult || 1));
+  return Math.max(1, price);
 }
 
 export function speciesForSpot(spot, hour) {
-  const h = Math.floor(hour) % 24;
-  return FISH_SPECIES.filter((s) => {
-    if (s.depth === 'shallow' && spot.depth !== 'shallow') return false;
-    if (s.depth === 'mid' && spot.depth === 'shallow') return false;
-    if (s.depth === 'deep' && spot.depth !== 'deep') return false;
-    return true;
-  }).map((s) => ({
-    ...s,
-    weight: s.weight * (s.bestHours.includes(h) ? 2.5 : 0.6),
-  }));
+  const out = [];
+  for (const sp of FISH_SPECIES) {
+    if (sp.depth === 'shallow' && spot.depth !== 'shallow') continue;
+    if (sp.depth === 'mid' && spot.depth === 'shallow') continue;
+    if (sp.depth === 'deep' && spot.depth !== 'deep') continue;
+    const w = sp.bestHours.includes(hour) ? sp.weight * 2.5 : sp.weight * 0.6;
+    out.push({ species: sp, weight: w });
+  }
+  return out;
 }
 
-// ---------------------------------------------------------------------------
-// Factory
-// ---------------------------------------------------------------------------
+export function moonPhaseFor(day) {
+  return MOON_PHASES[((day - 1) % 5 + 5) % 5];
+}
 
-export function createAnglingSystem(deps) {
-  const d = deps || {};
-  const rng = d.rng || Math.random;
-  const getHour = d.getHour || (() => 12);
-  const getDay = d.getDay || (() => 1);
-  const getCash = d.getCash || (() => 0);
-  const addCash = d.addCash || (() => {});
-  const log = d.log || (() => {});
-  const getWeather = d.getWeather || (() => 'clear');
+export function biteChance(spot, bait, hour, weather) {
+  const base = 40 + spot.bonus * 100;
+  let hourBonus = 1;
+  if (hour >= 5 && hour <= 8) hourBonus = 1.3;
+  else if (hour >= 17 && hour <= 20) hourBonus = 1.2;
+  const chance = Math.round(base * weatherMult(weather) * hourBonus);
+  return Math.min(95, chance);
+}
+
+export function bestBaitFor(speciesId) {
+  return BAITS.find((b) => b.favours.includes(speciesId)) || BAITS[0];
+}
+
+export function bestSpotFor(speciesId) {
+  const sp = speciesById(speciesId);
+  if (!sp) return spotById('north-pier');
+  if (sp.depth === 'deep') return spotById('deep-charter');
+  if (sp.depth === 'mid') return spotById('rocky-point');
+  return spotById('north-pier');
+}
+
+export function bestHourFor(speciesId) {
+  const sp = speciesById(speciesId);
+  if (!sp || !sp.bestHours.length) return 7;
+  return sp.bestHours[0];
+}
+
+export function isRecordCatch(speciesId, kg) {
+  const rec = FISHING_RECORDS.find((r) => r.species === speciesId);
+  return kg > (rec ? rec.recordKg : 50);
+}
+
+export function coolerValue(cooler) {
+  return cooler.reduce((s, f) => s + (f.value || 0), 0);
+}
+
+export function collectionProgress(collection) {
+  const caught = Object.keys(collection).filter((k) => collection[k] > 0).length;
+  const total = FISH_SPECIES.length;
+  return { caught, total, pct: Math.round((caught / total) * 100) };
+}
+
+export function rankProgress(xp) {
+  let current = ANGLER_RANKS[0];
+  let next = null;
+  for (let i = 0; i < ANGLER_RANKS.length; i++) {
+    if (xp >= ANGLER_RANKS[i].xpNeeded) current = ANGLER_RANKS[i];
+    else { next = ANGLER_RANKS[i]; break; }
+  }
+  const needed = next ? Math.max(0, next.xpNeeded - xp) : 0;
+  return { current, next, needed };
+}
+
+export function fightDifficulty(species, kg, rod) {
+  const size = kg / species.maxKg;
+  const diff = species.fight * (0.5 + size) * (1 - (rod.fightBonus || 0));
+  return Math.round(diff * 10) / 10;
+}
+
+export function sellPriceBreakdown(cooler, hour, rankMult) {
+  return cooler.map((f) => {
+    const sp = speciesById(f.speciesId) || speciesById(f.id);
+    const value = sp ? fishPrice(sp, f.kg, hour, rankMult) : f.value || 0;
+    return { name: f.name, kg: f.kg, value };
+  });
+}
+
+export function tournamentStandings(playerBest, rivalCount, rng) {
+  const r = rng || Math.random;
+  const rivals = [];
+  for (let i = 0; i < rivalCount; i++) rivals.push(Math.round(r() * 40 * 10) / 10);
+  rivals.sort((a, b) => b - a);
+  const beaten = rivals.filter((x) => playerBest > x).length;
+  return { place: rivalCount + 1 - beaten, rivals };
+}
+
+export function baitStockValue(stock) {
+  let sum = 0;
+  for (const id of Object.keys(stock)) {
+    const bait = baitById(id);
+    if (bait) sum += bait.price * stock[id];
+  }
+  return sum;
+}
+
+export function rodRecommendation(speciesId, cash) {
+  const sp = speciesById(speciesId);
+  const need = sp ? Math.ceil(sp.maxKg / 2) : 5;
+  const fitting = RODS.filter((r) => r.lineStrength >= need);
+  const afford = fitting.filter((r) => r.price <= cash);
+  if (afford.length) return afford.sort((a, b) => a.price - b.price)[0];
+  if (fitting.length) return fitting.sort((a, b) => a.price - b.price)[0];
+  return RODS.slice().sort((a, b) => b.lineStrength - a.lineStrength)[0];
+}
+
+export function seasonFor(month) {
+  return FISHING_SEASONS.find((s) => s.months.includes(month)) || FISHING_SEASONS[0];
+}
+
+export function seasonBonusFor(speciesId, month) {
+  const season = seasonFor(month);
+  return season.bonus.includes(speciesId) ? 1.5 : 1;
+}
+
+export function baitSpecialFor(baitId, weekday) {
+  return BAIT_SPECIALS.find((s) => s.bait === baitId && s.day === weekday) || null;
+}
+
+export function baitPriceWithSpecial(baitId, weekday) {
+  const bait = baitById(baitId);
+  if (!bait) return 0;
+  const special = baitSpecialFor(baitId, weekday);
+  if (special) return Math.round(bait.price * (1 - special.discount));
+  return bait.price;
+}
+
+export function achievementList() {
+  return ANGLER_ACHIEVEMENTS.map((a) => ({ ...a }));
+}
+
+export function totalTackleValue(rodIds, stock) {
+  let sum = baitStockValue(stock);
+  for (const id of rodIds) {
+    const rod = rodById(id);
+    sum += rod.price;
+  }
+  return sum;
+}
+
+export function catchRateFor(species, spot, hour, weather, bait) {
+  const pool = speciesForSpot(spot, hour);
+  const entry = pool.find((p) => p.species.id === species.id);
+  const weight = entry ? entry.weight : 0;
+  const baitMult = bait && bait.favours.includes(species.id) ? 2 : 1;
+  return Math.round(weight * weatherMult(weather) * baitMult);
+}
+
+export function knotStrength(name) {
+  const k = FISHING_KNOTS.find((x) => x.name === name);
+  return k ? k.strength : 0.8;
+}
+
+export function tideBiteMult(tide) {
+  const row = TIDE_TABLE.find((t) => t.tide === tide);
+  return row ? row.biteMult : 1;
+}
+
+export function bestKnot() {
+  return FISHING_KNOTS.slice().sort((a, b) => b.strength - a.strength)[0];
+}
+
+export function randomBoatName(rng) {
+  const r = rng || Math.random;
+  return FISHING_BOAT_NAMES[Math.floor(r() * FISHING_BOAT_NAMES.length)];
+}
+
+export function superstitionFor(index) {
+  return ANGLER_SUPERSTITIONS[((index % ANGLER_SUPERSTITIONS.length) + ANGLER_SUPERSTITIONS.length) % ANGLER_SUPERSTITIONS.length];
+}
+
+export function isLuckyLure(name) {
+  return LUCKY_LURES.includes(name);
+}
+
+export function proverbFishing(index) {
+  return FISHING_PROVERBS[((index % FISHING_PROVERBS.length) + FISHING_PROVERBS.length) % FISHING_PROVERBS.length];
+}
+
+export function createAnglingSystem(deps = {}) {
+  const rng = typeof deps.rng === 'function' ? deps.rng : Math.random;
+  const getHour = typeof deps.getHour === 'function' ? deps.getHour : () => 12;
+  const getDay = typeof deps.getDay === 'function' ? deps.getDay : () => 1;
+  const getCash = typeof deps.getCash === 'function' ? deps.getCash : () => 0;
+  const addCash = typeof deps.addCash === 'function' ? deps.addCash : () => {};
+  const log = typeof deps.log === 'function' ? deps.log : () => {};
+  const getWeather = typeof deps.getWeather === 'function' ? deps.getWeather : () => ({ condition: 'clear' });
 
   const state = {
     xp: 0,
@@ -182,796 +481,411 @@ export function createAnglingSystem(deps) {
     perfectFights: 0,
   };
 
-  function rank() {
-    return ANGLER_RANKS.find((r) => r.id === state.rank) || ANGLER_RANKS[0];
+  function weatherWord() {
+    const w = getWeather();
+    return w && w.condition ? w.condition : 'clear';
   }
 
-  function rankSellMult() {
-    if (state.rank === 'legend') return 1.35;
-    if (state.rank === 'master') return 1.2;
-    if (state.rank === 'pro') return 1.1;
-    return 1;
+  function rankMult() {
+    return 1 + rankIndex(state.rank) * 0.1;
   }
 
   function refreshRank() {
-    let best = ANGLER_RANKS[0];
-    for (const r of ANGLER_RANKS) {
-      if (state.xp >= r.xpNeeded) best = r;
-    }
-    if (best.id !== state.rank) {
-      state.rank = best.id;
-      log(`Angler rank up: ${best.name}! ${best.perk}`);
-    }
+    state.rank = rankProgress(state.xp).current.id;
   }
 
-  function rod() {
-    return RODS.find((r) => r.id === state.rodId) || RODS[0];
-  }
-
-  function spotUnlocked(spot) {
-    if (spot.id === 'marina') return ['hobbyist', 'angler', 'pro', 'master', 'legend'].includes(state.rank);
-    if (spot.id === 'rocky-point') return ['angler', 'pro', 'master', 'legend'].includes(state.rank);
-    if (spot.id === 'deep-charter') return ['pro', 'master', 'legend'].includes(state.rank);
-    return true;
+  function gainXp(amount) {
+    state.xp += amount;
+    refreshRank();
   }
 
   function checkMission(id) {
     if (state.missionsDone[id]) return;
-    const m = ANGLING_MISSIONS.find((x) => x.id === id);
-    if (!m) return;
+    const mission = ANGLING_MISSIONS.find((m) => m.id === id);
+    if (!mission) return;
     let done = false;
-    switch (id) {
-      case 'first-catch': done = state.totalCaught >= 1; break;
-      case 'ten-fish': done = state.totalCaught >= 10; break;
-      case 'rare-one': done = Object.keys(state.collection).some((k) => ['rare', 'epic', 'legendary', 'mythic'].includes((FISH_SPECIES.find((s) => s.id === k) || {}).rarity)); break;
-      case 'epic-one': done = Object.keys(state.collection).some((k) => ['epic', 'legendary', 'mythic'].includes((FISH_SPECIES.find((s) => s.id === k) || {}).rarity)); break;
-      case 'legendary-one': done = Object.keys(state.collection).some((k) => ['legendary', 'mythic'].includes((FISH_SPECIES.find((s) => s.id === k) || {}).rarity)); break;
-      case 'collection-8': done = Object.keys(state.collection).length >= 8; break;
-      case 'collection-all': done = Object.keys(state.collection).length >= FISH_SPECIES.length; break;
-      case 'sell-1000': done = state.totalEarned >= 1000; break;
-      case 'sell-10000': done = state.totalEarned >= 10000; break;
-      case 'tournament-win': done = (state.missionProgressWin || 0) >= 1; break;
-      default: done = false;
-    }
+    if (id === 'first-catch') done = state.totalCaught >= 1;
+    else if (id === 'catch-10') done = state.totalCaught >= 10;
+    else if (id === 'catch-50') done = state.totalCaught >= 50;
+    else if (id === 'sell-1000') done = state.totalEarned >= 1000;
+    else if (id === 'rare-catch') done = Object.keys(state.collection).some((k) => {
+      const sp = speciesById(k);
+      return sp && sp.rarity === 'rare' && state.collection[k] > 0;
+    });
+    else if (id === 'epic-catch') done = Object.keys(state.collection).some((k) => {
+      const sp = speciesById(k);
+      return sp && sp.rarity === 'epic' && state.collection[k] > 0;
+    });
+    else if (id === 'legendary-catch') done = Object.keys(state.collection).some((k) => {
+      const sp = speciesById(k);
+      return sp && (sp.rarity === 'legendary' || sp.rarity === 'mythic') && state.collection[k] > 0;
+    });
+    else if (id === 'tournament-win') done = (state.tournamentWins || 0) >= 1;
+    else if (id === 'mount-trophy') done = (state.trophies || []).length >= 1;
+    else if (id === 'perfect-fight') done = state.perfectFights >= 1;
     if (!done) return;
     state.missionsDone[id] = true;
-    addCash(m.reward);
-    log(`Angling mission complete: ${m.name} (+$${m.reward}).`);
+    addCash(mission.reward);
+    log(`Mission complete: ${mission.name}`);
   }
 
-  function buyRod(rodId) {
-    const r = RODS.find((x) => x.id === rodId);
-    if (!r) return { ok: false, error: 'unknown rod' };
-    if (state.rodsOwned.includes(rodId)) {
-      state.rodId = rodId;
-      return { ok: true, equipped: rodId, chips: null };
-    }
-    if (getCash() < r.price) return { ok: false, error: 'not enough cash' };
-    addCash(-r.price);
-    state.rodsOwned.push(rodId);
-    state.rodId = rodId;
-    log(`Bought rod: ${r.name} ($${r.price}).`);
-    return { ok: true, rod: r };
-  }
-
-  function buyBait(baitId, qty) {
-    const b = BAITS.find((x) => x.id === baitId);
-    if (!b) return { ok: false, error: 'unknown bait' };
-    const n = clampNum(Math.floor(qty) || 1, 1, 99);
-    const cost = b.price * n;
-    if (getCash() < cost) return { ok: false, error: 'not enough cash' };
-    addCash(-cost);
-    state.baitStock[baitId] = (state.baitStock[baitId] || 0) + n;
-    return { ok: true, bait: b, qty: n, stock: state.baitStock[baitId] };
-  }
-
-  function goToSpot(spotId) {
-    const spot = FISHING_SPOTS.find((s) => s.id === spotId);
-    if (!spot) return { ok: false, error: 'unknown spot' };
-    if (!spotUnlocked(spot)) return { ok: false, error: `needs higher angler rank (${spot.id})` };
-    if (spot.fee > 0) {
-      if (getCash() < spot.fee) return { ok: false, error: 'not enough cash for the fee' };
-      addCash(-spot.fee);
-    }
-    state.currentSpot = spotId;
-    state.casting = false;
-    state.biteActive = false;
-    state.fight = null;
-    log(`At ${spot.name}. ${spot.desc}`);
-    return { ok: true, spot };
-  }
-
-  function cast(baitId) {
-    if (!state.currentSpot) return { ok: false, error: 'go to a fishing spot first' };
-    if (state.casting || state.fight) return { ok: false, error: 'already fishing' };
-    const bait = BAITS.find((b) => b.id === baitId);
-    if (!bait) return { ok: false, error: 'unknown bait' };
-    if ((state.baitStock[baitId] || 0) <= 0) return { ok: false, error: 'no bait of that type' };
-    state.baitStock[baitId]--;
-    state.casting = true;
-    state.castsToday++;
-    const spot = FISHING_SPOTS.find((s) => s.id === state.currentSpot);
-    const weather = getWeather();
-    const baseWait = 4 + rng() * 8;
-    const crowdSlow = spot.crowd * 1.5;
-    const weatherMod = weather === 'rain' ? 0.7 : weather === 'storm' ? 0.5 : 1;
-    state.biteTimer = (baseWait + crowdSlow) * weatherMod * (1 - spot.bonus * 0.5);
-    state.pendingBait = baitId;
-    return { ok: true, wait: state.biteTimer, bait: bait.name };
-  }
-
-  function rollBite() {
-    const spot = FISHING_SPOTS.find((s) => s.id === state.currentSpot);
+  function rollSpecies() {
+    const spot = spotById(state.currentSpot);
     const hour = getHour();
     const pool = speciesForSpot(spot, hour);
-    const bait = BAITS.find((b) => b.id === state.pendingBait);
-    const weighted = pool.map((s) => {
-      let w = s.weight;
-      if (bait && bait.favours.includes(s.id)) w *= 2;
-      if (state.rank === 'legend' && s.rarity === 'legendary') w *= 1.5;
-      if (getWeather() === 'rain' && s.id === 'catfish') w *= 2;
-      return { ...s, weight: w };
-    });
-    const species = pickWeighted(rng, weighted);
-    const kg = species.minKg + rng() * (species.maxKg - species.minKg);
-    const r = rod();
-    const fightPower = species.fight * (1 + kg / species.maxKg);
+    const total = pool.reduce((s, p) => s + p.weight, 0);
+    let roll = rng() * total;
+    for (const entry of pool) {
+      roll -= entry.weight;
+      if (roll <= 0) return entry.species;
+    }
+    return pool[0].species;
+  }
+
+  function startFight(species) {
+    const rod = rodById(state.rodId);
+    const kg = Math.round((species.minKg + rng() * (species.maxKg - species.minKg)) * 10) / 10;
     state.fight = {
       speciesId: species.id,
       name: species.name,
-      rarity: species.rarity,
-      kg: Math.round(kg * 100) / 100,
-      power: fightPower,
-      line: 100,
-      tension: 50,
+      kg,
+      difficulty: fightDifficulty(species, kg, rod),
       progress: 0,
-      rodBreakAt: r.lineStrength,
-      reeling: false,
-      pulls: 0,
-      perfects: 0,
+      tension: 30,
+      line: 100,
       elapsed: 0,
+      reels: 0,
+      pulling: false,
+      biteWait: undefined,
     };
     state.biteActive = true;
     state.casting = false;
-    log(`BITE! Something is on the line...`);
-    return state.fight;
   }
 
-  function fightTick(dt, input) {
-    const f = state.fight;
-    if (!f) return { ok: false, error: 'no fish on the line' };
-    f.elapsed += dt;
-    const r = rod();
-    const reel = input && input.reel;
-    const slack = input && input.slack;
-    // The fish pulls in bursts; reeling while it pulls spikes tension.
-    const pulling = Math.sin(f.elapsed * 2.1 + f.pulls) > 0.2;
-    if (pulling) {
-      f.pulls++;
-      f.tension += (6 + f.power * 2) * dt * 2;
-      if (reel) f.tension += 10 * dt * 2;
-    } else {
-      f.tension -= 8 * dt;
-      if (reel) {
-        f.progress += (14 + r.fightBonus * 20) * dt;
-        f.perfects += 1;
-      }
-    }
-    if (slack) f.tension -= 14 * dt;
-    f.tension = clampNum(f.tension, 0, 100);
-    // Line strain: tension near max wears the line; over max it snaps.
-    if (f.tension > 92) f.line -= (f.tension - 92) * 3 * dt;
-    if (f.tension > 98 || f.line <= 0) {
-      state.lineSnaps++;
-      const lost = { ...f };
-      state.fight = null;
-      state.biteActive = false;
-      log(`Line snapped! The ${lost.name} got away.`);
-      return { ok: true, event: 'snapped', fish: lost };
-    }
-    if (f.progress >= 100) {
-      return landFish(f);
-    }
-    // Fish tires over time; big fish take longer.
-    if (f.elapsed > 25 + f.power * 8) {
-      f.tension -= 2 * dt;
-    }
-    return { ok: true, event: 'fighting', fight: { ...f, pulling } };
-  }
-
-  function landFish(f) {
-    const species = FISH_SPECIES.find((s) => s.id === f.speciesId);
-    const perfect = f.perfects >= 10 && state.lineSnaps === 0;
-    const catchEntry = {
+  function landFish() {
+    const fight = state.fight;
+    const species = speciesById(fight.speciesId);
+    const value = fishPrice(species, fight.kg, getHour(), rankMult());
+    const fish = {
       speciesId: species.id,
       name: species.name,
+      kg: fight.kg,
+      value,
       rarity: species.rarity,
-      kg: f.kg,
-      value: fishPrice(species, f.kg, getHour(), rankSellMult()),
       day: getDay(),
-      perfect,
     };
-    state.cooler.push(catchEntry);
-    state.totalCaught++;
-    state.xp += species.xp;
+    state.cooler.push(fish);
     state.collection[species.id] = (state.collection[species.id] || 0) + 1;
-    if (perfect) state.perfectFights++;
-    if (!state.biggestCatch || f.kg > state.biggestCatch.kg) {
-      state.biggestCatch = { ...catchEntry };
-    }
-    state.recentCatches.unshift(`${species.name} ${f.kg}kg (${species.rarity})`);
-    if (state.recentCatches.length > 10) state.recentCatches.pop();
-    // Tournament scoring: biggest fish of the target species today.
-    for (const t of TOURNAMENTS) {
-      if (state.tournamentsEntered[t.id] && (!t.species || t.species === species.id)) {
-        const prev = state.tournamentBest[t.id] || 0;
-        if (f.kg > prev) state.tournamentBest[t.id] = f.kg;
-      }
-    }
+    state.totalCaught += 1;
+    if (!state.biggestCatch || fight.kg > state.biggestCatch.kg) state.biggestCatch = fish;
+    state.recentCatches.push(`${species.name} ${fight.kg}kg`);
+    if (state.recentCatches.length > 10) state.recentCatches.shift();
+    if (fight.reels >= 10 && state.lineSnaps === 0) state.perfectFights += 1;
+    gainXp(species.xp);
     state.fight = null;
-    state.biteActive = false;
-    refreshRank();
+    log(`Caught ${species.name} (${fight.kg}kg)`);
     checkMission('first-catch');
-    checkMission('ten-fish');
-    checkMission('rare-one');
-    checkMission('epic-one');
-    checkMission('legendary-one');
-    checkMission('collection-8');
-    checkMission('collection-all');
-    log(`Caught ${species.name} — ${f.kg}kg (${species.rarity})! Worth ~$${catchEntry.value}.`);
-    return { ok: true, event: 'caught', catch: catchEntry, xp: species.xp };
+    checkMission('catch-10');
+    checkMission('catch-50');
+    checkMission('rare-catch');
+    checkMission('epic-catch');
+    checkMission('legendary-catch');
+    checkMission('perfect-fight');
+    return { ok: true, event: 'landed', fish, xp: species.xp };
   }
 
-  function giveUpFight() {
-    if (!state.fight) return { ok: false, error: 'no fish on the line' };
-    const f = state.fight;
-    state.fight = null;
-    state.biteActive = false;
-    log(`Let the ${f.name} go.`);
-    return { ok: true, released: f.name };
-  }
+  const system = {
+    state,
 
-  function sellCatch(index) {
-    if (index === 'all') {
-      let total = 0;
-      let count = state.cooler.length;
-      for (const c of state.cooler) total += c.value;
-      state.cooler = [];
-      state.totalSold += count;
-      state.totalEarned += total;
-      addCash(total);
-      checkMission('sell-1000');
-      checkMission('sell-10000');
-      log(`Sold ${count} fish for $${total}.`);
-      return { ok: true, sold: count, earned: total };
-    }
-    const i = Math.floor(index);
-    if (i < 0 || i >= state.cooler.length) return { ok: false, error: 'no such fish in cooler' };
-    const c = state.cooler.splice(i, 1)[0];
-    state.totalSold++;
-    state.totalEarned += c.value;
-    addCash(c.value);
-    checkMission('sell-1000');
-    checkMission('sell-10000');
-    log(`Sold ${c.name} ${c.kg}kg for $${c.value}.`);
-    return { ok: true, sold: 1, earned: c.value, fish: c };
-  }
-
-  function mountTrophy(index) {
-    const i = Math.floor(index);
-    if (i < 0 || i >= state.cooler.length) return { ok: false, error: 'no such fish in cooler' };
-    const c = state.cooler[i];
-    if (c.rarity === 'common') return { ok: false, error: 'only uncommon or better can be mounted' };
-    state.cooler.splice(i, 1);
-    state.trophies = state.trophies || [];
-    state.trophies.push({ ...c, mountedDay: getDay() });
-    state.xp += 25;
-    refreshRank();
-    log(`Mounted ${c.name} (${c.kg}kg) as a trophy. +25 XP.`);
-    return { ok: true, trophy: c };
-  }
-
-  function enterTournament(tournamentId) {
-    const t = TOURNAMENTS.find((x) => x.id === tournamentId);
-    if (!t) return { ok: false, error: 'unknown tournament' };
-    const rankOrder = ANGLER_RANKS.map((r) => r.id);
-    if (rankOrder.indexOf(state.rank) < rankOrder.indexOf(t.minRank)) {
-      return { ok: false, error: `needs rank ${t.minRank}` };
-    }
-    const day = getDay();
-    if (state.tournamentsEntered[tournamentId] === day) return { ok: false, error: 'already entered today' };
-    if (getCash() < t.entryFee) return { ok: false, error: 'not enough cash for entry' };
-    addCash(-t.entryFee);
-    state.tournamentsEntered[tournamentId] = day;
-    state.tournamentBest[tournamentId] = 0;
-    log(`Entered ${t.name} ($${t.entryFee}). Biggest fish wins $${t.prize}.`);
-    return { ok: true, tournament: t };
-  }
-
-  function settleTournament(tournamentId) {
-    const t = TOURNAMENTS.find((x) => x.id === tournamentId);
-    if (!t) return { ok: false, error: 'unknown tournament' };
-    const best = state.tournamentBest[tournamentId] || 0;
-    if (!state.tournamentsEntered[tournamentId]) return { ok: false, error: 'not entered' };
-    // Rival anglers' best catches: random 60-110% of a typical big fish.
-    const rivalBest = (t.species
-      ? (FISH_SPECIES.find((s) => s.id === t.species) || { maxKg: 10 }).maxKg * (0.35 + rng() * 0.4)
-      : 8 + rng() * 14);
-    const won = best > 0 && best >= rivalBest;
-    delete state.tournamentsEntered[tournamentId];
-    delete state.tournamentBest[tournamentId];
-    if (won) {
-      addCash(t.prize);
-      state.missionProgressWin = (state.missionProgressWin || 0) + 1;
-      checkMission('tournament-win');
-      log(`Won ${t.name} with a ${best.toFixed(1)}kg fish! Prize $${t.prize}.`);
-      return { ok: true, won: true, best, rivalBest, prize: t.prize };
-    }
-    log(`${t.name}: your best ${best.toFixed(1)}kg lost to ${rivalBest.toFixed(1)}kg.`);
-    return { ok: true, won: false, best, rivalBest, prize: 0 };
-  }
-
-  function collectionLog() {
-    return FISH_SPECIES.map((s) => ({
-      ...s,
-      caught: state.collection[s.id] || 0,
-    }));
-  }
-
-  function missions() {
-    return ANGLING_MISSIONS.map((m) => ({ ...m, done: !!state.missionsDone[m.id] }));
-  }
-
-  function tick(dt) {
-    const day = getDay();
-    if (day !== state.day) {
-      state.day = day;
-      state.castsToday = 0;
-      // Tournaments settle at day rollover if still entered.
-      for (const t of TOURNAMENTS) {
-        if (state.tournamentsEntered[t.id]) settleTournament(t.id);
+    buyRod(rodId) {
+      const rod = rodById(rodId);
+      if (!RODS.find((r) => r.id === rodId)) return { ok: false, error: 'unknown rod' };
+      if (state.rodsOwned.includes(rodId)) {
+        state.rodId = rodId;
+        return { ok: true, rod, equipped: rodId, chips: null };
       }
-    }
-    if (state.casting && !state.fight) {
-      state.biteTimer -= dt;
-      if (state.biteTimer <= 0) {
-        state.casting = false;
-        rollBite();
+      if (getCash() < rod.price) return { ok: false, error: 'not enough cash' };
+      addCash(-rod.price);
+      state.rodsOwned.push(rodId);
+      state.rodId = rodId;
+      log(`Bought rod: ${rod.name}`);
+      return { ok: true, rod };
+    },
+
+    buyBait(baitId, qty) {
+      const bait = baitById(baitId);
+      if (!bait) return { ok: false, error: 'unknown bait' };
+      const quantity = Math.max(1, Math.min(99, qty || 1));
+      const total = bait.price * quantity;
+      if (getCash() < total) return { ok: false, error: 'not enough cash' };
+      addCash(-total);
+      state.baitStock[baitId] = (state.baitStock[baitId] || 0) + quantity;
+      return { ok: true, bait, qty: quantity, stock: state.baitStock[baitId] };
+    },
+
+    goToSpot(spotId) {
+      const spot = spotById(spotId);
+      if (!spot) return { ok: false, error: 'unknown spot' };
+      const locked = {
+        'rocky-point': ['fisher', 'expert', 'master', 'legend'],
+        'deep-charter': ['expert', 'master', 'legend'],
+        'storm-bay': ['master', 'legend'],
+        'reef-edge': ['angler', 'fisher', 'expert', 'master', 'legend'],
+      };
+      const allowed = locked[spotId];
+      if (allowed && !allowed.includes(state.rank)) return { ok: false, error: 'rank too low for this spot' };
+      if (getCash() < spot.fee) return { ok: false, error: 'not enough cash' };
+      if (spot.fee > 0) addCash(-spot.fee);
+      state.currentSpot = spotId;
+      state.casting = false;
+      state.biteActive = false;
+      state.fight = null;
+      log(`Arrived at ${spot.name}`);
+      return { ok: true, spot };
+    },
+
+    cast(baitId) {
+      if (!state.currentSpot) return { ok: false, error: 'no spot chosen' };
+      if (state.casting || state.fight) return { ok: false, error: 'already fishing' };
+      const bait = baitById(baitId);
+      if (!bait) return { ok: false, error: 'unknown bait' };
+      if ((state.baitStock[baitId] || 0) <= 0) return { ok: false, error: 'no bait of that type' };
+      state.baitStock[baitId] -= 1;
+      state.casting = true;
+      state.castsToday += 1;
+      const spot = spotById(state.currentSpot);
+      let wait = 4 + rng() * 8 + spot.crowd * 0.5;
+      const weather = weatherWord();
+      if (weather === 'rain') wait *= 0.8;
+      else if (weather === 'storm') wait *= 0.6;
+      wait *= 1 - spot.bonus * 0.5;
+      state.biteTimer = wait;
+      state._pendingBait = baitId;
+      return { ok: true, wait: Math.round(wait * 10) / 10, bait: bait.name };
+    },
+
+    fightTick(dt, input) {
+      const fight = state.fight;
+      if (!fight) return { ok: false, error: 'no fish on the line' };
+      state.biteActive = false;
+      const act = (input && input.action) || 'reel';
+      fight.elapsed += dt || 0;
+      const pulling = Math.sin(fight.elapsed * 1.2) > 0.2;
+      fight.pulling = pulling;
+      if (pulling) {
+        fight.tension += (act === 'reel' ? 12 : 6) * (dt || 1);
+      } else if (act === 'reel') {
+        fight.tension -= 8 * (dt || 1);
+        fight.progress += 12 * (dt || 1);
+        fight.reels += 1;
+      } else if (act === 'slack') {
+        fight.tension -= 15 * (dt || 1);
+      } else {
+        fight.tension -= 3 * (dt || 1);
       }
-    }
-    // A bite waits up to 6 seconds before the fish steals the bait.
-    if (state.biteActive && state.fight) {
-      state.fight.waitLeft = (state.fight.waitLeft === undefined ? 6 : state.fight.waitLeft) - dt;
-      if (state.fight.waitLeft <= 0) {
-        log(`Too slow — the ${state.fight.name} stole the bait.`);
+      fight.tension = Math.max(0, Math.min(100, fight.tension));
+      if (fight.tension > 92) fight.line -= (fight.tension - 92) * (dt || 1);
+      if (fight.tension > 98 || fight.line <= 0) {
+        state.lineSnaps += 1;
         state.fight = null;
         state.biteActive = false;
+        log('Line snapped!');
+        return { ok: true, event: 'snapped', fight: { ...fight, pulling } };
       }
-    }
-  }
+      if (fight.progress >= 100) return landFish();
+      return { ok: true, event: 'fighting', fight: { ...fight, pulling } };
+    },
 
-  function hudLine() {
-    if (state.totalCaught === 0 && state.cooler.length === 0) return '';
-    const spot = state.currentSpot ? (FISHING_SPOTS.find((s) => s.id === state.currentSpot) || {}).name : '—';
-    const fighting = state.fight ? ` | Fighting ${state.fight.name} ${Math.floor(state.fight.progress)}%` : state.casting ? ' | Waiting for a bite…' : '';
-    return `Angling ${rank().name} | ${spot} | cooler ${state.cooler.length} fish${fighting}`;
-  }
+    giveUpFight() {
+      if (!state.fight) return { ok: false, error: 'no fish on the line' };
+      const name = state.fight.name;
+      state.fight = null;
+      state.biteActive = false;
+      log(`Released ${name}`);
+      return { ok: true, released: name };
+    },
 
-  function summary() {
-    return {
-      rank: state.rank,
-      xp: state.xp,
-      rod: state.rodId,
-      totalCaught: state.totalCaught,
-      totalSold: state.totalSold,
-      totalEarned: state.totalEarned,
-      cooler: state.cooler.length,
-      speciesCaught: Object.keys(state.collection).length,
-      biggestCatch: state.biggestCatch,
-      trophies: (state.trophies || []).length,
-      missionsDone: Object.keys(state.missionsDone).length,
-      recentCatches: [...state.recentCatches],
-    };
-  }
+    sellCatch(index) {
+      if (index === 'all') {
+        const count = state.cooler.length;
+        const earned = coolerValue(state.cooler);
+        state.cooler = [];
+        state.totalSold += count;
+        state.totalEarned += earned;
+        addCash(earned);
+        log(`Sold ${count} fish for ${earned}`);
+        checkMission('sell-1000');
+        return { ok: true, sold: count, earned };
+      }
+      if (typeof index !== 'number' || index < 0 || index >= state.cooler.length) {
+        return { ok: false, error: 'invalid catch index' };
+      }
+      const fish = state.cooler.splice(index, 1)[0];
+      addCash(fish.value);
+      state.totalSold += 1;
+      state.totalEarned += fish.value;
+      log(`Sold ${fish.name} for ${fish.value}`);
+      checkMission('sell-1000');
+      return { ok: true, sold: 1, earned: fish.value, fish };
+    },
 
-  function serialize() {
-    return {
-      xp: state.xp,
-      rank: state.rank,
-      rodId: state.rodId,
-      rodsOwned: [...state.rodsOwned],
-      baitStock: { ...state.baitStock },
-      cooler: state.cooler.map((c) => ({ ...c })),
-      collection: { ...state.collection },
-      biggestCatch: state.biggestCatch ? { ...state.biggestCatch } : null,
-      totalCaught: state.totalCaught,
-      totalSold: state.totalSold,
-      totalEarned: state.totalEarned,
-      trophies: (state.trophies || []).map((t) => ({ ...t })),
-      missionsDone: { ...state.missionsDone },
-      lineSnaps: state.lineSnaps,
-      perfectFights: state.perfectFights,
-    };
-  }
+    mountTrophy(index) {
+      if (typeof index !== 'number' || index < 0 || index >= state.cooler.length) {
+        return { ok: false, error: 'invalid catch index' };
+      }
+      const fish = state.cooler[index];
+      if (fish.rarity === 'common') return { ok: false, error: 'common fish cannot be mounted' };
+      state.cooler.splice(index, 1);
+      if (!state.trophies) state.trophies = [];
+      const trophy = { ...fish, mountedDay: getDay() };
+      state.trophies.push(trophy);
+      gainXp(25);
+      log(`Mounted trophy: ${fish.name}`);
+      checkMission('mount-trophy');
+      return { ok: true, trophy };
+    },
 
-  function deserialize(s) {
-    if (!s || typeof s !== 'object') return;
-    if (typeof s.xp === 'number') state.xp = s.xp;
-    if (typeof s.rank === 'string') state.rank = s.rank;
-    if (typeof s.rodId === 'string') state.rodId = s.rodId;
-    if (Array.isArray(s.rodsOwned)) state.rodsOwned = [...s.rodsOwned];
-    if (s.baitStock) state.baitStock = { ...s.baitStock };
-    if (Array.isArray(s.cooler)) state.cooler = s.cooler.map((c) => ({ ...c }));
-    if (s.collection) state.collection = { ...s.collection };
-    if (s.biggestCatch) state.biggestCatch = { ...s.biggestCatch };
-    for (const k of ['totalCaught', 'totalSold', 'totalEarned', 'lineSnaps', 'perfectFights']) {
-      if (typeof s[k] === 'number') state[k] = s[k];
-    }
-    if (Array.isArray(s.trophies)) state.trophies = s.trophies.map((t) => ({ ...t }));
-    if (s.missionsDone) state.missionsDone = { ...s.missionsDone };
-  }
+    enterTournament(tournamentId) {
+      const t = TOURNAMENTS.find((x) => x.id === tournamentId);
+      if (!t) return { ok: false, error: 'unknown tournament' };
+      if (rankIndex(state.rank) < rankIndex(t.minRank)) return { ok: false, error: 'rank too low' };
+      if (state.tournamentsEntered[tournamentId] === getDay()) return { ok: false, error: 'already entered today' };
+      if (getCash() < t.entryFee) return { ok: false, error: 'not enough cash' };
+      addCash(-t.entryFee);
+      state.tournamentsEntered[tournamentId] = getDay();
+      state.tournamentBest[tournamentId] = 0;
+      log(`Entered tournament: ${t.name}`);
+      return { ok: true, tournament: t };
+    },
 
-  return {
-    state,
-    buyRod,
-    buyBait,
-    goToSpot,
-    cast,
-    fightTick,
-    giveUpFight,
-    sellCatch,
-    mountTrophy,
-    enterTournament,
-    settleTournament,
-    collectionLog,
-    missions,
-    tick,
-    hudLine,
-    summary,
-    serialize,
-    deserialize,
+    settleTournament(tournamentId) {
+      const t = TOURNAMENTS.find((x) => x.id === tournamentId);
+      if (!t) return { ok: false, error: 'unknown tournament' };
+      if (state.tournamentsEntered[tournamentId] === undefined) return { ok: false, error: 'not entered' };
+      const playerBest = state.tournamentBest[tournamentId] || 0;
+      const rivalBest = Math.round((rng() * 30 + 5) * 10) / 10;
+      const won = playerBest > 0 && playerBest >= rivalBest;
+      let prize = 0;
+      if (won) {
+        prize = t.prize;
+        addCash(prize);
+        state.tournamentWins = (state.tournamentWins || 0) + 1;
+        checkMission('tournament-win');
+      }
+      delete state.tournamentsEntered[tournamentId];
+      return { ok: true, won, playerBest, rivalBest, prize };
+    },
+
+    collectionLog() {
+      return FISH_SPECIES.map((sp) => ({ ...sp, caught: state.collection[sp.id] || 0 }));
+    },
+
+    missions() {
+      return ANGLING_MISSIONS.map((m) => ({ ...m, done: !!state.missionsDone[m.id] }));
+    },
+
+    tick(dt) {
+      const day = getDay();
+      if (day !== state.day) {
+        state.day = day;
+        state.castsToday = 0;
+        for (const id of Object.keys(state.tournamentsEntered)) {
+          if (state.tournamentsEntered[id] !== day) delete state.tournamentsEntered[id];
+        }
+      }
+      if (state.casting && !state.fight) {
+        state.biteTimer -= dt || 0;
+        if (state.biteTimer <= 0) {
+          state.casting = false;
+          const species = rollSpecies();
+          const hour = getHour();
+          if (species.id === 'golden-koi' && hour !== 12) {
+            state.biteActive = false;
+            return;
+          }
+          if (species.id === 'kraken-calf' && hour !== 0) {
+            state.biteActive = false;
+            return;
+          }
+          if (species.id === 'ghost-eel' && !(hour >= 1 && hour <= 3)) {
+            state.biteActive = false;
+            return;
+          }
+          state.biteActive = true;
+          startFight(species);
+        }
+      } else if (state.biteActive && state.fight) {
+        if (state.fight.biteWait === undefined) state.fight.biteWait = 6;
+        state.fight.biteWait -= dt || 0;
+        if (state.fight.biteWait <= 0) {
+          state.fight = null;
+          state.biteActive = false;
+          log('The fish stole the bait');
+        }
+      }
+    },
+
+    hudLine() {
+      if (state.totalCaught === 0 && state.cooler.length === 0) return '';
+      const rank = rankById(state.rank);
+      const spot = state.currentSpot ? spotById(state.currentSpot).name : '-';
+      let line = `Angling ${rank.name} | ${spot} | cooler ${state.cooler.length} fish`;
+      if (state.fight) line += ` | fighting ${state.fight.name} ${Math.round(state.fight.progress)}%`;
+      else if (state.casting) line += ' | waiting for a bite';
+      return line;
+    },
+
+    summary() {
+      return {
+        xp: state.xp,
+        rank: state.rank,
+        totalCaught: state.totalCaught,
+        totalSold: state.totalSold,
+        totalEarned: state.totalEarned,
+        cooler: state.cooler.length,
+        biggestCatch: state.biggestCatch,
+        missionsDone: Object.keys(state.missionsDone).length,
+      };
+    },
+
+    serialize() {
+      return {
+        xp: state.xp,
+        rank: state.rank,
+        rodId: state.rodId,
+        rodsOwned: [...state.rodsOwned],
+        baitStock: { ...state.baitStock },
+        cooler: state.cooler.map((f) => ({ ...f })),
+        collection: { ...state.collection },
+        biggestCatch: state.biggestCatch ? { ...state.biggestCatch } : null,
+        totalCaught: state.totalCaught,
+        totalSold: state.totalSold,
+        totalEarned: state.totalEarned,
+        trophies: state.trophies ? state.trophies.map((t) => ({ ...t })) : [],
+        missionsDone: { ...state.missionsDone },
+        lineSnaps: state.lineSnaps,
+        perfectFights: state.perfectFights,
+      };
+    },
+
+    deserialize(saved) {
+      if (!saved || typeof saved !== 'object') return;
+      if (typeof saved.xp === 'number') state.xp = saved.xp;
+      if (typeof saved.rank === 'string') state.rank = saved.rank;
+      if (typeof saved.rodId === 'string') state.rodId = saved.rodId;
+      if (Array.isArray(saved.rodsOwned)) state.rodsOwned = [...saved.rodsOwned];
+      if (saved.baitStock && typeof saved.baitStock === 'object') state.baitStock = { ...saved.baitStock };
+      if (Array.isArray(saved.cooler)) state.cooler = saved.cooler.map((f) => ({ ...f }));
+      if (saved.collection && typeof saved.collection === 'object') state.collection = { ...saved.collection };
+      if (saved.biggestCatch && typeof saved.biggestCatch === 'object') state.biggestCatch = { ...saved.biggestCatch };
+      if (Array.isArray(saved.trophies)) state.trophies = saved.trophies.map((t) => ({ ...t }));
+      if (saved.missionsDone && typeof saved.missionsDone === 'object') state.missionsDone = { ...saved.missionsDone };
+      const numeric = ['totalCaught', 'totalSold', 'totalEarned', 'lineSnaps', 'perfectFights'];
+      for (const key of numeric) {
+        if (typeof saved[key] === 'number') state[key] = saved[key];
+      }
+    },
   };
-}
 
-
-// ---------------------------------------------------------------------------
-// Part 3 — Weather tables, bait craft, angler logbook, tackle extras
-// ---------------------------------------------------------------------------
-
-// Weather effects on fishing: bite rate and species behaviour.
-export const ANGLING_WEATHER = [
-  { weather: 'clear', biteMult: 1.0, note: 'Clear skies. Normal fishing.' },
-  { weather: 'clouds', biteMult: 1.1, note: 'Overcast — fish feel safe near the surface.' },
-  { weather: 'rain', biteMult: 1.4, note: 'Rain washes food into the water. Great fishing.' },
-  { weather: 'storm', biteMult: 0.6, note: 'Storm — dangerous, but the big ones feed.' },
-  { weather: 'fog', biteMult: 0.9, note: 'Foggy and quiet. Fish are cautious.' },
-];
-
-// Bait crafting: combine cheap bait into better bait.
-export const BAIT_RECIPES = [
-  { id: 'dough', name: 'Dough Ball', needs: { bread: 3 }, result: 'bread', qty: 1, desc: 'Kneaded bread. Holds on the hook longer.' },
-  { id: 'worm-shrimp', name: 'Worm-Shrimp Combo', needs: { worm: 1, shrimp: 1 }, result: 'shrimp', qty: 2, desc: 'Two baits on one hook. Double the scent.' },
-  { id: 'glow-worm', name: 'Glow Worm', needs: { worm: 2, glow: 1 }, result: 'glow', qty: 2, desc: 'A worm that glows. Night fish cannot resist.' },
-  { id: 'golden-lure', name: 'Golden Lure', needs: { lure: 1, golden: 1 }, result: 'golden', qty: 2, desc: 'Shiny and golden. For the koi.' },
-];
-
-// Tackle extras: consumables and upgrades for the tackle box.
-export const TACKLE_EXTRAS = [
-  { id: 'line-spool', name: 'Line Spool', price: 30, desc: 'Fresh line. Fewer snaps.' },
-  { id: 'hook-set', name: 'Hook Set', price: 25, desc: 'Sharp hooks. Better hookups.' },
-  { id: 'bobber', name: 'Bobber Set', price: 15, desc: 'See the bite sooner.' },
-  { id: 'net', name: 'Landing Net', price: 80, desc: 'Land big fish without losing them at the edge.' },
-  { id: 'cooler-upgrade', name: 'Big Cooler', price: 150, desc: 'Holds 20 fish instead of 10.' },
-  { id: 'chair', name: 'Fishing Chair', price: 60, desc: 'Comfort. Patience. More bites.' },
-  { id: 'tackle-box', name: 'Tackle Box', price: 120, desc: 'Organised bait, faster swaps.' },
-  { id: 'sonar', name: 'Fish Sonar', price: 400, desc: 'Shows where the fish are. Almost cheating.' },
-];
-
-// Angler logbook entries: lore for each species.
-export const FISH_LORE = [
-  { species: 'sardine', note: 'Schools of thousands. The sea is made of sardines.' },
-  { species: 'mackerel', note: 'Fast, shiny, and always hungry at dawn.' },
-  { species: 'catfish', note: 'Lives in the dark water. Tastes like the river.' },
-  { species: 'red-snapper', note: 'The reef fish every restaurant wants.' },
-  { species: 'tuna', note: 'A torpedo with fins. Fights like a truck.' },
-  { species: 'marlin', note: 'The king. Jumps clear out of the water.' },
-  { species: 'swordfish', note: 'A sword for a nose and a temper to match.' },
-  { species: 'grouper', note: 'Sits on the bottom and inhales whatever passes.' },
-  { species: 'sailfish', note: 'The fastest fish in the sea. Good luck.' },
-  { species: 'golden-koi', note: 'One fish, one lagoon, one legend.' },
-  { species: 'ghost-eel', note: 'Seen only at 3 AM. Glows faintly.' },
-  { species: 'kraken-calf', note: 'If the calf is this big, do not meet the mother.' },
-];
-
-// Moon phases and their effect on night fishing.
-export const MOON_PHASES = [
-  { phase: 'new', biteMult: 0.9, note: 'Dark nights. Fish feed by feel.' },
-  { phase: 'crescent', biteMult: 1.0, note: 'A sliver of moon. Normal night fishing.' },
-  { phase: 'half', biteMult: 1.1, note: 'Half moon. Good night bites.' },
-  { phase: 'gibbous', biteMult: 1.2, note: 'Bright nights. Predators hunt.' },
-  { phase: 'full', biteMult: 1.4, note: 'Full moon. The best night fishing of the month.' },
-];
-
-// Fishing records board (flavour + targets).
-export const FISHING_RECORDS = [
-  { species: 'tuna', recordKg: 42, holder: 'Old Salty', note: 'Caught off the charter boat, 1989.' },
-  { species: 'marlin', recordKg: 118, holder: 'Captain Rosa', note: 'Took six hours to land.' },
-  { species: 'catfish', recordKg: 8.5, holder: 'Kid with a stick', note: 'Nobody believed him until the photo.' },
-  { species: 'golden-koi', recordKg: 2.8, holder: 'Unknown', note: 'The photo is blurry. The fish is real.' },
-  { species: 'sailfish', recordKg: 44, holder: 'Marina Mike', note: 'Jumped seven times before the net.' },
-];
-
-// Pure helpers.
-
-export function moonPhaseFor(day) {
-  return MOON_PHASES[(day - 1) % MOON_PHASES.length];
-}
-
-export function biteChance(spot, bait, hour, weather) {
-  const w = ANGLING_WEATHER.find((x) => x.weather === weather) || ANGLING_WEATHER[0];
-  const hourBonus = spot && hour >= 5 && hour <= 8 ? 1.3 : hour >= 17 && hour <= 19 ? 1.2 : 1;
-  return Math.round(w.biteMult * hourBonus * 100) / 100;
-}
-
-export function bestBaitFor(speciesId) {
-  const bait = BAITS.find((b) => b.favours.includes(speciesId));
-  return bait || BAITS[0];
-}
-
-export function bestSpotFor(speciesId) {
-  const species = FISH_SPECIES.find((s) => s.id === speciesId);
-  if (!species) return FISHING_SPOTS[0];
-  if (species.depth === 'deep') return FISHING_SPOTS.find((s) => s.id === 'deep-charter');
-  if (species.depth === 'mid') return FISHING_SPOTS.find((s) => s.id === 'rocky-point');
-  return FISHING_SPOTS.find((s) => s.id === 'pier-north');
-}
-
-export function bestHourFor(speciesId) {
-  const species = FISH_SPECIES.find((s) => s.id === speciesId);
-  return species ? species.bestHours[0] : 7;
-}
-
-export function isRecordCatch(speciesId, kg) {
-  const rec = FISHING_RECORDS.find((r) => r.species === speciesId);
-  return rec ? kg > rec.recordKg : kg > 50;
-}
-
-export function coolerValue(cooler) {
-  return cooler.reduce((sum, c) => sum + c.value, 0);
-}
-
-export function collectionProgress(collection) {
-  const caught = Object.keys(collection).filter((k) => FISH_SPECIES.some((s) => s.id === k)).length;
-  return { caught, total: FISH_SPECIES.length, pct: Math.round((caught / FISH_SPECIES.length) * 100) };
-}
-
-export function rankProgress(xp) {
-  let current = ANGLER_RANKS[0];
-  let next = null;
-  for (let i = 0; i < ANGLER_RANKS.length; i++) {
-    if (xp >= ANGLER_RANKS[i].xpNeeded) current = ANGLER_RANKS[i];
-    else { next = ANGLER_RANKS[i]; break; }
-  }
-  return { current, next, toNext: next ? next.xpNeeded - xp : 0 };
-}
-
-export function fightDifficulty(species, kg, rod) {
-  const base = species.fight * (1 + kg / species.maxKg);
-  return Math.round(base * (1 - rod.fightBonus) * 10) / 10;
-}
-
-export function sellPriceBreakdown(cooler, hour, rankMult) {
-  return cooler.map((c) => {
-    const species = FISH_SPECIES.find((s) => s.id === c.speciesId);
-    return { name: c.name, kg: c.kg, value: species ? fishPrice(species, c.kg, hour, rankMult) : c.value };
-  });
-}
-
-export function tournamentStandings(playerBest, rivalCount, rng) {
-  const rivals = [];
-  for (let i = 0; i < rivalCount; i++) rivals.push(Math.round((5 + rng() * 20) * 10) / 10);
-  const all = [...rivals, playerBest].sort((a, b) => b - a);
-  return { place: all.indexOf(playerBest) + 1, rivals };
-}
-
-export function baitStockValue(baitStock) {
-  let total = 0;
-  for (const [id, qty] of Object.entries(baitStock)) {
-    const b = BAITS.find((x) => x.id === id);
-    if (b) total += b.price * qty;
-  }
-  return total;
-}
-
-export function rodRecommendation(targetSpeciesId, cash) {
-  const species = FISH_SPECIES.find((s) => s.id === targetSpeciesId);
-  if (!species) return RODS[0];
-  const need = species.fight * 10;
-  const affordable = RODS.filter((r) => r.lineStrength >= need && r.price <= cash);
-  if (affordable.length > 0) return affordable[0];
-  return RODS.filter((r) => r.lineStrength >= need)[0] || RODS[RODS.length - 1];
-}
-
-
-// ---------------------------------------------------------------------------
-// Part 4 — Fishing seasons, bait shop, angler achievements
-// ---------------------------------------------------------------------------
-
-// Fishing seasons: what is biting each season.
-export const FISHING_SEASONS = [
-  { season: 'spring', months: [3, 4, 5], note: 'Fish spawn in the shallows. Great for beginners.', bonus: ['sardine', 'bluegill', 'catfish'] },
-  { season: 'summer', months: [6, 7, 8], note: 'Warm water, hungry fish, crowded piers.', bonus: ['mackerel', 'sea-bass', 'mahi'] },
-  { season: 'autumn', months: [9, 10, 11], note: 'Tuna run. The big fish come close to shore.', bonus: ['tuna', 'red-snapper', 'flounder'] },
-  { season: 'winter', months: [12, 1, 2], note: 'Cold water, slow fish, but the marlin still run.', bonus: ['marlin', 'swordfish', 'squid'] },
-];
-
-// Bait shop weekly specials.
-export const BAIT_SPECIALS = [
-  { bait: 'worm', discount: 0.5, day: 1, note: 'Monday: worms half price.' },
-  { bait: 'shrimp', discount: 0.3, day: 3, note: 'Wednesday: shrimp 30% off.' },
-  { bait: 'lure', discount: 0.25, day: 5, note: 'Friday: lures 25% off.' },
-  { bait: 'glow', discount: 0.4, day: 6, note: 'Saturday: glow bait 40% off for night fishing.' },
-];
-
-// Angler achievements (beyond missions).
-export const ANGLER_ACHIEVEMENTS = [
-  { id: 'dawn-catch', name: 'Dawn Catch', desc: 'Catch a fish before 6 AM.' },
-  { id: 'midnight-catch', name: 'Midnight Catch', desc: 'Catch a fish after midnight.' },
-  { id: 'rain-catch', name: 'Rain Catch', desc: 'Catch a fish in the rain.' },
-  { id: 'storm-catch', name: 'Storm Catch', desc: 'Catch a fish in a storm.' },
-  { id: 'biggest-tuna', name: 'Biggest Tuna', desc: 'Catch a tuna over 30kg.' },
-  { id: 'five-species-day', name: 'Five Species Day', desc: 'Catch 5 species in one day.' },
-  { id: 'no-snap-day', name: 'No Snap Day', desc: 'Fish all day without a line snap.' },
-  { id: 'trophy-wall', name: 'Trophy Wall', desc: 'Mount 5 trophies.' },
-  { id: 'deep-sea-first', name: 'Deep Sea First', desc: 'First catch from the charter boat.' },
-  { id: 'golden-hour', name: 'Golden Hour', desc: 'Catch the golden koi.' },
-];
-
-// Old angler sayings.
-export const ANGLER_SAYINGS = [
-  'The fish are always biting somewhere. Find where.',
-  'A bad day fishing beats a good day working.',
-  'The best bait is the one the fish want today, not yesterday.',
-  'Patience is the hook. The fish does the rest.',
-  'If the line goes slack, reel fast. If it goes tight, let it run.',
-  'The one that got away is always the biggest.',
-];
-
-// Pure helpers.
-
-export function seasonFor(month) {
-  const m = ((month - 1) % 12) + 1;
-  return FISHING_SEASONS.find((s) => s.months.includes(m)) || FISHING_SEASONS[0];
-}
-
-export function seasonBonusFor(speciesId, month) {
-  const s = seasonFor(month);
-  return s.bonus.includes(speciesId) ? 1.5 : 1;
-}
-
-export function baitSpecialFor(baitId, dayOfWeek) {
-  return BAIT_SPECIALS.find((x) => x.bait === baitId && x.day === dayOfWeek) || null;
-}
-
-export function baitPriceWithSpecial(baitId, dayOfWeek) {
-  const b = BAITS.find((x) => x.id === baitId);
-  if (!b) return 0;
-  const sp = baitSpecialFor(baitId, dayOfWeek);
-  return sp ? Math.round(b.price * (1 - sp.discount)) : b.price;
-}
-
-export function achievementList() {
-  return ANGLER_ACHIEVEMENTS.map((a) => ({ ...a }));
-}
-
-export function totalTackleValue(rodsOwned, baitStock) {
-  let total = 0;
-  for (const id of rodsOwned) {
-    const r = RODS.find((x) => x.id === id);
-    if (r) total += r.price;
-  }
-  total += baitStockValue(baitStock);
-  return total;
-}
-
-export function catchRateFor(species, spot, hour, weather, bait) {
-  const pool = speciesForSpot(spot, hour);
-  const entry = pool.find((s) => s.id === species.id);
-  if (!entry) return 0;
-  const w = ANGLING_WEATHER.find((x) => x.weather === weather) || ANGLING_WEATHER[0];
-  const baitMult = bait && bait.favours.includes(species.id) ? 2 : 1;
-  return Math.round(entry.weight * w.biteMult * baitMult * 10) / 10;
-}
-
-
-// ---------------------------------------------------------------------------
-// Part 5 — Fishing knots, tide table, old angler records
-// ---------------------------------------------------------------------------
-
-export const FISHING_KNOTS = [
-  { name: 'Clinch Knot', strength: 0.9, desc: 'The standard knot. Learn it first.' },
-  { name: 'Palomar Knot', strength: 0.95, desc: 'Strong and simple. The best all-rounder.' },
-  { name: 'Blood Knot', strength: 0.85, desc: 'Joins two lines together.' },
-  { name: 'Loop Knot', strength: 0.8, desc: 'Lets the lure move freely.' },
-  { name: 'Snell Knot', strength: 0.92, desc: 'For hooks that need to sit straight.' },
-];
-
-export const TIDE_TABLE = [
-  { tide: 'high', biteMult: 1.2, note: 'High tide pushes fish close to shore.' },
-  { tide: 'low', biteMult: 0.9, note: 'Low tide. Fish move deeper.' },
-  { tide: 'rising', biteMult: 1.3, note: 'Rising tide. The best fishing.' },
-  { tide: 'falling', biteMult: 1.0, note: 'Falling tide. Fish feed on the move.' },
-];
-
-export const OLD_ANGLER_RECORDS = [
-  { angler: 'Old Salty', fish: 'Marlin 118kg', year: 1989 },
-  { angler: 'Captain Rosa', fish: 'Tuna 42kg', year: 1995 },
-  { angler: 'Marina Mike', fish: 'Sailfish 44kg', year: 2001 },
-  { angler: 'Kid with a stick', fish: 'Catfish 8.5kg', year: 2010 },
-];
-
-export function knotStrength(knotName) {
-  const k = FISHING_KNOTS.find((x) => x.name === knotName);
-  return k ? k.strength : 0.8;
-}
-
-export function tideBiteMult(tide) {
-  const t = TIDE_TABLE.find((x) => x.tide === tide);
-  return t ? t.biteMult : 1;
-}
-
-export function bestKnot() {
-  let best = FISHING_KNOTS[0];
-  for (const k of FISHING_KNOTS) if (k.strength > best.strength) best = k;
-  return best;
-}
-
-
-// ---------------------------------------------------------------------------
-// Part 6 — Fishing boat names, angler superstitions
-// ---------------------------------------------------------------------------
-
-export const FISHING_BOAT_NAMES = [
-  'The Lucky Catch',
-  'Reel Deal',
-  'Fishy Business',
-  'The Old Salty',
-  'Hook Line Sinker',
-  'Gone Fishing',
-];
-
-export const ANGLER_SUPERSTITIONS = [
-  'Never say "good luck" before a cast. Say "tight lines".',
-  'A banana on the boat is bad luck. Everybody knows it.',
-  'The first cast of the day decides the day.',
-  'Never whistle on a boat. The fish hear it.',
-];
-
-export function randomBoatName(rng) {
-  return FISHING_BOAT_NAMES[Math.floor(rng() * FISHING_BOAT_NAMES.length)];
-}
-
-export function superstitionFor(index) {
-  return ANGLER_SUPERSTITIONS[index % ANGLER_SUPERSTITIONS.length];
-}
-
-
-// ---------------------------------------------------------------------------
-// Part 7 — Lucky lures, fishing proverbs
-// ---------------------------------------------------------------------------
-
-export const LUCKY_LURES = ['Gold Spoon', 'Red Devil', 'Silver Minnow', 'Blue Fox'];
-export const FISHING_PROVERBS = [
-  'Give a man a fish, feed him for a day. Teach him to fish, feed him forever.',
-  'The charm of fishing is that it is the pursuit of what is elusive.',
-  'Many men go fishing all their lives without knowing it is not fish they are after.',
-  'A reel scream is the best sound in the world.',
-];
-
-export function isLuckyLure(name) {
-  return LUCKY_LURES.includes(name);
-}
-
-export function proverbFishing(index) {
-  return FISHING_PROVERBS[index % FISHING_PROVERBS.length];
+  return system;
 }

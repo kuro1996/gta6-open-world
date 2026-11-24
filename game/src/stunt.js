@@ -1,27 +1,12 @@
-// Solara Nights — Stunts (round 4 attempt 6, NEW module).
-// Stunt jumps, airtime and rotation scoring for Solara Bay's daredevils.
-// The city hides stunt ramps; launch off one at speed, and the system
-// scores the jump on four axes: airtime, distance, rotation (flips and
-// spins), and landing quality. A clean landing banks the points; a bad
-// landing wrecks the car and pays nothing. Chain clean jumps without
-// crashing to grow a multiplier, and beat the local leaderboard — the
-// board remembers the best jump per ramp and the best overall run.
-//
-// The scoring is deliberately transparent: every jump produces a full
-// breakdown (airtime points, distance points, rotation points, landing
-// bonus, multiplier) so the HUD can show the player exactly what the
-// jump was worth. The module is self-contained and talks to the game
-// only through the optional `ctx` hooks.
-
 export const STUNT_VERSION = 1;
 
 export const STUNT_RAMPS = [
-  { id: 'pier-ramp', name: 'Pier Launch', x: 300, z: -40, dir: -1, minSpeed: 22, par: 1200 },
-  { id: 'mall-ramp', name: 'Mall Roof Gap', x: -40, z: 150, dir: 1, minSpeed: 24, par: 1500 },
-  { id: 'canal-ramp', name: 'Canal Jump', x: 290, z: 170, dir: -1, minSpeed: 20, par: 1000 },
-  { id: 'airport-ramp', name: 'Airfield Kicker', x: -280, z: 230, dir: 1, minSpeed: 26, par: 1800 },
-  { id: 'plaza-ramp', name: 'Plaza Steps', x: 10, z: 10, dir: -1, minSpeed: 18, par: 800 },
-  { id: 'beach-ramp', name: 'Dune Blaster', x: 300, z: 250, dir: 1, minSpeed: 22, par: 1300 },
+  { id: 'pier', name: 'Pier Launch', x: 300, z: -40, direction: -1, minSpeed: 22, par: 1200 },
+  { id: 'mall', name: 'Mall Roof Gap', x: -40, z: 150, direction: 1, minSpeed: 24, par: 1500 },
+  { id: 'canal', name: 'Canal Jump', x: 290, z: 170, direction: -1, minSpeed: 20, par: 1000 },
+  { id: 'airfield', name: 'Airfield Kicker', x: -280, z: 230, direction: 1, minSpeed: 26, par: 1800 },
+  { id: 'plaza', name: 'Plaza Steps', x: 10, z: 10, direction: -1, minSpeed: 18, par: 800 },
+  { id: 'dune', name: 'Dune Blaster', x: 300, z: 250, direction: 1, minSpeed: 22, par: 1300 },
 ];
 
 export const LANDINGS = [
@@ -32,34 +17,51 @@ export const LANDINGS = [
 ];
 
 export function landingFor(quality) {
-  for (const l of LANDINGS) if (quality >= l.min) return l;
+  for (const l of LANDINGS) {
+    if (quality >= l.min) return l;
+  }
   return LANDINGS[LANDINGS.length - 1];
 }
 
-export function nearestRamp(x, z, maxDist = 10) {
+export function nearestRamp(x, z, maxDist) {
+  const limit = maxDist === undefined ? 10 : maxDist;
   let best = null;
-  let bestD = maxDist;
-  for (const ramp of STUNT_RAMPS) {
-    const d = Math.hypot(ramp.x - x, ramp.z - z);
-    if (d < bestD) { bestD = d; best = ramp; }
+  let bestD = limit;
+  for (const r of STUNT_RAMPS) {
+    const d = Math.hypot(r.x - x, r.z - z);
+    if (d <= bestD) {
+      bestD = d;
+      best = r;
+    }
   }
   return best;
 }
 
-// Pure scoring: given jump physics, return the full breakdown.
-export function scoreJump({ airtime, distance, flips, spins, landingQuality, speed, multiplier = 1 }) {
-  const airPoints = Math.round(airtime * 220);
-  const distPoints = Math.round(distance * 9);
-  const flipPoints = Math.round(flips * 350);
-  const spinPoints = Math.round(spins * 200);
-  const speedBonus = speed >= 30 ? 150 : speed >= 25 ? 75 : 0;
-  const landing = landingFor(landingQuality);
+export function scoreJump(input) {
+  const mult = input.multiplier === undefined ? 1 : input.multiplier;
+  const airPoints = Math.round(input.airtime * 220);
+  const distPoints = Math.round(input.distance * 9);
+  const flipPoints = Math.round(input.flips * 350);
+  const spinPoints = Math.round(input.spins * 200);
+  let speedBonus = 0;
+  if (input.speed >= 30) speedBonus = 150;
+  else if (input.speed >= 25) speedBonus = 75;
+  const landing = landingFor(input.landingQuality);
   const subtotal = airPoints + distPoints + flipPoints + spinPoints + speedBonus;
-  const total = Math.round(subtotal * landing.mult * multiplier);
+  const total = Math.round(subtotal * landing.mult * mult);
   return {
-    airPoints, distPoints, flipPoints, spinPoints, speedBonus,
-    landing: landing.id, landingLabel: landing.label, landingMult: landing.mult,
-    subtotal, multiplier, total, banked: landing.mult > 0,
+    airPoints,
+    distPoints,
+    flipPoints,
+    spinPoints,
+    speedBonus,
+    landing: landing.id,
+    landingLabel: landing.label,
+    landingMult: landing.mult,
+    subtotal,
+    multiplier: mult,
+    total,
+    banked: landing.mult > 0,
   };
 }
 
@@ -71,12 +73,14 @@ export function gradeFor(total) {
   return 'D';
 }
 
-export function createStuntSystem(ctx = {}) {
-  const rng = ctx.rng || Math.random;
+export function createStuntSystem(ctx) {
+  const c = ctx || {};
+  const rng = c.rng;
+  void rng;
   const state = {
     version: STUNT_VERSION,
     airborne: false,
-    jump: null, // { ramp, startX, startZ, startTime, airtime, distance, flips, spins, speed }
+    jump: null,
     score: 0,
     bestJump: 0,
     bestRun: 0,
@@ -86,8 +90,8 @@ export function createStuntSystem(ctx = {}) {
     jumps: 0,
     perfectLandings: 0,
     crashes: 0,
-    rampBests: {}, // rampId -> best total
-    leaderboard: [], // { ramp, total, grade, airtime, distance, when }
+    rampBests: {},
+    leaderboard: [],
     lastScore: null,
     log: [],
   };
@@ -95,176 +99,171 @@ export function createStuntSystem(ctx = {}) {
   function note(msg) {
     state.log.push(msg);
     if (state.log.length > 40) state.log.shift();
-    if (typeof ctx.log === 'function') ctx.log(msg);
+    if (typeof c.log === 'function') c.log(msg);
   }
-
-  function addCash(amount) {
-    if (typeof ctx.addCash === 'function') ctx.addCash(amount);
-    else if (typeof ctx.cash === 'number') ctx.cash += amount;
+  function cashIn(amount) {
+    if (typeof c.addCash === 'function') c.addCash(amount);
+    else if (typeof c.cash === 'number') c.cash += amount;
   }
-
+  function posNow() {
+    if (typeof c.getPlayerPos === 'function') return c.getPlayerPos();
+    return { x: 0, y: 0, z: 0 };
+  }
   function speedNow() {
-    if (typeof ctx.getSpeed === 'function') return ctx.getSpeed();
-    return 0;
+    return typeof c.getSpeed === 'function' ? c.getSpeed() : 0;
+  }
+  function nowMs() {
+    return typeof c.now === 'function' ? c.now() : Date.now();
   }
 
-  function playerPos() {
-    if (typeof ctx.getPlayerPos === 'function') return ctx.getPlayerPos();
-    return { x: 0, z: 0 };
-  }
-
-  function isAirborne() {
-    if (typeof ctx.isAirborne === 'function') return ctx.isAirborne();
-    return state.airborne;
-  }
-
-  // Called by main.js when the car leaves a ramp (or any jump start).
-  function startJump(ramp) {
-    const p = playerPos();
-    state.airborne = true;
-    state.jump = {
-      ramp: ramp ? ramp.id : 'wild',
-      rampName: ramp ? ramp.name : 'Wild Jump',
-      startX: p.x, startZ: p.z,
-      startTime: typeof ctx.now === 'function' ? ctx.now() : Date.now(),
-      airtime: 0, distance: 0, flips: 0, spins: 0,
-      speed: speedNow(),
-    };
-    return { ok: true, ramp: state.jump.rampName };
-  }
-
-  function addRotation(flips, spins) {
-    if (!state.jump) return;
-    state.jump.flips += flips;
-    state.jump.spins += spins;
-  }
-
-  // Called every frame while airborne; landing is detected by main.js.
-  function tickAir(dt) {
-    if (!state.jump) return;
-    state.jump.airtime += dt;
-    const p = playerPos();
-    state.jump.distance = Math.hypot(p.x - state.jump.startX, p.z - state.jump.startZ);
-    // Style bonus: holding rotation in the air adds flair points later.
-  }
-
-  // Called by main.js on landing. landingQuality 0..1 (1 = wheels down flat).
-  function land(landingQuality) {
-    if (!state.jump) return { ok: false, reason: 'not-airborne' };
-    const j = state.jump;
-    const breakdown = scoreJump({
-      airtime: j.airtime,
-      distance: j.distance,
-      flips: Math.floor(j.flips),
-      spins: Math.floor(j.spins),
-      landingQuality,
-      speed: j.speed,
-      multiplier: state.multiplier,
-    });
-    state.airborne = false;
-    state.jump = null;
-    state.jumps += 1;
-    state.lastScore = { ...breakdown, ramp: j.ramp, rampName: j.rampName, grade: gradeFor(breakdown.total) };
-    if (breakdown.banked) {
-      state.score += breakdown.total;
-      state.runScore += breakdown.total;
-      state.chain += 1;
-      state.multiplier = Math.min(4, 1 + state.chain * 0.25);
-      state.bestJump = Math.max(state.bestJump, breakdown.total);
-      state.bestRun = Math.max(state.bestRun, state.runScore);
-      if (breakdown.landing === 'perfect') state.perfectLandings += 1;
-      const prev = state.rampBests[j.ramp] || 0;
-      if (breakdown.total > prev && breakdown.total > 0) {
-        state.rampBests[j.ramp] = breakdown.total;
-        note(`🏆 New best on ${j.rampName}: ${breakdown.total} pts (${state.lastScore.grade})!`);
-      } else {
-        note(`🛫 ${j.rampName}: ${breakdown.total} pts (${state.lastScore.grade}) — ${breakdown.landingLabel}. Chain x${state.multiplier.toFixed(2)}.`);
-      }
-      if (breakdown.total > 0) {
-        state.leaderboard.push({
-          ramp: j.ramp, rampName: j.rampName, total: breakdown.total,
-          grade: state.lastScore.grade, airtime: +j.airtime.toFixed(2),
-          distance: Math.round(j.distance), when: Date.now(),
-        });
-        state.leaderboard.sort((a, b) => b.total - a.total);
-        state.leaderboard = state.leaderboard.slice(0, 10);
-      }
-      // Cash prize for beating the ramp par.
-      const ramp = STUNT_RAMPS.find((r) => r.id === j.ramp);
-      if (ramp && breakdown.total >= ramp.par) {
-        const prize = Math.round(breakdown.total * 0.02);
-        addCash(prize);
-        note(`💰 Beat the ${ramp.name} par (${ramp.par}) — prize $${prize}.`);
-      }
-      if (typeof ctx.onStunt === 'function') ctx.onStunt(state.lastScore);
-    } else {
-      state.crashes += 1;
-      state.chain = 0;
-      state.multiplier = 1;
-      state.runScore = 0;
-      note(`💥 CRASH on ${j.rampName} — ${breakdown.subtotal} pts lost. Chain reset.`);
-      if (typeof ctx.onCrash === 'function') ctx.onCrash(j);
-    }
-    return { ok: true, ...state.lastScore };
-  }
-
-  function resetRun() {
-    state.runScore = 0;
-    state.chain = 0;
-    state.multiplier = 1;
-  }
-
-  function stats() {
-    return {
-      score: state.score,
-      bestJump: state.bestJump,
-      bestRun: state.bestRun,
-      jumps: state.jumps,
-      perfectLandings: state.perfectLandings,
-      crashes: state.crashes,
-      chain: state.chain,
-      multiplier: state.multiplier,
-      rampsBeaten: Object.keys(state.rampBests).length,
-      leaderboard: state.leaderboard.slice(0, 5),
-    };
-  }
-
-  function serialize() {
-    const { jump, airborne, ...rest } = state;
-    return JSON.parse(JSON.stringify(rest));
-  }
-
-  function deserialize(data) {
-    if (!data || data.version !== STUNT_VERSION) return false;
-    Object.assign(state, data);
-    state.jump = null;
-    state.airborne = false;
-    return true;
-  }
-
-  function hudLine() {
-    if (state.jump) {
-      return `🛫 AIRBORNE ${state.jump.airtime.toFixed(1)}s — ${Math.round(state.jump.distance)}m — flips ${Math.floor(state.jump.flips)}`;
-    }
-    if (state.lastScore) return `🛫 Last jump: ${state.lastScore.total} pts (${state.lastScore.grade}) — chain x${state.multiplier.toFixed(2)}`;
-    return '';
-  }
-
-  return {
+  const sys = {
     name: 'stunt',
     version: STUNT_VERSION,
     state,
     ramps: STUNT_RAMPS,
-    startJump,
-    addRotation,
-    tickAir,
-    land,
-    resetRun,
-    stats,
-    serialize,
-    deserialize,
-    hudLine,
+
+    startJump(ramp) {
+      const p = posNow();
+      const r = ramp || null;
+      state.airborne = true;
+      state.jump = {
+        ramp: r ? r.id : 'wild',
+        rampName: r ? r.name : 'Wild Jump',
+        startX: p.x || 0,
+        startZ: p.z || 0,
+        startTime: nowMs(),
+        airtime: 0,
+        distance: 0,
+        flips: 0,
+        spins: 0,
+        speed: speedNow(),
+      };
+      return { ok: true, ramp: state.jump.rampName };
+    },
+
+    addRotation(flips, spins) {
+      if (!state.jump) return;
+      state.jump.flips += flips || 0;
+      state.jump.spins += spins || 0;
+    },
+
+    tickAir(dt) {
+      if (!state.jump) return;
+      state.jump.airtime += dt;
+      const p = posNow();
+      state.jump.distance = Math.hypot((p.x || 0) - state.jump.startX, (p.z || 0) - state.jump.startZ);
+    },
+
+    land(quality) {
+      if (!state.jump || !state.airborne) return { ok: false, reason: 'not-airborne' };
+      const jump = state.jump;
+      const breakdown = scoreJump({
+        airtime: jump.airtime,
+        distance: jump.distance,
+        flips: Math.floor(jump.flips),
+        spins: Math.floor(jump.spins),
+        landingQuality: quality,
+        speed: jump.speed,
+        multiplier: state.multiplier,
+      });
+      state.airborne = false;
+      state.jump = null;
+      state.jumps += 1;
+      const record = Object.assign({}, breakdown, {
+        ramp: jump.ramp,
+        rampName: jump.rampName,
+        grade: gradeFor(breakdown.total),
+      });
+      state.lastScore = record;
+      if (breakdown.banked) {
+        state.score += breakdown.total;
+        state.runScore += breakdown.total;
+        state.chain += 1;
+        state.multiplier = Math.min(4, 1 + state.chain * 0.25);
+        if (breakdown.total > state.bestJump) state.bestJump = breakdown.total;
+        if (state.runScore > state.bestRun) state.bestRun = state.runScore;
+        if (breakdown.landing === 'perfect') state.perfectLandings += 1;
+        const prevBest = state.rampBests[jump.ramp] || 0;
+        if (breakdown.total > prevBest) state.rampBests[jump.ramp] = breakdown.total;
+        state.leaderboard.push({
+          ramp: jump.ramp,
+          rampName: jump.rampName,
+          total: breakdown.total,
+          grade: record.grade,
+          airtime: Math.round(jump.airtime * 100) / 100,
+          distance: Math.round(jump.distance),
+          when: nowMs(),
+        });
+        state.leaderboard.sort((a, b) => b.total - a.total);
+        if (state.leaderboard.length > 10) state.leaderboard.length = 10;
+        const rampDef = STUNT_RAMPS.find((r) => r.id === jump.ramp);
+        if (rampDef && breakdown.total >= rampDef.par) {
+          const prize = Math.round(breakdown.total * 0.02);
+          cashIn(prize);
+          note('Beat the ' + rampDef.name + ' par! Prize $' + prize + '.');
+        }
+        if (typeof c.onStunt === 'function') c.onStunt(record);
+        note('Landed ' + jump.rampName + ': ' + breakdown.total + ' pts (' + record.grade + ').');
+        return Object.assign({ ok: true }, record);
+      }
+      state.crashes += 1;
+      state.chain = 0;
+      state.multiplier = 1;
+      state.runScore = 0;
+      note('Crashed the landing on ' + jump.rampName + ' — ' + breakdown.total + ' pts lost.');
+      if (typeof c.onCrash === 'function') c.onCrash(record);
+      return Object.assign({ ok: true }, record);
+    },
+
+    resetRun() {
+      state.runScore = 0;
+      state.chain = 0;
+      state.multiplier = 1;
+    },
+
+    stats() {
+      return {
+        score: state.score,
+        bestJump: state.bestJump,
+        bestRun: state.bestRun,
+        jumps: state.jumps,
+        perfectLandings: state.perfectLandings,
+        crashes: state.crashes,
+        chain: state.chain,
+        multiplier: state.multiplier,
+        rampsBeaten: Object.keys(state.rampBests).length,
+        leaderboard: state.leaderboard.slice(0, 5),
+      };
+    },
+
+    serialize() {
+      const copy = JSON.parse(JSON.stringify(state));
+      delete copy.jump;
+      delete copy.airborne;
+      return copy;
+    },
+
+    deserialize(data) {
+      if (!data || data.version !== STUNT_VERSION) return false;
+      const copy = JSON.parse(JSON.stringify(data));
+      for (const k of Object.keys(state)) delete state[k];
+      Object.assign(state, copy);
+      state.jump = null;
+      state.airborne = false;
+      return true;
+    },
+
+    hudLine() {
+      if (state.jump) {
+        return 'AIRBORNE ' + state.jump.airtime.toFixed(1) + 's | ' + Math.round(state.jump.distance) + 'm | ' + Math.floor(state.jump.flips) + ' flips';
+      }
+      if (state.lastScore) {
+        return 'STUNT ' + state.lastScore.total + ' pts (' + state.lastScore.grade + ') x' + state.multiplier.toFixed(2);
+      }
+      return '';
+    },
   };
+  return sys;
 }
 
 export default createStuntSystem;

@@ -1,92 +1,64 @@
-// Solara Nights — save and continue: mission progress and money in localStorage.
 import { SAVE_KEY } from './config.js';
 
-// Saves remember which version wrote them, so a future build can migrate
-// instead of choking on a shape it no longer writes.
-// v3 (round 4): adds a stats block — kills, missions completed, best Drop
-// time left — so Continue can show the player what they have done.
-// v5 (round 4 attempt 4): adds the night economy — crew reputation,
-// night contracts completed, and storms weathered — so a returning
-// player keeps their standing with the crews and their night record.
 export const SAVE_VERSION = 5;
 
+const STAT_FIELDS = ['kills', 'missions', 'bestDrop', 'sideJobs', 'sideEarned', 'rep', 'nightOps', 'nightBurned', 'storms', 'marketDeals'];
+
 export function emptyStats() {
-  return {
-    kills: 0, missions: 0, bestDrop: 0, sideJobs: 0, sideEarned: 0,
-    rep: 0, nightOps: 0, nightBurned: 0, storms: 0, marketDeals: 0,
-  };
+  const s = {};
+  for (const f of STAT_FIELDS) s[f] = 0;
+  return s;
+}
+
+function fillStats(raw) {
+  const out = emptyStats();
+  if (raw && typeof raw === 'object') {
+    for (const f of STAT_FIELDS) {
+      if (typeof raw[f] === 'number') out[f] = raw[f];
+    }
+  }
+  return out;
 }
 
 export function saveGame(data) {
   try {
-    window.localStorage.setItem(
-      SAVE_KEY,
-      JSON.stringify({ ...data, version: SAVE_VERSION, savedAt: Date.now() }),
-    );
+    const payload = Object.assign({}, data, { version: SAVE_VERSION, savedAt: Date.now() });
+    localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
     return true;
-  } catch {
+  } catch (err) {
     return false;
   }
 }
 
 export function loadGame() {
   try {
-    const raw = window.localStorage.getItem(SAVE_KEY);
+    const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
-    const data = JSON.parse(raw);
-    if (typeof data !== 'object' || data === null) return null;
-    // Shape-check the save: a hand-edited or truncated entry must not
-    // hand the game a missionIndex/money of the wrong type.
-    if (typeof data.missionIndex !== 'number' || typeof data.money !== 'number') return null;
-    // v1 saves carry no version and no stats: treat them as version 1 with
-    // empty stats instead of rejecting a save the player earned.
-    if (typeof data.version !== 'number') data.version = 1;
-    // v2 saves have no stats block either (version 2 added the version
-    // field itself); v3 fills it in from an empty block.
-    if (typeof data.stats !== 'object' || data.stats === null) data.stats = emptyStats();
-    else {
-      // A partial stats block (hand-edited, or written by an older build)
-      // gets its missing fields back instead of NaN-ing the HUD.
-      if (typeof data.stats.kills !== 'number') data.stats.kills = 0;
-      if (typeof data.stats.missions !== 'number') data.stats.missions = 0;
-      if (typeof data.stats.bestDrop !== 'number') data.stats.bestDrop = 0;
-      // v4 fields: side jobs done and cash earned from them.
-      if (typeof data.stats.sideJobs !== 'number') data.stats.sideJobs = 0;
-      if (typeof data.stats.sideEarned !== 'number') data.stats.sideEarned = 0;
-      // v5 fields: crew reputation, night contracts done/burned, storms
-      // weathered, Black Market deals closed.
-      if (typeof data.stats.rep !== 'number') data.stats.rep = 0;
-      if (typeof data.stats.nightOps !== 'number') data.stats.nightOps = 0;
-      if (typeof data.stats.nightBurned !== 'number') data.stats.nightBurned = 0;
-      if (typeof data.stats.storms !== 'number') data.stats.storms = 0;
-      if (typeof data.stats.marketDeals !== 'number') data.stats.marketDeals = 0;
-    }
-    // v4: tutorialSeen is a plain boolean; anything else means "not seen".
-    if (typeof data.tutorialSeen !== 'boolean') data.tutorialSeen = false;
-    return data;
-  } catch {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (typeof parsed.missionIndex !== 'number' || typeof parsed.money !== 'number') return null;
+    if (parsed.version === undefined || parsed.version === null) parsed.version = 1;
+    parsed.stats = fillStats(parsed.stats);
+    if (typeof parsed.tutorialSeen !== 'boolean') parsed.tutorialSeen = false;
+    return parsed;
+  } catch (err) {
     return null;
   }
 }
 
 export function clearSave() {
   try {
-    window.localStorage.removeItem(SAVE_KEY);
-  } catch {
-    // Storage can be off; nothing to clear.
+    localStorage.removeItem(SAVE_KEY);
+  } catch (err) {
+    // storage unavailable; nothing to clear
   }
 }
 
-/** Reset only the stats block of an existing save, keeping mission/money. */
 export function clearStats() {
-  try {
-    const data = loadGame();
-    if (!data) return false;
-    data.stats = emptyStats();
-    return saveGame(data);
-  } catch {
-    return false;
-  }
+  const current = loadGame();
+  if (!current) return false;
+  current.stats = emptyStats();
+  return saveGame(current);
 }
 
 export function hasSave() {

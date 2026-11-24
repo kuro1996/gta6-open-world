@@ -1,1143 +1,890 @@
-// Hot Air Balloon — Wren's dawn balloon over Solara Valley.
-// Pay the gas, rise with the sun, and drift wherever the morning
-// wind decides to take you. Passengers pay for the ride, photographers
-// pay for what you spot below — deer in the mist, a hidden waterfall,
-// a lighthouse beam on the dawn sea. Fuel is your altitude, the wind
-// is your steering, and every landing is a small negotiation with a
-// farmer whose field you just borrowed. Fly at dawn, land gentle.
-// Pure logic: no rendering, no imports. The game wires it through the
-// standard ctx { rng, getDay, getHour, getCash, addCash, addHeat, log,
-// getPlayerPos, getWeather } and drives tick/tickDay from the main loop.
-
 export const BALLOON_ROUTES = [
-  { id: 'dawn-valley', name: 'Dawn Valley', price: 50, difficulty: 1,
-    steps: 4, duration: 30, risk: 0, altitude: 300, view: 3,
-    desc: 'Mist in the valley, sun on the hills.' },
-  { id: 'orchard-float', name: 'Orchard Float', price: 65, difficulty: 1,
-    steps: 5, duration: 30, risk: 0, altitude: 250, view: 3,
-    desc: 'Rows of blossom below, bees somewhere under you.' },
-  { id: 'river-bend', name: 'River Bend', price: 80, difficulty: 2,
-    steps: 5, duration: 35, risk: 1, altitude: 400, view: 4,
-    desc: 'The river curls like a ribbon in the morning light.' },
-  { id: 'lake-mist', name: 'Lake Mist', price: 95, difficulty: 2,
-    steps: 5, duration: 35, risk: 1, altitude: 350, view: 4,
-    desc: 'A lake that steams at dawn.' },
-  { id: 'vineyard-drift', name: 'Vineyard Drift', price: 110, difficulty: 2,
-    steps: 6, duration: 40, risk: 1, altitude: 450, view: 4,
-    desc: 'Neat green rows and a white farmhouse.' },
-  { id: 'castle-loop', name: 'Castle Loop', price: 140, difficulty: 3,
-    steps: 6, duration: 45, risk: 1, altitude: 500, view: 5,
-    desc: 'Circle the old castle at breakfast time.' },
-  { id: 'coast-glide', name: 'Coast Glide', price: 160, difficulty: 3,
-    steps: 6, duration: 45, risk: 2, altitude: 600, view: 5,
-    desc: 'Sea on one side, cliffs on the other.' },
-  { id: 'desert-sunrise', name: 'Desert Sunrise', price: 190, difficulty: 4,
-    steps: 7, duration: 50, risk: 2, altitude: 700, view: 5,
-    desc: 'Dunes turning gold as the sun comes up.' },
-  { id: 'mountain-dawn', name: 'Mountain Dawn', price: 230, difficulty: 4,
-    steps: 7, duration: 55, risk: 3, altitude: 900, view: 5,
-    desc: 'Peaks catching the first light, one by one.' },
-  { id: 'city-skyline', name: 'City Skyline', price: 280, difficulty: 5,
-    steps: 8, duration: 60, risk: 2, altitude: 800, view: 5,
-    desc: 'The whole city waking up below you.' },
+  { id: 'sunrise-valley', name: 'Sunrise Valley', price: 40, difficulty: 1, steps: 6, duration: 150, risk: 0.1, altitude: 300, view: 3, desc: 'Golden light over a sleepy valley.' },
+  { id: 'river-bend', name: 'River Bend', price: 35, difficulty: 1, steps: 5, duration: 130, risk: 0.1, altitude: 350, view: 2, desc: 'A slow river curling through fields.' },
+  { id: 'vineyard-drift', name: 'Vineyard Drift', price: 55, difficulty: 2, steps: 8, duration: 180, risk: 0.2, altitude: 500, view: 4, desc: 'Neat vineyard rows under the basket.' },
+  { id: 'lake-morning', name: 'Lake Morning', price: 45, difficulty: 2, steps: 7, duration: 160, risk: 0.2, altitude: 450, view: 3, desc: 'Mist rising off a still lake.' },
+  { id: 'forest-canopy', name: 'Forest Canopy', price: 60, difficulty: 3, steps: 9, duration: 200, risk: 0.3, altitude: 700, view: 4, desc: 'Green treetops as far as the eye sees.' },
+  { id: 'castle-view', name: 'Castle View', price: 75, difficulty: 3, steps: 10, duration: 220, risk: 0.3, altitude: 900, view: 5, desc: 'An old castle on its hill.' },
+  { id: 'coast-breeze', name: 'Coast Breeze', price: 65, difficulty: 3, steps: 9, duration: 210, risk: 0.4, altitude: 800, view: 4, desc: 'Sea wind carries the balloon along cliffs.' },
+  { id: 'desert-dawn', name: 'Desert Dawn', price: 70, difficulty: 4, steps: 10, duration: 230, risk: 0.4, altitude: 1100, view: 4, desc: 'Dunes glowing in first light.' },
+  { id: 'mountain-pass', name: 'Mountain Pass', price: 85, difficulty: 4, steps: 11, duration: 250, risk: 0.5, altitude: 1400, view: 5, desc: 'Snow peaks on both sides of the pass.' },
+  { id: 'festival-flight', name: 'Festival Flight', price: 95, difficulty: 5, steps: 12, duration: 280, risk: 0.5, altitude: 1500, view: 5, desc: 'Dozens of balloons rise together.' },
 ];
 
 export const BALLOON_SIGHTS = [
-  { id: 'deer-herd', name: 'Deer Herd', value: 20, rarity: 0.26,
-    weight: 0, desc: 'A herd moving through the mist.' },
-  { id: 'old-windmill', name: 'Old Windmill', value: 30, rarity: 0.18,
-    weight: 0, desc: 'Sails turning slowly in the dawn.' },
-  { id: 'rainbow-arc', name: 'Rainbow Arc', value: 45, rarity: 0.12,
-    weight: 0, desc: 'A full arc over the valley.' },
-  { id: 'hot-spring', name: 'Hidden Hot Spring', value: 60, rarity: 0.1,
-    weight: 0, desc: 'Steam rising from a secret pool.' },
-  { id: 'eagle-nest', name: 'Eagle Nest', value: 80, rarity: 0.08,
-    weight: 0, desc: 'An eagle watches you from its cliff.' },
-  { id: 'castle-ruins', name: 'Castle Ruins', value: 110, rarity: 0.06,
-    weight: 0, desc: 'Walls no map remembers.' },
-  { id: 'hidden-waterfall', name: 'Hidden Waterfall', value: 150, rarity: 0.05,
-    weight: 0, desc: 'White water behind a green fold.' },
-  { id: 'whale-spout', name: 'Whale Spout', value: 200, rarity: 0.04,
-    weight: 0, desc: 'A spout on the horizon, far out at sea.' },
-  { id: 'lighthouse-beam', name: 'Lighthouse Beam', value: 260, rarity: 0.02,
-    weight: 0, desc: 'The beam sweeping the dawn sea.' },
-  { id: 'aurora-wisp', name: 'Aurora Wisp', value: 400, rarity: 0.01,
-    weight: 0, desc: 'A green wisp of light, once in a lifetime.' },
+  { id: 'red-roof', name: 'Red Roof', value: 6, rarity: 0.5, weight: 0.1, desc: 'A red roof spotted from above.' },
+  { id: 'herd-deer', name: 'Herd of Deer', value: 10, rarity: 0.42, weight: 0.2, desc: 'Deer grazing in the meadow.' },
+  { id: 'old-bridge', name: 'Old Bridge', value: 15, rarity: 0.34, weight: 0.3, desc: 'A stone bridge over the river.' },
+  { id: 'vineyard-rows', name: 'Vineyard Rows', value: 22, rarity: 0.26, weight: 0.2, desc: 'Perfect rows of vines below.' },
+  { id: 'waterfall', name: 'Waterfall', value: 34, rarity: 0.18, weight: 0.4, desc: 'White water falling off a cliff.' },
+  { id: 'windmill', name: 'Windmill', value: 50, rarity: 0.13, weight: 0.5, desc: 'A turning windmill on a hill.' },
+  { id: 'hot-spring', name: 'Hot Spring', value: 80, rarity: 0.08, weight: 0.3, desc: 'Steam rising from a hidden spring.' },
+  { id: 'eagle', name: 'Golden Eagle', value: 120, rarity: 0.05, weight: 0.1, desc: 'An eagle soaring beside the basket.' },
+  { id: 'lighthouse', name: 'Lighthouse', value: 200, rarity: 0.03, weight: 0.6, desc: 'A lighthouse beam at dawn.' },
+  { id: 'castle-tower', name: 'Castle Tower', value: 350, rarity: 0.02, weight: 0.8, desc: 'The tallest tower of the castle.' },
 ];
 
 export const BALLOON_UPGRADES = [
-  { id: 'basket', name: 'Bigger Basket', cost: 100,
-    desc: 'More passengers, +5 sight slots.', effect: 'carry-plus' },
-  { id: 'burner', name: 'Twin Burner', cost: 180,
-    desc: 'Climb faster, burn cleaner.', effect: 'climb-plus' },
-  { id: 'radio', name: 'Ground Radio', cost: 220,
-    desc: 'Spotters call in sights: +25% finds.', effect: 'find-plus' },
-  { id: 'camera', name: 'Telephoto Camera', cost: 300,
-    desc: 'Sight photos pay +20%.', effect: 'price-plus' },
-  { id: 'gps', name: 'Drift GPS', cost: 260,
-    desc: 'Know where the wind is taking you.', effect: 'nav-plus' },
-  { id: 'ballast', name: 'Ballast Kit', cost: 350,
-    desc: 'Steadier flight, +10 sight slots.', effect: 'carry-plus-2' },
-  { id: 'envelope', name: 'Silk Envelope', cost: 600,
-    desc: 'Fuel lasts +40 on every flight.', effect: 'fuel-plus' },
-  { id: 'champagne', name: 'Champagne Kit', cost: 500,
-    desc: 'Passengers tip better after a toast.', effect: 'tip-plus' },
+  { id: 'envelope', name: 'Pro Envelope', cost: 380, desc: 'A bigger envelope holds more fuel.', effect: 'fuel max +40' },
+  { id: 'find-plus', name: 'Sight Spotter', cost: 250, desc: 'Spots rare sights more often.', effect: 'rare sight boost 1.25' },
+  { id: 'price-plus', name: 'Photo License', cost: 300, desc: 'Sells sight photos for more cash.', effect: 'sell price +20%' },
+  { id: 'carry-plus', name: 'Basket Rack', cost: 200, desc: 'Carry more photos per flight.', effect: 'carry cap +10' },
+  { id: 'burner-pro', name: 'Pro Burner', cost: 330, desc: 'A stronger burner climbs faster.', effect: 'fuel use down' },
+  { id: 'basket-lux', name: 'Luxury Basket', cost: 290, desc: 'Guests pay more to ride in style.', effect: 'flight value up' },
+  { id: 'wind-meter', name: 'Wind Meter', cost: 170, desc: 'Reads the wind before launch.', effect: 'hazard down' },
+  { id: 'camera-balloon', name: 'Balloon Camera', cost: 270, desc: 'Shoots every sight in 4K.', effect: 'sight value up' },
 ];
 
 export const BALLOON_RANKS = [
-  { level: 0, name: 'Ground Crew', xp: 0,
-    perk: 'Short hops pay base rate.' },
-  { level: 1, name: 'Dawn Pilot', xp: 120,
-    perk: '+10% sight prices.' },
-  { level: 2, name: 'Valley Pilot', xp: 300,
-    perk: 'Longer routes open up.' },
-  { level: 3, name: 'Cloud Captain', xp: 620,
-    perk: '+20% sight prices, high routes unlocked.' },
-  { level: 4, name: 'Sky Admiral', xp: 1100,
-    perk: '+30% sight prices, rare sights doubled.' },
+  { level: 0, name: 'Basket Rookie', xp: 0, perk: 'Valley flights unlocked' },
+  { level: 1, name: 'Drift Pilot', xp: 120, perk: 'Vineyard routes open up' },
+  { level: 2, name: 'Cloud Cruiser', xp: 300, perk: 'Castle flights pay better' },
+  { level: 3, name: 'Dawn Chaser', xp: 620, perk: 'Rare sights appear more often' },
+  { level: 4, name: 'Sky Sovereign', xp: 1100, perk: 'The festival flight holds no fear' },
 ];
 
 export const BALLOON_EVENTS = [
-  { id: 'balloon-fest', name: 'Balloon Festival',
-    desc: 'Forty balloons fill the dawn sky.' },
-  { id: 'inversion', name: 'Morning Inversion',
-    desc: 'Still air and a sea of mist below.' },
-  { id: 'wind-shift', name: 'Wind Shift',
-    desc: 'The wind turns at mid-flight.' },
-  { id: 'fog-bank', name: 'Fog Bank',
-    desc: 'Thick fog sits over the river.' },
-  { id: 'harvest-fair', name: 'Harvest Fair',
-    desc: 'The valley fair is in full swing below.' },
-  { id: 'eagle-day', name: 'Eagle Day',
-    desc: 'Three eagles circle the launch field.' },
-  { id: 'rain-shower', name: 'Rain Shower',
-    desc: 'A sharp shower crosses the valley.' },
-  { id: 'clear-dawn', name: 'Clear Dawn',
-    desc: 'Fifty kilometres of visibility.' },
-  { id: 'wedding-flight', name: 'Wedding Flight',
-    desc: 'A couple books the balloon for their vows.' },
-  { id: 'hot-air-race', name: 'Hot Air Race',
-    desc: 'Five balloons race to the far hill.' },
+  { id: 'calm-air', name: 'Calm Air', desc: 'Still air, perfect for drifting.' },
+  { id: 'balloon-fest', name: 'Balloon Fest', desc: 'Balloons fill the morning sky.' },
+  { id: 'morning-fog', name: 'Morning Fog', desc: 'Fog hides the ground below.' },
+  { id: 'tailwind', name: 'Tailwind', desc: 'A friendly wind pushes flights along.' },
+  { id: 'headwind', name: 'Headwind', desc: 'A stiff wind fights the balloon.' },
+  { id: 'sunrise-glow', name: 'Sunrise Glow', desc: 'The sky turns pink and gold.' },
+  { id: 'harvest-view', name: 'Harvest View', desc: 'Fields turn gold below.' },
+  { id: 'rain-shower', name: 'Rain Shower', desc: 'A light shower passes through.' },
+  { id: 'new-envelope', name: 'New Envelope', desc: 'A bright new envelope arrives.' },
+  { id: 'eagle-day', name: 'Eagle Day', desc: 'Eagles circle the balloons.' },
 ];
 
 export const BALLOON_CONTRACTS = [
-  { id: 'deer-10', name: 'Wildlife Shoot', material: 'deer-herd', qty: 10,
-    pay: 280, days: 1, rep: 1,
-    desc: 'A magazine needs ten deer-herd shots.' },
-  { id: 'waterfall-4', name: 'Waterfall Feature', material: 'hidden-waterfall', qty: 4,
-    pay: 700, days: 2, rep: 3,
-    desc: 'A travel guide wants four waterfall photos.' },
-  { id: 'eagle-6', name: 'Eagle Watch', material: 'eagle-nest', qty: 6,
-    pay: 560, days: 2, rep: 2,
-    desc: 'A nature trust pays for six eagle sightings.' },
-  { id: 'rainbow-5', name: 'Rainbow Hunt', material: 'rainbow-arc', qty: 5,
-    pay: 320, days: 2, rep: 1,
-    desc: 'A calendar company wants five rainbows.' },
-  { id: 'whale-2', name: 'Whale Watch', material: 'whale-spout', qty: 2,
-    pay: 600, days: 3, rep: 4,
-    desc: 'A tour company needs two whale spouts.' },
-  { id: 'mixed-25', name: 'Valley Album', material: 'mixed', qty: 25,
-    pay: 550, days: 2, rep: 2,
-    desc: 'Any twenty-five sights for the valley album.' },
+  { id: 'roof-order', name: 'Roof Photos', material: 'red-roof', qty: 6, pay: 120, days: 3, rep: 10, desc: 'A postcard firm wants roof photos.' },
+  { id: 'waterfall-order', name: 'Waterfall Photos', material: 'waterfall', qty: 3, pay: 260, days: 4, rep: 20, desc: 'A travel guide wants waterfalls.' },
+  { id: 'windmill-order', name: 'Windmill Photos', material: 'windmill', qty: 2, pay: 350, days: 4, rep: 25, desc: 'A museum wants windmill shots.' },
+  { id: 'eagle-order', name: 'Eagle Photos', material: 'eagle', qty: 2, pay: 500, days: 5, rep: 30, desc: 'A wildlife book wants eagles.' },
+  { id: 'bridge-order', name: 'Bridge Photos', material: 'old-bridge', qty: 5, pay: 190, days: 3, rep: 15, desc: 'A history blog wants bridges.' },
+  { id: 'tower-order', name: 'Tower Photos', material: 'castle-tower', qty: 1, pay: 650, days: 5, rep: 35, desc: 'A castle trust wants one tower shot.' },
 ];
 
 export const BALLOON_CHALLENGES = [
-  { id: 'flights-10', name: 'Ten Flights', target: 'sessions', goal: 10, xp: 90,
-    desc: 'Finish 10 balloon flights.' },
-  { id: 'sights-100', name: 'Century of Sights', target: 'findsFound', goal: 100, xp: 110,
-    desc: 'Spot 100 sights.' },
-  { id: 'earn-1000', name: 'Grand in the Sky', target: 'earned', goal: 1000, xp: 130,
-    desc: 'Earn $1,000 from ballooning.' },
-  { id: 'streak-8', name: 'Clean Eight', target: 'bestStreak', goal: 8, xp: 100,
-    desc: 'Eight clean steps in a row.' },
-  { id: 'contracts-3', name: 'Reliable Pilot', target: 'contractsDone', goal: 3, xp: 120,
-    desc: 'Complete 3 photo contracts.' },
-  { id: 'actions-200', name: 'Two Hundred Drifts', target: 'actions', goal: 200, xp: 140,
-    desc: 'Take 200 drift steps.' },
-  { id: 'first-sight', name: 'First Sight', target: 'findsFound', goal: 1, xp: 60,
-    desc: 'Spot your first sight.' },
-  { id: 'dawn-5', name: 'Dawn Five', target: 'sessions', goal: 5, xp: 80,
-    desc: 'Finish 5 dawn flights.' },
+  { id: 'first-flight', name: 'First Flight', target: 'sessions', goal: 1, xp: 20, desc: 'Finish one balloon flight.' },
+  { id: 'five-flights', name: 'Five Flights', target: 'sessions', goal: 5, xp: 60, desc: 'Finish five balloon flights.' },
+  { id: 'sight-ten', name: 'Sight Ten', target: 'findsFound', goal: 10, xp: 40, desc: 'Spot ten sights.' },
+  { id: 'sight-fifty', name: 'Sight Fifty', target: 'findsFound', goal: 50, xp: 120, desc: 'Spot fifty sights.' },
+  { id: 'earn-five-hundred', name: 'Earn Five Hundred', target: 'earned', goal: 500, xp: 100, desc: 'Earn 500 cash in total.' },
+  { id: 'sell-twenty', name: 'Sell Twenty', target: 'findsSold', goal: 20, xp: 80, desc: 'Sell twenty photos.' },
+  { id: 'contract-three', name: 'Contract Three', target: 'contractsDone', goal: 3, xp: 90, desc: 'Deliver three contracts.' },
+  { id: 'steps-hundred', name: 'Hundred Steps', target: 'stepsDone', goal: 100, xp: 110, desc: 'Take a hundred flight steps.' },
 ];
 
 export const BALLOON_ACHIEVEMENTS = [
-  { id: 'first-flight', name: 'First Flight', check: (s) => s.sessions >= 1,
-    desc: 'Finish your first balloon flight.' },
-  { id: 'aurora-club', name: 'Aurora Club', check: (s) => (s.inventory['aurora-wisp'] || 0) + s.findsSold >= 1,
-    desc: 'Spot the aurora wisp.' },
-  { id: 'rank-3', name: 'Cloud Captain', check: (s) => s.rank >= 3,
-    desc: 'Reach rank Cloud Captain.' },
-  { id: 'rich-sky', name: 'Sky Rich', check: (s) => s.earned >= 3000,
-    desc: 'Earn $3,000 from ballooning.' },
-  { id: 'full-kit', name: 'Full Kit', check: (s) => s.upgrades.length >= 8,
-    desc: 'Own every balloon upgrade.' },
-  { id: 'no-hazard', name: 'Smooth Air', check: (s) => s.sessions >= 10 && s.hazardsTaken === 0,
-    desc: 'Ten flights with zero hazards.' },
-  { id: 'big-yield', name: 'Big Yield', check: (s) => s.bestSessionYield >= 500,
-    desc: 'One flight worth $500 or more.' },
-  { id: 'sights-50', name: 'Fifty Sights', check: (s) => s.actions >= 50,
-    desc: 'Fifty drift steps aloft.' },
+  { id: 'off-ground', name: 'Off the Ground', check: (s) => s.sessions >= 1, desc: 'Finish your first flight.' },
+  { id: 'sky-regular', name: 'Sky Regular', check: (s) => s.sessions >= 10, desc: 'Finish ten flights.' },
+  { id: 'spotter', name: 'Spotter', check: (s) => s.findsFound >= 25, desc: 'Spot twenty-five sights.' },
+  { id: 'eagle-eye', name: 'Eagle Eye', check: (s) => s.findsFound >= 100, desc: 'Spot a hundred sights.' },
+  { id: 'rich-pilot', name: 'Rich Pilot', check: (s) => s.earned >= 1000, desc: 'Earn a thousand cash.' },
+  { id: 'deal-maker', name: 'Deal Maker', check: (s) => s.contractsDone >= 5, desc: 'Deliver five contracts.' },
+  { id: 'streak-five', name: 'Streak Five', check: (s) => s.bestStreak >= 5, desc: 'Reach a streak of five.' },
+  { id: 'sky-master', name: 'Sky Master', check: (s) => s.rank >= 4, desc: 'Reach the top rank.' },
 ];
 
 export const BALLOON_TIPS = [
-  { id: 'dawn-first', name: 'Dawn First',
-    text: 'Fly at dawn. The air is calm and the light is gold.' },
-  { id: 'fuel-watch', name: 'Fuel Watch',
-    text: 'Fuel is your altitude. Never burn it all on a climb.' },
-  { id: 'radio-money', name: 'Radio Money',
-    text: 'Ground spotters find what you cannot see.' },
-  { id: 'landing-farm', name: 'Landing Farm',
-    text: 'Carry a bottle for the farmer. Landings go smoother.' },
-  { id: 'wind-check', name: 'Wind Check',
-    text: 'The wind at dawn decides where you end up.' },
-  { id: 'contract-first', name: 'Contracts First',
-    text: 'Take a photo contract, then fly its route.' },
-  { id: 'camera-money', name: 'Camera Money',
-    text: 'A telephoto lens turns a speck into a sale.' },
-  { id: 'envelope-early', name: 'Envelope Early',
-    text: 'Save for the silk envelope — it changes every flight.' },
+  { id: 'tip-fuel', name: 'Watch Fuel', text: 'Land before your fuel runs out.' },
+  { id: 'tip-rare', name: 'Rare Sights', text: 'High routes hide the rarest sights.' },
+  { id: 'tip-rank', name: 'Rank Up', text: 'Higher rank boosts rare sights.' },
+  { id: 'tip-sell', name: 'Sell Often', text: 'Sell photos before the drift turns.' },
+  { id: 'tip-contract', name: 'Contracts Pay', text: 'Contracts pay more than raw sales.' },
+  { id: 'tip-weather', name: 'Storm Watch', text: 'Storms and hurricanes block flights.' },
+  { id: 'tip-cap', name: 'Carry Cap', text: 'Upgrade your rack to carry more.' },
+  { id: 'tip-season', name: 'Season Prices', text: 'Spring prices beat winter prices.' },
 ];
 
 export const BALLOON_LEADERBOARD = [
-  { name: 'Old Henri', value: 7800, desc: 'Flew the valley for thirty years.' },
-  { name: 'Mara', value: 5900, desc: 'Festival pilot, never missed a dawn.' },
-  { name: 'Wren', value: 0, desc: 'You. Climbing.' },
-  { name: 'Pip', value: 3100, desc: 'Youngest pilot in the valley.' },
-  { name: 'Gus', value: 1700, desc: 'Landed in every farm in the county.' },
+  { name: 'Bree', value: 880, desc: 'Top pilot of the season.' },
+  { name: 'Gustav', value: 690, desc: 'Old hand of the dawn flights.' },
+  { name: 'Luna', value: 520, desc: 'Festival queen of the sky.' },
+  { name: 'Pip', value: 290, desc: 'Steady pilot, steady hands.' },
+  { name: 'You', value: 0, desc: 'Your score on the board.' },
 ];
 
 export const BALLOON_RECORDS = [
-  { id: 'most-flights', name: 'Most Flights', stat: 'sessions', unit: 'flights',
-    desc: 'Most flights finished.' },
-  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$',
-    desc: 'Most money earned from ballooning.' },
-  { id: 'most-sights', name: 'Most Sights', stat: 'findsFound', unit: 'sights',
-    desc: 'Most sights spotted.' },
-  { id: 'best-streak', name: 'Best Streak', stat: 'bestStreak', unit: 'steps',
-    desc: 'Longest clean streak.' },
-  { id: 'best-flight', name: 'Best Flight', stat: 'bestSessionYield', unit: '$',
-    desc: 'Best single-flight yield.' },
+  { id: 'most-flights', name: 'Most Flights', stat: 'sessions', unit: 'flights', desc: 'Most flight sessions finished.' },
+  { id: 'most-sights', name: 'Most Sights', stat: 'findsFound', unit: 'sights', desc: 'Most sights spotted.' },
+  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: 'cash', desc: 'Most cash earned.' },
+  { id: 'best-yield', name: 'Best Yield', stat: 'bestSessionYield', unit: 'cash', desc: 'Best single flight yield.' },
+  { id: 'best-streak', name: 'Best Streak', stat: 'bestStreak', unit: 'streak', desc: 'Longest good streak.' },
 ];
 
 export const BALLOON_MARKET = [
-  { id: 'deer-boom', name: 'Deer Boom', finds: ['deer-herd'], mult: 1.3,
-    desc: 'A wildlife magazine is buying deer shots.' },
-  { id: 'waterfall-rush', name: 'Waterfall Rush', finds: ['hidden-waterfall'], mult: 1.5,
-    desc: 'A travel guide wants waterfalls.' },
-  { id: 'eagle-week', name: 'Eagle Week', finds: ['eagle-nest'], mult: 1.45,
-    desc: 'A nature trust is paying for eagles.' },
-  { id: 'rainbow-season', name: 'Rainbow Season', finds: ['rainbow-arc'], mult: 1.35,
-    desc: 'Rainy mornings, rainbows everywhere.' },
-  { id: 'whale-film', name: 'Whale Film', finds: ['whale-spout'], mult: 1.6,
-    desc: 'A film crew pays double for spouts.' },
-  { id: 'windmill-fair', name: 'Windmill Fair', finds: ['old-windmill'], mult: 1.3,
-    desc: 'A heritage fair wants windmill shots.' },
-  { id: 'spring-glut', name: 'Spring Glut', finds: ['hot-spring'], mult: 0.7,
-    desc: 'Everyone found the hot spring this week.' },
-  { id: 'aurora-bid', name: 'Aurora Bid', finds: ['aurora-wisp'], mult: 1.7,
-    desc: 'A collector will pay anything for the wisp.' },
+  { id: 'photo-shop', name: 'Photo Shop', finds: ['red-roof', 'herd-deer', 'old-bridge'], mult: 1.1, desc: 'Buys common sight photos.' },
+  { id: 'travel-guide', name: 'Travel Guide', finds: ['waterfall', 'vineyard-rows'], mult: 1.25, desc: 'Pays well for travel shots.' },
+  { id: 'windmill-museum', name: 'Windmill Museum', finds: ['windmill'], mult: 1.4, desc: 'Top price for windmills.' },
+  { id: 'eagle-book', name: 'Eagle Book', finds: ['eagle'], mult: 1.5, desc: 'Best buyer for eagle photos.' },
+  { id: 'castle-trust', name: 'Castle Trust', finds: ['castle-tower', 'lighthouse'], mult: 1.6, desc: 'Pays a premium for towers.' },
+  { id: 'postcard-firm', name: 'Postcard Firm', finds: ['red-roof', 'waterfall'], mult: 1.3, desc: 'Buys postcard shots.' },
+  { id: 'tourist-stall', name: 'Tourist Stall', finds: ['red-roof', 'herd-deer'], mult: 1.05, desc: 'Quick sales to tourists.' },
+  { id: 'rare-buyer', name: 'Rare Buyer', finds: ['castle-tower', 'eagle', 'lighthouse'], mult: 1.45, desc: 'Buys only the rarest photos.' },
 ];
 
 export const BALLOON_SEASONS = [
-  { id: 'spring', name: 'Spring', mult: 1.1,
-    desc: 'Fresh winds and full bookings.' },
-  { id: 'summer', name: 'Summer', mult: 1.2,
-    desc: 'Peak season, everyone is flying.' },
-  { id: 'autumn', name: 'Autumn', mult: 1.0,
-    desc: 'Steady work, thinner crowds.' },
-  { id: 'winter', name: 'Winter', mult: 0.85,
-    desc: 'Cold air, quiet days.' },
+  { id: 'spring', name: 'Spring', mult: 1.1, desc: 'Mild air, best prices.' },
+  { id: 'summer', name: 'Summer', mult: 1.0, desc: 'Warm air, steady prices.' },
+  { id: 'autumn', name: 'Autumn', mult: 0.95, desc: 'Cooling air, softer prices.' },
+  { id: 'winter', name: 'Winter', mult: 0.8, desc: 'Cold air, lowest prices.' },
 ];
 
 export const BALLOON_SEASONAL = [
-  { season: 'spring', find: 'deer-herd', mult: 1.3 },
-  { season: 'spring', find: 'rainbow-arc', mult: 1.25 },
-  { season: 'summer', find: 'hidden-waterfall', mult: 1.3 },
-  { season: 'summer', find: 'whale-spout', mult: 1.2 },
-  { season: 'autumn', find: 'old-windmill', mult: 1.25 },
-  { season: 'autumn', find: 'castle-ruins', mult: 1.3 },
-  { season: 'winter', find: 'aurora-wisp', mult: 1.4 },
-  { season: 'winter', find: 'lighthouse-beam', mult: 1.25 },
+  { season: 'spring', find: 'eagle', mult: 1.3 },
+  { season: 'spring', find: 'red-roof', mult: 1.2 },
+  { season: 'summer', find: 'waterfall', mult: 1.2 },
+  { season: 'summer', find: 'herd-deer', mult: 1.15 },
+  { season: 'autumn', find: 'lighthouse', mult: 1.25 },
+  { season: 'autumn', find: 'windmill', mult: 1.1 },
+  { season: 'winter', find: 'castle-tower', mult: 1.4 },
+  { season: 'winter', find: 'hot-spring', mult: 1.2 },
 ];
 
 export const BALLOON_QUICK_START = [
-  'Fly at dawn — calm air, golden light, happy passengers.',
-  'Sell common sights early; keep rare ones for contracts.',
-  'Buy the ground radio before the long routes.',
-  'Watch your fuel gauge, not the view.',
-  'Take photo contracts for sights on your route.',
-  'Save for the silk envelope — longer flights, more sights.',
+  'Launch the Sunrise Valley route.',
+  'Drift and spot sights until fuel runs low.',
+  'Sell photos at the Photo Shop.',
+  'Buy the Basket Rack upgrade early.',
+  'Take a roof photos contract.',
+  'Save up for the Pro Envelope.',
 ];
 
 export const BALLOON_HELPERS = [
-  { id: 'spotter', name: 'Pip the Spotter', wage: 30, skill: 'collect', bonus: 0.15,
-    desc: 'Sharp eyes on the ground: +15% sight yield.' },
-  { id: 'photog', name: 'Mara the Photographer', wage: 45, skill: 'find', bonus: 0.25,
-    desc: 'Never misses a shot: +25% rare sights.' },
-  { id: 'crew', name: 'Gus the Crew Chief', wage: 55, skill: 'carry', bonus: 0.4,
-    desc: 'Fast setup: +40% sight slots.' },
-  { id: 'agent', name: 'Quiet Ana', wage: 75, skill: 'sell', bonus: 0.12,
-    desc: 'Knows the buyers: +12% sight prices.' },
+  { id: 'pilot-mate', name: 'Pilot Mate', wage: 25, skill: 'piloting', bonus: 0.15, desc: 'A second pair of hands in the basket.' },
+  { id: 'navigator', name: 'Navigator', wage: 35, skill: 'navigation', bonus: 0.2, desc: 'Reads wind and maps by heart.' },
+  { id: 'photographer', name: 'Photographer', wage: 30, skill: 'photography', bonus: 0.15, desc: 'Shoots sights buyers love.' },
+  { id: 'host', name: 'Flight Host', wage: 20, skill: 'hospitality', bonus: 0.1, desc: 'Keeps guests happy aloft.' },
 ];
 
-export function balloonRankFor(xp) {
-  let rank = 0;
-  for (let i = 0; i < BALLOON_RANKS.length; i++) {
-    if (xp >= BALLOON_RANKS[i].xp) rank = i;
+export const HOTAIRBALLOON_META = { system: 'balloon', version: '7c-B2', author: 'builder-2', dataCount: 10, findCount: 10, upgradeCount: 8, rankCount: 5 };
+
+function routeById(id) {
+  let found = null;
+  BALLOON_ROUTES.forEach((r) => { if (r.id === id) found = r; });
+  return found;
+}
+
+function sightById(id) {
+  let found = null;
+  for (const s of BALLOON_SIGHTS) {
+    if (s.id === id) { found = s; break; }
   }
-  return rank;
+  return found;
 }
 
-export function balloonPriceFor(sightId, dayDrift, rank, upgrades) {
-  const f = BALLOON_SIGHTS.find((x) => x.id === sightId);
-  if (!f) return 0;
-  let price = f.value;
-  price *= 1 + (dayDrift[sightId] || 0);
-  price *= 1 + rank * 0.1;
-  if (upgrades.includes('camera')) price *= 1.2;
-  return Math.max(1, Math.round(price * 10) / 10);
+function ownedList(v) {
+  if (Array.isArray(v)) return v;
+  if (v && Array.isArray(v.upgrades)) return v.upgrades;
+  return [];
 }
 
-export function balloonCarryCap(upgrades) {
-  let cap = 15;
-  if (upgrades.includes('basket')) cap += 5;
-  if (upgrades.includes('ballast')) cap += 10;
-  return cap;
+function rankOf(v) {
+  if (typeof v === 'number') return v;
+  if (v && typeof v.rank === 'number') return v.rank;
+  return 0;
+}
+
+export function balloonRankFor(xp) {
+  let lvl = 0;
+  for (let i = 0; i < BALLOON_RANKS.length; i++) {
+    if (xp >= BALLOON_RANKS[i].xp) lvl = BALLOON_RANKS[i].level;
+  }
+  return lvl;
 }
 
 export function balloonFuelMax(upgrades) {
-  let max = 100;
-  if (upgrades.includes('envelope')) max += 40;
-  return max;
+  const list = ownedList(upgrades);
+  return list.includes('envelope') ? 140 : 100;
+}
+
+export function balloonPriceFor(sightId, drift, rank, upgrades) {
+  const s = sightById(sightId);
+  if (!s) return 0;
+  const d = typeof drift === 'number' ? drift : 0;
+  const rk = rankOf(rank);
+  const owned = Array.isArray(upgrades) ? upgrades : ownedList(rank);
+  let p = s.value * (1 + d) * (1 + rk * 0.1);
+  if (owned.includes('price-plus')) p = p * 1.2;
+  if (p < 1) p = 1;
+  return Math.round(p * 10) / 10;
+}
+
+export function balloonCarryCap(rank, upgrades) {
+  const owned = Array.isArray(upgrades) ? upgrades : ownedList(rank);
+  let cap = 15 + rankOf(rank) * 2;
+  if (owned.includes('carry-plus')) cap = cap + 10;
+  return cap;
+}
+
+export function balloonScore(sessions, yld, hazards) {
+  const raw = sessions * 10 + Math.round(yld) - hazards * 5;
+  if (raw < 0) return 0;
+  return raw;
+}
+
+export function balloonGrade(score) {
+  switch (true) {
+    case score >= 400: return 'S';
+    case score >= 250: return 'A';
+    case score >= 140: return 'B';
+    case score >= 60: return 'C';
+    default: return 'D';
+  }
+}
+
+export function balloonWeeklyGoal(state) {
+  const s = state || {};
+  const mk = (have, goal) => ({ have, goal, done: have >= goal });
+  const sessions = mk(s.sessions || 0, 5);
+  const sold = mk(s.findsSold || 0, 40);
+  const earned = mk(s.earned || 0, 600);
+  const allDone = sessions.done && sold.done && earned.done;
+  return { sessions, sold, earned, allDone };
+}
+
+export function balloonEfficiency(state) {
+  const s = state || {};
+  if (!s.sessions) return 100;
+  const good = s.sessions - (s.contractsFailed || 0);
+  return Math.round((Math.max(0, good) / s.sessions) * 100);
+}
+
+export function balloonProfitPerFlight(state) {
+  const s = state || {};
+  if (!s.sessions) return 0;
+  return Math.round(((s.earned || 0) / s.sessions) * 10) / 10;
+}
+
+export function balloonInventoryValue(state) {
+  const s = state || {};
+  let total = 0;
+  for (const id in (s.inventory || {})) {
+    total += (s.inventory[id] || 0) * balloonPriceFor(id, s.dayDrift || 0, s.rank || 0, s.upgrades || []);
+  }
+  return Math.round(total * 10) / 10;
+}
+
+export function balloonSummary(state) {
+  const s = state || {};
+  const rn = (BALLOON_RANKS[s.rank || 0] || {}).name || 'Basket Rookie';
+  return 'balloon: ' + rn + ' with ' + (s.sessions || 0) + ' flights, ' + (s.findsFound || 0) + ' sights and ' + (s.earned || 0) + ' cash earned.';
+}
+
+export function balloonNextGoal(state) {
+  const s = state || {};
+  if (!(s.sessions || 0)) return 'Finish your first flight.';
+  if ((s.sessions || 0) < 5) return 'Finish 5 flights.';
+  if ((s.earned || 0) < 500) return 'Earn 500 cash in total.';
+  if ((s.rank || 0) < 4) return 'Reach rank ' + BALLOON_RANKS[(s.rank || 0) + 1].name + '.';
+  return 'Become a legend of balloon.';
+}
+
+export function balloonRecordFor(id, state) {
+  let rec = null;
+  for (const r of BALLOON_RECORDS) if (r.id === id) rec = r;
+  if (!rec) return null;
+  return { id: rec.id, name: rec.name, stat: rec.stat, unit: rec.unit, desc: rec.desc, value: (state && state[rec.stat]) || 0 };
+}
+
+export function balloonAllRecords(state) {
+  const out = [];
+  for (const r of BALLOON_RECORDS) out.push(balloonRecordFor(r.id, state));
+  return out;
+}
+
+export function balloonLeaderboardWith(playerScore) {
+  const board = [];
+  for (const e of BALLOON_LEADERBOARD) {
+    board.push({ name: e.name, value: e.name === 'You' ? playerScore : e.value, desc: e.desc });
+  }
+  board.sort((a, b) => b.value - a.value);
+  const ranked = [];
+  board.forEach((e, i) => ranked.push({ rank: i + 1, name: e.name, value: e.value, desc: e.desc }));
+  return ranked;
+}
+
+export function balloonEventFor(day) {
+  const idx = ((day || 0) % BALLOON_MARKET.length + BALLOON_MARKET.length) % BALLOON_MARKET.length;
+  return BALLOON_MARKET[idx];
 }
 
 export function balloonEventMult(eventId, sightId) {
-  const ev = BALLOON_MARKET.find((x) => x.id === eventId);
+  let ev = null;
+  for (const m of BALLOON_MARKET) if (m.id === eventId) ev = m;
   if (!ev) return 1;
   return ev.finds.includes(sightId) ? ev.mult : 1;
 }
 
 export function balloonSeasonMult(seasonId) {
-  const s = BALLOON_SEASONS.find((x) => x.id === seasonId);
-  return s ? s.mult : 1;
-}
-
-export function balloonEventFor(day) {
-  return BALLOON_MARKET[day % BALLOON_MARKET.length];
+  let found = null;
+  for (const s of BALLOON_SEASONS) if (s.id === seasonId) found = s;
+  return found ? found.mult : 1;
 }
 
 export function balloonSeasonalPriceMult(seasonId, sightId) {
-  const row = BALLOON_SEASONAL.find((x) => x.season === seasonId && x.find === sightId);
-  return row ? row.mult : 1;
-}
-
-export function balloonBestSeason(sightId) {
-  let best = null;
-  let bestMult = 0;
   for (const row of BALLOON_SEASONAL) {
-    if (row.find === sightId && row.mult > bestMult) { bestMult = row.mult; best = row.season; }
+    if (row.season === seasonId && row.find === sightId) return row.mult;
   }
-  return best ? { season: best, mult: bestMult } : null;
+  return 1;
 }
 
-export function balloonBestBuyer(sightId, dayDrift, rank, upgrades) {
-  const base = balloonPriceFor(sightId, dayDrift, rank, upgrades);
-  return { price: base, note: 'Tourists pay best for rare sightings with photos.' };
-}
-
-export function balloonScore(sessions, yieldTotal, hazards) {
-  const base = sessions * 10 + Math.round(yieldTotal);
-  const penalty = hazards * 5;
-  return Math.max(0, base - penalty);
-}
-
-export function balloonGrade(sessions, yieldTotal, hazards) {
-  const score = balloonScore(sessions, yieldTotal, hazards);
-  if (score >= 400) return 'S';
-  if (score >= 250) return 'A';
-  if (score >= 140) return 'B';
-  if (score >= 60) return 'C';
-  return 'D';
-}
-
-export function balloonWeeklyGoal(sessions, sold, earned) {
-  const goal = { sessions: 5, sold: 40, earned: 600 };
-  return {
-    sessions: { have: sessions, goal: goal.sessions, done: sessions >= goal.sessions },
-    sold: { have: sold, goal: goal.sold, done: sold >= goal.sold },
-    earned: { have: Math.round(earned), goal: goal.earned, done: earned >= goal.earned },
-    allDone: sessions >= goal.sessions && sold >= goal.sold && earned >= goal.earned,
-  };
-}
-
-export function balloonTipFor(day) {
-  return BALLOON_TIPS[day % BALLOON_TIPS.length];
-}
-
-export function balloonLeaderboardWith(playerValue) {
-  const board = BALLOON_LEADERBOARD.map((e) => ({
-    name: e.name, value: e.name === 'Wren' ? playerValue : e.value, desc: e.desc,
-  }));
-  board.sort((a, b) => b.value - a.value);
-  return board.map((e, i) => ({ rank: i + 1, ...e }));
-}
-
-export function balloonRecordFor(recordId, state) {
-  const r = BALLOON_RECORDS.find((x) => x.id === recordId);
-  if (!r) return null;
-  return { id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit };
-}
-
-export function balloonAllRecords(state) {
-  return BALLOON_RECORDS.map((r) => ({
-    id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit, desc: r.desc,
-  }));
-}
-
-export function balloonEfficiency(actions, hazards) {
-  const total = actions + hazards;
-  if (total === 0) return 100;
-  return Math.round((actions / total) * 100);
-}
-
-export function balloonProfitPerFlight(earned, sessions) {
-  if (sessions === 0) return 0;
-  return Math.round((earned / sessions) * 10) / 10;
-}
-
-export function balloonInventoryValue(inventory) {
-  let total = 0;
-  for (const [id, qty] of Object.entries(inventory)) {
-    const f = BALLOON_SIGHTS.find((x) => x.id === id);
-    if (f) total += f.value * qty;
-  }
-  return Math.round(total * 10) / 10;
-}
-
-export function balloonTotalValue(state) {
-  return balloonInventoryValue(state.inventory);
-}
-
-export function balloonProgressPercent(state) {
-  const total = state.actions + state.findsSold;
-  if (total === 0) return 0;
-  return Math.round((state.actions / total) * 100);
-}
-
-export function balloonQuickStart(step) {
-  return BALLOON_QUICK_START[step] || null;
-}
-
-export function balloonSummary(state) {
-  return `Hot Air Balloon ${BALLOON_RANKS[state.rank].name}: ${state.sessions} flights, ${state.actions} drifts, $${Math.round(state.earned)} earned, ${state.findsFound} sights.`;
-}
-
-export function balloonNextGoal(state) {
-  if (state.sessions < 3) return 'Fly 3 routes.';
-  if (state.actions < 50) return 'Spot 50 sights.';
-  if (state.rank < 2) return 'Reach rank Cloud Captain.';
-  return 'Become the Sky Admiral.';
-}
-
-export function balloonChallengeProgress(challenge, state) {
-  const v = state[challenge.target] || 0;
-  return { id: challenge.id, name: challenge.name, have: Math.floor(v), goal: challenge.goal, done: v >= challenge.goal };
-}
-
-export function balloonHelperBonus(helpers, skill) {
-  let bonus = 0;
-  for (const h of BALLOON_HELPERS) {
-    if (helpers.includes(h.id) && h.skill === skill) bonus += h.bonus;
-  }
-  return bonus;
-}
-
-export function balloonRouteByAltitude(altitude) {
-  let best = null;
-  for (const s of BALLOON_ROUTES) {
-    if (s.altitude <= altitude && (!best || s.altitude > best.altitude)) best = s;
+export function balloonBestBuyer() {
+  let best = BALLOON_MARKET[0];
+  for (let i = 1; i < BALLOON_MARKET.length; i++) {
+    if (BALLOON_MARKET[i].mult > best.mult) best = BALLOON_MARKET[i];
   }
   return best;
 }
 
+export function balloonBestSeason() {
+  let best = BALLOON_SEASONS[0];
+  for (let i = 1; i < BALLOON_SEASONS.length; i++) {
+    if (BALLOON_SEASONS[i].mult > best.mult) best = BALLOON_SEASONS[i];
+  }
+  return best;
+}
+
+export function balloonTipFor(day) {
+  const idx = ((day || 0) % BALLOON_TIPS.length + BALLOON_TIPS.length) % BALLOON_TIPS.length;
+  return BALLOON_TIPS[idx];
+}
+
+export function balloonQuickStart() {
+  return BALLOON_QUICK_START.slice();
+}
+
+export function balloonChallengeProgress(challenge, state) {
+  const have = (state && state[challenge.target]) || 0;
+  return { id: challenge.id, name: challenge.name, have, goal: challenge.goal, done: have >= challenge.goal, xp: challenge.xp };
+}
+
+export function balloonProgressPercent(state) {
+  const s = state || {};
+  if (!s.sessions) return 0;
+  return Math.round((Math.max(0, s.sessions - (s.contractsFailed || 0)) / s.sessions) * 100);
+}
+
+export function balloonTotalValue(state) {
+  const s = state || {};
+  return Math.round((balloonInventoryValue(s) + (s.earned || 0)) * 10) / 10;
+}
+
+export function balloonHelperBonus(helperIds, skill) {
+  let sum = 0;
+  for (const id of (helperIds || [])) {
+    for (const h of BALLOON_HELPERS) {
+      if (h.id === id && h.skill === skill) sum += h.bonus;
+    }
+  }
+  return sum;
+}
+
 export function balloonSightsByRarity(maxRarity) {
-  return BALLOON_SIGHTS.filter((f) => f.rarity <= maxRarity).map((f) => f.id);
+  const out = [];
+  for (const s of BALLOON_SIGHTS) if (s.rarity <= maxRarity) out.push(s.id);
+  return out;
+}
+
+export function balloonRouteByAltitude(altitude) {
+  let pick = BALLOON_ROUTES[BALLOON_ROUTES.length - 1];
+  for (const r of BALLOON_ROUTES) {
+    if (r.altitude >= altitude) { pick = r; break; }
+  }
+  return pick;
+}
+
+function newBalloonState() {
+  return {
+    xp: 0, rank: 0, sessions: 0, actions: 0, stepsDone: 0, earned: 0, spent: 0,
+    findsFound: 0, findsSold: 0, contractsDone: 0, contractsFailed: 0, hazardsTaken: 0,
+    heatGained: 0, inventory: {}, upgrades: [], activeContract: null, contractProgress: 0,
+    contractDeadline: null, session: null, sessionStepsLeft: 0, sessionTimeLeft: 0,
+    resource: 0, dayDrift: 0, lastDay: 1, bestSession: null, bestSessionYield: 0,
+    dailyEarned: 0, dailySessions: 0, totalYield: 0, bestStreak: 0, streak: 0,
+    specialsUsed: 0, weatherStops: 0, sessionYield: 0, sessionFinds: [], season: 'spring',
+    event: null, wagesPaid: 0, challengesClaimed: [],
+  };
 }
 
 export function createHotAirBalloonSystem(ctx) {
   const c = ctx || {};
-  const rng = typeof c.rng === 'function' ? c.rng : Math.random;
-  const getCash = typeof c.getCash === 'function' ? c.getCash : () => 0;
-  const addCash = typeof c.addCash === 'function' ? c.addCash : () => {};
-  const addHeat = typeof c.addHeat === 'function' ? c.addHeat : () => {};
-  const log = typeof c.log === 'function' ? c.log : () => {};
-  const getDay = typeof c.getDay === 'function' ? c.getDay : () => 1;
-  const getHour = typeof c.getHour === 'function' ? c.getHour : () => 12;
-  const getPos = typeof c.getPlayerPos === 'function' ? c.getPlayerPos : () => ({ x: 0, z: 0 });
-  const getWeather = typeof c.getWeather === 'function' ? c.getWeather : () => ({ condition: 'clear' });
+  const rng = c.rng || Math.random;
+  const getDay = c.getDay || (() => 1);
+  const getHour = c.getHour || (() => 12);
+  const getCash = c.getCash || (() => 0);
+  const addCash = c.addCash || (() => {});
+  const addHeat = c.addHeat || (() => {});
+  const log = c.log || (() => {});
+  const getPlayerPos = c.getPlayerPos || (() => ({ x: 0, z: 0 }));
+  const getWeather = c.getWeather || (() => ({ condition: 'clear' }));
+  const state = newBalloonState();
 
-  const state = {
-    xp: 0,
-    rank: 0,
-    sessions: 0,
-    actions: 0,
-    stepsDone: 0,
-    earned: 0,
-    spent: 0,
-    findsFound: 0,
-    findsSold: 0,
-    contractsDone: 0,
-    contractsFailed: 0,
-    hazardsTaken: 0,
-    heatGained: 0,
-    inventory: {},
-    upgrades: [],
-    activeContract: null,
-    contractProgress: 0,
-    session: null,
-    sessionStepsLeft: 0,
-    sessionTimeLeft: 0,
-    resource: 100,
-    dayDrift: {},
-    lastDay: 1,
-    bestSession: null,
-    bestSessionYield: 0,
-    dailyEarned: 0,
-    dailySessions: 0,
-    totalYield: 0,
-    bestStreak: 0,
-    streak: 0,
-    specialsUsed: 0,
-    weatherStops: 0,
-    sessionYield: 0,
-    sessionFinds: 0,
-    season: 'spring',
-    event: null,
-  };
-  for (const f of BALLOON_SIGHTS) { state.inventory[f.id] = 0; state.dayDrift[f.id] = 0; }
+  function syncRank() {
+    const lvl = balloonRankFor(state.xp);
+    if (lvl > state.rank) log('Rank up: ' + BALLOON_RANKS[lvl].name);
+    state.rank = lvl;
+  }
 
-  function refreshRank() {
-    const r = balloonRankFor(state.xp);
-    if (r > state.rank) {
-      state.rank = r;
-      log(`Hot Air Balloon rank up: ${BALLOON_RANKS[r].name} — ${BALLOON_RANKS[r].perk}`);
+  function endFlight() {
+    const yld = state.sessionYield;
+    const rid = state.session;
+    state.totalYield += yld;
+    if (yld > state.bestSessionYield) {
+      state.bestSessionYield = yld;
+      state.bestSession = rid;
     }
-  }
-
-  function gainXp(n) {
-    state.xp += n;
-    refreshRank();
-  }
-
-  function driftPrices() {
-    for (const f of BALLOON_SIGHTS) {
-      const roll = rng();
-      if (roll < 0.3) state.dayDrift[f.id] = Math.round((rng() * 0.5 - 0.2) * 100) / 100;
-      else if (roll < 0.4) state.dayDrift[f.id] = 0;
+    if (yld > 0) {
+      state.streak = state.streak + 1;
+      if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+    } else {
+      state.streak = 0;
     }
-  }
-
-  function weather() {
-    try {
-      const w = getWeather();
-      if (w && typeof w.condition === 'string') return w.condition;
-    } catch (e) { /* ignore */ }
-    return 'clear';
-  }
-
-  function weatherBlocks() {
-    const cond = weather();
-    return cond === 'storm' || cond === 'hurricane';
-  }
-
-  function pickSight(route) {
-    const bag = [];
-    for (const f of BALLOON_SIGHTS) {
-      let w = f.rarity;
-      if (state.rank >= 3 && f.rarity < 0.08) w *= 1.6;
-      if (state.upgrades.includes('radio')) w *= 1.25;
-      bag.push({ f, w });
-    }
-    let total = 0;
-    for (const b of bag) total += b.w;
-    let roll = rng() * total;
-    for (const b of bag) {
-      roll -= b.w;
-      if (roll <= 0) return b.f;
-    }
-    return BALLOON_SIGHTS[0];
-  }
-
-  function finishSession(reason) {
-    const done = state.session;
     state.session = null;
     state.sessionStepsLeft = 0;
     state.sessionTimeLeft = 0;
-    state.sessions += 1;
-    state.dailySessions += 1;
-    if (state.sessionYield > state.bestSessionYield) {
-      state.bestSessionYield = state.sessionYield;
-      state.bestSession = done;
-    }
-    log(`Hot Air Balloon ${done} ${reason} — yield $${Math.round(state.sessionYield)}, ${state.sessionFinds} sights.`);
-    state.sessionYield = 0;
-    state.sessionFinds = 0;
   }
 
-  function launch(routeId) {
-    const route = BALLOON_ROUTES.find((s) => s.id === routeId);
-    if (!route) return { ok: false, reason: 'no-such-site' };
-    if (state.session) return { ok: false, reason: 'session-active' };
-    if (weatherBlocks()) {
-      state.weatherStops += 1;
-      return { ok: false, reason: 'bad-weather', condition: weather() };
-    }
-    const hour = getHour();
-    if (hour < 5 || hour >= 12) return { ok: false, reason: 'too-late', hour };
-    if (getCash() < route.price) return { ok: false, reason: 'not-enough-cash', cost: route.price };
-    if (route.price > 0) { addCash(-route.price); state.spent += route.price; }
-    state.session = routeId;
-    state.sessionStepsLeft = route.steps;
-    state.sessionTimeLeft = route.duration * 60;
-    state.resource = balloonFuelMax(state.upgrades);
-    log(`Hot Air Balloon started: ${route.name} — ${route.steps} drifts, ${route.duration} min, ${route.altitude}m up.`);
-    return { ok: true, site: routeId, steps: route.steps, duration: route.duration };
-  }
-
-  function drift() {
-    if (!state.session) return { ok: false, reason: 'no-session' };
-    if (state.sessionStepsLeft <= 0) return { ok: false, reason: 'session-done' };
-    const route = BALLOON_ROUTES.find((s) => s.id === state.session);
-    state.resource -= 10;
-    if (state.resource < 0) state.resource = 0;
-    const cap = balloonCarryCap(state.upgrades);
-    const held = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-    if (held >= cap) return { ok: false, reason: 'carry-full', cap };
-    const f = pickSight(route);
-    const qty = 1 + Math.floor(rng() * 3);
-    const add = Math.min(qty, Math.max(0, cap - held));
-    if (add <= 0) return { ok: false, reason: 'carry-full', cap };
-    state.inventory[f.id] += add;
-    state.findsFound += add;
-    state.totalYield += f.value * add;
-    state.sessionYield += f.value * add;
-    state.sessionFinds += add;
-    state.actions += 1;
-    state.stepsDone += 1;
-    state.sessionStepsLeft -= 1;
-    state.streak += 1;
-    state.bestStreak = Math.max(state.bestStreak, state.streak);
-    gainXp(4 + add);
-    const got = [{ id: f.id, name: f.name, qty: add, value: f.value }];
-    if (rng() < 0.04 + (state.rank >= 4 ? 0.05 : 0)) {
-      const rare = BALLOON_SIGHTS.filter((x) => x.rarity < 0.06);
-      const pick = rare[Math.floor(rng() * rare.length)];
-      state.inventory[pick.id] += 1;
-      state.findsFound += 1;
-      state.sessionYield += pick.value;
-      state.totalYield += pick.value;
-      got.push({ id: pick.id, name: pick.name, qty: 1, value: pick.value, rare: true });
-      log(`Hot Air Balloon rare sight! ${pick.name} worth $${pick.value}.`);
-    }
-    if (rng() < route.risk * 0.04) {
-      state.hazardsTaken += 1;
-      state.streak = 0;
-      state.resource -= 12;
-      if (rng() < 0.3) { addCash(-20); state.spent += 20; }
-      log(`Hot Air Balloon hazard at ${route.name}: a sudden downdraft dropped the basket and burned extra fuel.`);
-    }
-    if (state.resource <= 0) {
-      finishSession('cut short — fuel ran out');
-      return { ok: true, got, stepsLeft: 0, ended: 'resource-empty' };
-    }
-    if (state.sessionStepsLeft <= 0) {
-      finishSession('finished');
-      return { ok: true, got, stepsLeft: 0, ended: 'done' };
-    }
-    return { ok: true, got, stepsLeft: state.sessionStepsLeft, resource: state.resource };
-  }
-
-  function landEarly() {
-    if (!state.session) return { ok: false, reason: 'no-session' };
-    finishSession('ended early');
-    return { ok: true, ended: 'early' };
-  }
-
-  function spotLandmark() {
-    if (!state.session) return { ok: false, reason: 'no-session' };
-    const cost = 8;
-    if (state.resource < cost) return { ok: false, reason: 'not-enough-resource', need: cost };
-    state.resource -= cost;
-    state.specialsUsed += 1;
-    if (rng() < 0.55) {
-      const f = pickSight(BALLOON_ROUTES[0]);
-      state.inventory[f.id] += 1;
-      state.findsFound += 1;
-      state.sessionYield += f.value;
-      gainXp(10);
-      log(`Hot Air Balloon spot landmark: spotted from the basket: ${f.name}.`);
-      return { ok: true, success: true, find: f.id, name: f.name };
-    }
-    log('Hot Air Balloon spot landmark: clouds hid everything below.');
-    return { ok: true, success: false };
-  }
-
-  function sellFind(sightId, qty) {
-    const f = BALLOON_SIGHTS.find((x) => x.id === sightId);
-    if (!f) return { ok: false, reason: 'no-such-find' };
-    if (qty <= 0) return { ok: false, reason: 'bad-qty' };
-    const have = state.inventory[sightId] || 0;
-    if (have < qty) return { ok: false, reason: 'not-enough', have };
-    const unit = balloonPriceFor(sightId, state.dayDrift, state.rank, state.upgrades);
-    const total = Math.round(unit * qty * 10) / 10;
-    state.inventory[sightId] -= qty;
-    state.findsSold += qty;
-    state.earned += total;
-    state.dailyEarned += total;
-    addCash(total);
-    gainXp(qty);
-    log(`Sold ${qty}x ${f.name} for $${total}.`);
-    return { ok: true, total, unit, qty };
-  }
-
-  function sellAllFinds() {
-    let total = 0;
-    let units = 0;
-    const lines = [];
-    for (const f of BALLOON_SIGHTS) {
-      const have = state.inventory[f.id] || 0;
-      if (have <= 0) continue;
-      const unit = balloonPriceFor(f.id, state.dayDrift, state.rank, state.upgrades);
-      const line = Math.round(unit * have * 10) / 10;
-      total += line;
-      units += have;
-      lines.push({ id: f.id, qty: have, total: line });
-      state.inventory[f.id] = 0;
-    }
-    if (units === 0) return { ok: false, reason: 'nothing-to-sell' };
-    total = Math.round(total * 10) / 10;
-    state.findsSold += units;
-    state.earned += total;
-    state.dailyEarned += total;
-    addCash(total);
-    gainXp(units);
-    log(`Sold everything (${units} sights) for $${total}.`);
-    return { ok: true, total, units, lines };
-  }
-
-  function buyUpgrade(id) {
-    const u = BALLOON_UPGRADES.find((x) => x.id === id);
-    if (!u) return { ok: false, reason: 'no-such-upgrade' };
-    if (state.upgrades.includes(id)) return { ok: false, reason: 'already-owned' };
-    if (getCash() < u.cost) return { ok: false, reason: 'not-enough-cash', cost: u.cost };
-    addCash(-u.cost);
-    state.spent += u.cost;
-    state.upgrades.push(id);
-    gainXp(20);
-    log(`Bought ${u.name} for $${u.cost}.`);
-    return { ok: true, id };
-  }
-
-  function takeContract(id) {
-    const ct = BALLOON_CONTRACTS.find((x) => x.id === id);
-    if (!ct) return { ok: false, reason: 'no-such-contract' };
-    if (state.activeContract) return { ok: false, reason: 'contract-active' };
-    state.activeContract = { ...ct, dayTaken: getDay(), deadlineDay: getDay() + ct.days };
-    state.contractProgress = 0;
-    log(`Contract taken: ${ct.name} — deliver ${ct.qty}x ${ct.material} by day ${state.activeContract.deadlineDay}.`);
-    return { ok: true, contract: state.activeContract };
-  }
-
-  function deliverContract() {
-    const ct = state.activeContract;
-    if (!ct) return { ok: false, reason: 'no-contract' };
-    if (ct.material === 'mixed') {
-      const total = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-      if (total < ct.qty) return { ok: false, reason: 'not-enough', have: total, need: ct.qty };
-      let left = ct.qty;
-      for (const f of BALLOON_SIGHTS) {
-        if (left <= 0) break;
-        const take = Math.min(state.inventory[f.id], left);
-        state.inventory[f.id] -= take;
-        left -= take;
-      }
-    } else {
-      const have = state.inventory[ct.material] || 0;
-      if (have < ct.qty) return { ok: false, reason: 'not-enough', have, need: ct.qty };
-      state.inventory[ct.material] -= ct.qty;
-      state.contractProgress = ct.qty;
-    }
-    const bonus = ct.pay + state.rank * 40;
-    state.activeContract = null;
-    state.contractProgress = 0;
-    state.contractsDone += 1;
-    state.earned += bonus;
-    addCash(bonus);
-    gainXp(60);
-    log(`Contract delivered: ${ct.name} paid $${bonus}.`);
-    return { ok: true, pay: bonus };
-  }
-
-  function abandonContract() {
-    if (!state.activeContract) return { ok: false, reason: 'no-contract' };
-    state.activeContract = null;
-    state.contractProgress = 0;
-    state.contractsFailed += 1;
-    log('Contract abandoned — the client will remember that.');
-    return { ok: true };
-  }
-
-  function priceBoard() {
-    return BALLOON_SIGHTS.map((f) => ({
-      id: f.id,
-      name: f.name,
-      price: balloonPriceFor(f.id, state.dayDrift, state.rank, state.upgrades),
-      drift: state.dayDrift[f.id],
-      held: state.inventory[f.id],
-    }));
-  }
-
-  function siteReport() {
-    return BALLOON_ROUTES.map((s) => ({
-      id: s.id, name: s.name, fee: s.price, difficulty: s.difficulty, steps: s.steps, risk: s.risk,
-    }));
-  }
-
-  function dailyEvent() {
+  function todaysEvent() {
     const roll = rng();
     if (roll < 0.16) {
-      const f = BALLOON_SIGHTS[Math.floor(rng() * BALLOON_SIGHTS.length)];
-      state.dayDrift[f.id] = Math.round((state.dayDrift[f.id] + 0.3) * 100) / 100;
-      log(`Hot Air Balloon news: ${f.name} is in demand — prices up today!`);
-      return { event: 'demand-spike', find: f.id };
-    }
-    if (roll < 0.28) {
-      const f = BALLOON_SIGHTS[Math.floor(rng() * BALLOON_SIGHTS.length)];
-      state.dayDrift[f.id] = Math.round((state.dayDrift[f.id] - 0.15) * 100) / 100;
-      log(`Hot Air Balloon news: too much ${f.name} around — prices dip.`);
-      return { event: 'price-dip', find: f.id };
-    }
-    if (roll < 0.38) {
-      const f = BALLOON_SIGHTS[Math.floor(rng() * BALLOON_SIGHTS.length)];
-      state.inventory[f.id] += 3;
+      state.dayDrift = Math.round((state.dayDrift + 0.3) * 100) / 100;
+      state.event = 'demand-spike';
+      return { ok: true, event: 'demand-spike', name: 'Demand Spike', kind: 'demand' };
+    } else if (roll < 0.28) {
+      state.dayDrift = Math.round((state.dayDrift - 0.15) * 100) / 100;
+      state.event = 'price-dip';
+      return { ok: true, event: 'price-dip', name: 'Price Dip', kind: 'dip' };
+    } else if (roll < 0.38) {
+      const pick = BALLOON_SIGHTS[Math.floor(rng() * BALLOON_SIGHTS.length)];
+      state.inventory[pick.id] = (state.inventory[pick.id] || 0) + 3;
       state.findsFound += 3;
-      log(`Hot Air Balloon gift: a spotter hands you 3x ${f.name} on film.`);
-      return { event: 'gift', find: f.id };
-    }
-    if (roll < 0.46) {
+      state.event = 'gift';
+      return { ok: true, event: 'gift', name: 'Gift', kind: 'gift', find: pick.id, qty: 3 };
+    } else if (roll < 0.46) {
       const ev = BALLOON_EVENTS[Math.floor(rng() * BALLOON_EVENTS.length)];
-      log(`Hot Air Balloon event: ${ev.name} — ${ev.desc}`);
-      return { event: ev.id, name: ev.name };
+      state.event = ev.id;
+      return { ok: true, event: ev.id, name: ev.name, kind: 'named' };
     }
-    return { event: 'none' };
+    state.event = null;
+    return { ok: true, event: null, name: 'none', kind: 'none' };
   }
 
-  function tick(dt) {
-    if (state.session) {
-      state.sessionTimeLeft -= dt;
-      state.resource -= dt * 0.05;
-      if (state.sessionTimeLeft <= 0) {
-        finishSession('timed out — the shift ended');
-      } else if (state.resource <= 0) {
-        state.resource = 0;
-        finishSession('cut short — fuel ran out');
+  const sys = {
+    name: 'balloon',
+    state,
+    launch(routeId) {
+      const route = routeById(routeId);
+      if (!route) return { ok: false, reason: 'no-such-site' };
+      if (state.session) return { ok: false, reason: 'already-in-session' };
+      const cond = (getWeather() || {}).condition || 'clear';
+      if (cond === 'storm' || cond === 'hurricane') {
+        state.weatherStops += 1;
+        return { ok: false, reason: 'bad-weather', condition: cond };
       }
-    }
-  }
-
-  function tickDay(day) {
-    if (day === state.lastDay) return;
-    state.lastDay = day;
-    driftPrices();
-    state.dailyEarned = 0;
-    state.dailySessions = 0;
-    if (state.activeContract && day >= state.activeContract.deadlineDay && state.contractProgress < state.activeContract.qty) {
-      log(`Contract ${state.activeContract.name} expired — the client walked away.`);
+      const hour = getHour();
+      if (hour < 5 || hour >= 12) return { ok: false, reason: 'closed', hour };
+      if (getCash() < route.price) return { ok: false, reason: 'not-enough-cash', cost: route.price };
+      addCash(-route.price);
+      state.spent += route.price;
+      state.session = route.id;
+      state.sessionStepsLeft = route.steps;
+      state.sessionTimeLeft = route.duration;
+      state.resource = balloonFuelMax(state.upgrades);
+      state.sessionYield = 0;
+      state.sessionFinds = [];
+      state.sessions += 1;
+      state.dailySessions += 1;
+      log('Launching on ' + route.name);
+      return { ok: true, id: route.id, name: route.name, price: route.price, steps: route.steps, duration: route.duration };
+    },
+    drift() {
+      if (!state.session) return { ok: false, reason: 'no-session' };
+      const route = routeById(state.session);
+      state.resource -= 10;
+      state.sessionStepsLeft -= 1;
+      state.stepsDone += 1;
+      state.actions += 1;
+      let held = 0;
+      for (const k in state.inventory) held += state.inventory[k];
+      const cap = balloonCarryCap(state.rank, state.upgrades);
+      let qty = 1 + Math.floor(rng() * 3);
+      if (held + qty > cap) qty = cap - held;
+      let sight = null;
+      let bonus = false;
+      let hazard = false;
+      if (qty > 0) {
+        const weights = [];
+        let total = 0;
+        for (const s of BALLOON_SIGHTS) {
+          let w = 1 / s.rarity;
+          if (s.rarity < 0.08 && state.rank >= 3) w *= 1.6;
+          if (s.rarity < 0.08 && state.upgrades.includes('find-plus')) w *= 1.25;
+          weights.push(w);
+          total += w;
+        }
+        let roll = rng() * total;
+        let idx = BALLOON_SIGHTS.length - 1;
+        for (let i = 0; i < weights.length; i++) {
+          roll -= weights[i];
+          if (roll <= 0) { idx = i; break; }
+        }
+        sight = BALLOON_SIGHTS[idx];
+        if (rng() < 0.04) { qty += 1; bonus = true; }
+        state.inventory[sight.id] = (state.inventory[sight.id] || 0) + qty;
+        state.findsFound += qty;
+        state.sessionFinds.push(sight.id);
+        state.sessionYield += qty * sight.value;
+      }
+      if (route && rng() < route.risk * 0.04) {
+        hazard = true;
+        state.hazardsTaken += 1;
+        if (rng() < 0.3) addCash(-20);
+      }
+      let ended = false;
+      if (state.resource <= 0 || state.sessionStepsLeft <= 0) {
+        if (state.resource < 0) state.resource = 0;
+        endFlight();
+        ended = true;
+      }
+      return { ok: true, find: sight ? { id: sight.id, name: sight.name, qty } : null, qty, bonus, hazard, stepsLeft: state.sessionStepsLeft, resource: state.resource, ended };
+    },
+    landEarly() {
+      if (!state.session) return { ok: false, reason: 'no-session' };
+      const id = state.session;
+      endFlight();
+      log('Landed early from ' + id);
+      return { ok: true, id, yield: state.totalYield };
+    },
+    spotLandmark() {
+      const route = state.session ? routeById(state.session) : null;
+      return { ok: true, site: route ? route.id : null, siteName: route ? route.name : null, weather: (getWeather() || {}).condition || 'clear', hour: getHour(), resource: state.resource, resourceMax: balloonFuelMax(state.upgrades), stepsLeft: state.sessionStepsLeft };
+    },
+    sellFind(sightId) {
+      const s = sightById(sightId);
+      if (!s) return { ok: false, reason: 'no-such-find' };
+      const held = state.inventory[sightId] || 0;
+      if (held <= 0) return { ok: false, reason: 'not-held', id: sightId };
+      const price = balloonPriceFor(sightId, state.dayDrift, state.rank, state.upgrades);
+      state.inventory[sightId] = held - 1;
+      if (state.inventory[sightId] <= 0) delete state.inventory[sightId];
+      state.findsSold += 1;
+      state.earned += price;
+      state.dailyEarned += price;
+      addCash(price);
+      return { ok: true, id: sightId, name: s.name, qty: 1, price, total: price };
+    },
+    sellAllFinds() {
+      const ids = Object.keys(state.inventory);
+      if (ids.length === 0) return { ok: false, reason: 'nothing-held' };
+      let total = 0;
+      let count = 0;
+      for (const id of ids) {
+        total += balloonPriceFor(id, state.dayDrift, state.rank, state.upgrades) * state.inventory[id];
+        count += state.inventory[id];
+      }
+      total = Math.round(total * 10) / 10;
+      state.inventory = {};
+      state.findsSold += count;
+      state.earned += total;
+      state.dailyEarned += total;
+      addCash(total);
+      return { ok: true, total, sold: count, count };
+    },
+    buyUpgrade(upId) {
+      let up = null;
+      for (const u of BALLOON_UPGRADES) if (u.id === upId) up = u;
+      if (!up) return { ok: false, reason: 'no-such-upgrade' };
+      if (state.upgrades.includes(upId)) return { ok: false, reason: 'already-owned', id: upId };
+      if (getCash() < up.cost) return { ok: false, reason: 'not-enough-cash', cost: up.cost };
+      addCash(-up.cost);
+      state.spent += up.cost;
+      state.upgrades.push(upId);
+      log('Bought upgrade ' + up.name);
+      return { ok: true, id: up.id, name: up.name, cost: up.cost };
+    },
+    takeContract(contractId) {
+      let ct = null;
+      for (const x of BALLOON_CONTRACTS) if (x.id === contractId) ct = x;
+      if (!ct) return { ok: false, reason: 'no-such-contract' };
+      if (state.activeContract) return { ok: false, reason: 'already-active', id: state.activeContract };
+      state.activeContract = ct.id;
+      state.contractProgress = 0;
+      state.contractDeadline = getDay() + ct.days;
+      log('Took contract ' + ct.name);
+      return { ok: true, id: ct.id, name: ct.name, qty: ct.qty, pay: ct.pay };
+    },
+    deliverContract() {
+      if (!state.activeContract) return { ok: false, reason: 'no-active-contract' };
+      let ct = null;
+      for (const x of BALLOON_CONTRACTS) if (x.id === state.activeContract) ct = x;
+      const have = state.inventory[ct.material] || 0;
+      if (have < ct.qty) return { ok: false, reason: 'not-enough', have, need: ct.qty, material: ct.material };
+      state.inventory[ct.material] = have - ct.qty;
+      if (state.inventory[ct.material] <= 0) delete state.inventory[ct.material];
+      state.contractsDone += 1;
+      state.earned += ct.pay;
+      state.dailyEarned += ct.pay;
+      addCash(ct.pay);
+      state.xp += ct.rep;
+      syncRank();
+      const done = ct;
       state.activeContract = null;
       state.contractProgress = 0;
+      state.contractDeadline = null;
+      return { ok: true, id: done.id, name: done.name, pay: done.pay, rep: done.rep };
+    },
+    abandonContract() {
+      if (!state.activeContract) return { ok: false, reason: 'no-active-contract' };
+      const id = state.activeContract;
+      state.activeContract = null;
+      state.contractProgress = 0;
+      state.contractDeadline = null;
       state.contractsFailed += 1;
-    }
-    dailyEvent();
-  }
-
-  function serialize() {
-    return JSON.parse(JSON.stringify({
-      xp: state.xp, rank: state.rank, sessions: state.sessions,
-      actions: state.actions, stepsDone: state.stepsDone,
-      earned: state.earned, spent: state.spent,
-      findsFound: state.findsFound, findsSold: state.findsSold,
-      contractsDone: state.contractsDone, contractsFailed: state.contractsFailed,
-      hazardsTaken: state.hazardsTaken, heatGained: state.heatGained,
-      inventory: state.inventory, upgrades: state.upgrades,
-      activeContract: state.activeContract,
-      contractProgress: state.contractProgress, session: state.session,
-      sessionStepsLeft: state.sessionStepsLeft,
-      sessionTimeLeft: state.sessionTimeLeft, resource: state.resource,
-      dayDrift: state.dayDrift, lastDay: state.lastDay,
-      bestSession: state.bestSession,
-      bestSessionYield: state.bestSessionYield,
-      dailyEarned: state.dailyEarned, dailySessions: state.dailySessions,
-      totalYield: state.totalYield, bestStreak: state.bestStreak,
-      streak: state.streak, specialsUsed: state.specialsUsed,
-      weatherStops: state.weatherStops, sessionYield: state.sessionYield,
-      sessionFinds: state.sessionFinds, season: state.season,
-      event: state.event,
-    }));
-  }
-
-  function deserialize(d) {
-    if (!d || typeof d !== 'object') return;
-    for (const k of Object.keys(state)) {
-      if (d[k] !== undefined) state[k] = d[k];
-    }
-    for (const f of BALLOON_SIGHTS) {
-      if (state.inventory[f.id] === undefined) state.inventory[f.id] = 0;
-      if (state.dayDrift[f.id] === undefined) state.dayDrift[f.id] = 0;
-    }
-    refreshRank();
-  }
-
-  function stats() {
-    return {
-      rank: BALLOON_RANKS[state.rank].name,
-      xp: state.xp,
-      sessions: state.sessions,
-      actions: state.actions,
-      stepsDone: state.stepsDone,
-      earned: Math.round(state.earned),
-      spent: state.spent,
-      findsFound: state.findsFound,
-      findsSold: state.findsSold,
-      contractsDone: state.contractsDone,
-      contractsFailed: state.contractsFailed,
-      hazardsTaken: state.hazardsTaken,
-      heatGained: state.heatGained,
-      upgrades: state.upgrades.length,
-      activeContract: state.activeContract ? state.activeContract.id : null,
-      contractProgress: state.contractProgress,
-      session: state.session,
-      stepsLeft: state.sessionStepsLeft,
-      resource: Math.round(state.resource * 10) / 10,
-      resourceMax: balloonFuelMax(state.upgrades),
-      dailyEarned: Math.round(state.dailyEarned),
-      totalYield: Math.round(state.totalYield),
-      bestStreak: state.bestStreak,
-      bestSession: state.bestSession,
-      bestSessionYield: Math.round(state.bestSessionYield),
-      specialsUsed: state.specialsUsed,
-      weatherStops: state.weatherStops,
-      season: state.season,
-      event: state.event,
-    };
-  }
-
-  function hudLine() {
-    if (state.session) return `Hot Air Balloon: ${state.session} — ${state.sessionStepsLeft} drifts left, fuel ${Math.round(state.resource)}`;
-    if (state.activeContract) return `Hot Air Balloon: ${state.activeContract.name} ${state.contractProgress}/${state.activeContract.qty}`;
-    const held = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-    if (held > 0) return `Hot Air Balloon: ${held} sights held`;
-    return '';
-  }
-
-  function interact() {
-    const pos = getPos();
-    const near = Math.hypot(pos.x - 200, pos.z - 150) < 30;
-    if (!near) return false;
-    if (state.session) { drift(); return true; }
-    const held = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-    if (held > 0) { sellAllFinds(); return true; }
-    launch(BALLOON_ROUTES[0].id);
-    return true;
-  }
-
-  return {
-    name: 'Hot Air Balloon',
-    state,
-    launch, drift, landEarly, spotLandmark,
-    sellFind, sellAllFinds, buyUpgrade, takeContract,
-    deliverContract, abandonContract, priceBoard, siteReport,
-    dailyEvent, tick, tickDay, serialize, deserialize,
-    stats, hudLine, interact,
+      return { ok: true, id };
+    },
+    priceBoard() {
+      const rows = [];
+      for (const s of BALLOON_SIGHTS) {
+        rows.push({ id: s.id, name: s.name, price: balloonPriceFor(s.id, state.dayDrift, state.rank, state.upgrades), base: s.value, drift: state.dayDrift, held: state.inventory[s.id] || 0 });
+      }
+      return rows;
+    },
+    siteReport(routeId) {
+      const route = routeById(routeId);
+      if (!route) return { ok: false, reason: 'no-such-site' };
+      return { ok: true, id: route.id, name: route.name, price: route.price, difficulty: route.difficulty, steps: route.steps, duration: route.duration, risk: route.risk, altitude: route.altitude, view: route.view, desc: route.desc };
+    },
+    dailyEvent() {
+      return todaysEvent();
+    },
+    tick(dt) {
+      if (!state.session) return;
+      state.sessionTimeLeft -= dt;
+      state.resource -= dt * 0.05;
+      if (state.sessionTimeLeft <= 0 || state.resource <= 0) {
+        if (state.resource < 0) state.resource = 0;
+        if (state.sessionTimeLeft < 0) state.sessionTimeLeft = 0;
+        endFlight();
+      }
+    },
+    tickDay(day) {
+      if (day === state.lastDay) return null;
+      state.lastDay = day;
+      state.dayDrift = Math.round((state.dayDrift + (rng() * 0.24 - 0.12)) * 100) / 100;
+      state.dailyEarned = 0;
+      state.dailySessions = 0;
+      if (state.activeContract && state.contractDeadline !== null && day >= state.contractDeadline) {
+        state.activeContract = null;
+        state.contractProgress = 0;
+        state.contractDeadline = null;
+        state.contractsFailed += 1;
+        log('Contract expired.');
+      }
+      return todaysEvent();
+    },
+    serialize() {
+      return JSON.parse(JSON.stringify(state));
+    },
+    deserialize(saved) {
+      if (!saved || typeof saved !== 'object') return;
+      for (const k of Object.keys(saved)) state[k] = saved[k];
+      if (!state.inventory || typeof state.inventory !== 'object') state.inventory = {};
+      if (!Array.isArray(state.upgrades)) state.upgrades = [];
+      if (!Array.isArray(state.sessionFinds)) state.sessionFinds = [];
+      if (!Array.isArray(state.challengesClaimed)) state.challengesClaimed = [];
+      if (typeof state.wagesPaid !== 'number') state.wagesPaid = 0;
+      syncRank();
+    },
+    stats() {
+      const rn = (BALLOON_RANKS[state.rank] || {}).name || 'Basket Rookie';
+      return { rank: rn, xp: state.xp, sessions: state.sessions, actions: state.actions, stepsDone: state.stepsDone, earned: state.earned, spent: state.spent, findsFound: state.findsFound, findsSold: state.findsSold, contractsDone: state.contractsDone, contractsFailed: state.contractsFailed, hazardsTaken: state.hazardsTaken, heatGained: state.heatGained, upgrades: state.upgrades.length, activeContract: state.activeContract, contractProgress: state.contractProgress, session: state.session, stepsLeft: state.sessionStepsLeft, resource: state.resource, resourceMax: balloonFuelMax(state.upgrades), dailyEarned: state.dailyEarned, totalYield: state.totalYield, bestStreak: state.bestStreak, bestSession: state.bestSession, bestSessionYield: state.bestSessionYield, specialsUsed: state.specialsUsed, weatherStops: state.weatherStops, season: state.season, event: state.event };
+    },
+    hudLine() {
+      if (!state.session) return '';
+      return 'balloon: ' + state.session + ' — ' + state.sessionStepsLeft + ' steps left, fuel ' + state.resource;
+    },
+    interact() {
+      const pos = getPlayerPos() || { x: 0, z: 0 };
+      const dx = pos.x - 200;
+      const dz = pos.z - 150;
+      if (Math.sqrt(dx * dx + dz * dz) > 30) return false;
+      if (state.session) { sys.drift(); return true; }
+      let held = 0;
+      for (const k in state.inventory) held += state.inventory[k];
+      if (held > 0) { sys.sellAllFinds(); return true; }
+      sys.launch(BALLOON_ROUTES[0].id);
+      return true;
+    },
   };
+  return sys;
 }
 
 export function createHotAirBalloonExtras(system) {
-  const helpers = [];
-  const claimed = [];
-  let helperWagesPaid = 0;
+  const st = system.state;
+  let hired = [];
+  let claimed = [];
+  let wages = 0;
 
-  function hireHelper(id) {
-    const h = BALLOON_HELPERS.find((x) => x.id === id);
-    if (!h) return { ok: false, reason: 'no-such-helper' };
-    if (helpers.includes(id)) return { ok: false, reason: 'already-hired' };
-    helpers.push(id);
-    return { ok: true, id, name: h.name, wage: h.wage };
-  }
-
-  function fireHelper(id) {
-    const i = helpers.indexOf(id);
-    if (i < 0) return { ok: false, reason: 'not-hired' };
-    helpers.splice(i, 1);
-    return { ok: true, id };
-  }
-
-  function payWages() {
-    let due = 0;
-    for (const id of helpers) {
-      const h = BALLOON_HELPERS.find((x) => x.id === id);
-      due += h.wage;
+  function bonusFor(skill) {
+    let sum = 0;
+    for (const id of hired) {
+      for (const h of BALLOON_HELPERS) {
+        if (h.id === id && h.skill === skill) sum += h.bonus;
+      }
     }
-    helperWagesPaid += due;
-    return { due, helpers: [...helpers], totalPaid: helperWagesPaid };
-  }
-
-  function helperBonus(skill) {
-    return balloonHelperBonus(helpers, skill);
-  }
-
-  function challenges() {
-    return BALLOON_CHALLENGES.map((ch) => balloonChallengeProgress(ch, system.state));
-  }
-
-  function claimChallenge(id) {
-    const ch = BALLOON_CHALLENGES.find((x) => x.id === id);
-    if (!ch) return { ok: false, reason: 'no-such-challenge' };
-    if (claimed.includes(id)) return { ok: false, reason: 'already-claimed' };
-    const p = balloonChallengeProgress(ch, system.state);
-    if (!p.done) return { ok: false, reason: 'not-done', have: p.have, goal: p.goal };
-    claimed.push(id);
-    return { ok: true, id, xp: ch.xp };
-  }
-
-  function achievements() {
-    return BALLOON_ACHIEVEMENTS.map((a) => ({
-      id: a.id, name: a.name, desc: a.desc, done: !!a.check(system.state),
-    }));
-  }
-
-  function donateFinds(sightId, qty) {
-    const have = system.state.inventory[sightId] || 0;
-    if (have < qty || qty <= 0) return { ok: false, reason: 'not-enough', have };
-    system.state.inventory[sightId] -= qty;
-    const rep = Math.floor(qty / 5);
-    return { ok: true, qty, rep, note: 'The valley trust thanks you. The view remembers.' };
-  }
-
-  function bundleSale(sightId, qty) {
-    const have = system.state.inventory[sightId] || 0;
-    if (have < qty || qty < 10) return { ok: false, reason: 'need-10-plus', have };
-    const unit = balloonPriceFor(sightId, system.state.dayDrift, system.state.rank, system.state.upgrades);
-    const total = Math.round(unit * qty * 1.1 * 10) / 10;
-    system.state.inventory[sightId] -= qty;
-    system.state.findsSold += qty;
-    system.state.earned += total;
-    return { ok: true, total, qty, bonus: 'bundle +10%' };
-  }
-
-  function checkFuel() {
-    const max = balloonFuelMax(system.state.upgrades);
-    return {
-      resource: Math.round(system.state.resource * 10) / 10,
-      max,
-      pct: Math.round((system.state.resource / max) * 100),
-    };
-  }
-
-  function refillFuel() {
-    system.state.resource = balloonFuelMax(system.state.upgrades);
-    return { ok: true, resource: system.state.resource };
-  }
-
-  function countSights() {
-    const held = Object.values(system.state.inventory).reduce((a, b) => a + b, 0);
-    return { sights: held, cap: balloonCarryCap(system.state.upgrades) };
+    return sum;
   }
 
   return {
-    hireHelper, fireHelper, payWages, helperBonus, challenges,
-    claimChallenge, achievements, donateFinds, bundleSale,
-    checkFuel, refillFuel, countSights,
-    get helpers() { return [...helpers]; },
-    get claimed() { return [...claimed]; },
-    get wagesPaid() { return helperWagesPaid; },
+    hireHelper(id) {
+      let h = null;
+      for (const x of BALLOON_HELPERS) if (x.id === id) h = x;
+      if (!h) return { ok: false, reason: 'no-such-helper' };
+      if (hired.includes(id)) return { ok: false, reason: 'already-hired', id };
+      hired.push(id);
+      return { ok: true, id: h.id, name: h.name, wage: h.wage };
+    },
+    fireHelper(id) {
+      if (!hired.includes(id)) return { ok: false, reason: 'not-hired', id };
+      hired = hired.filter((x) => x !== id);
+      return { ok: true, id };
+    },
+    payWages() {
+      let due = 0;
+      for (const id of hired) {
+        for (const h of BALLOON_HELPERS) if (h.id === id) due += h.wage;
+      }
+      wages += due;
+      st.wagesPaid = (st.wagesPaid || 0) + due;
+      return { ok: true, due, helpers: hired.length, totalPaid: due };
+    },
+    helperBonus(skill) {
+      return bonusFor(skill);
+    },
+    challenges() {
+      const out = [];
+      for (const ch of BALLOON_CHALLENGES) out.push(balloonChallengeProgress(ch, st));
+      return out;
+    },
+    claimChallenge(id) {
+      let ch = null;
+      for (const x of BALLOON_CHALLENGES) if (x.id === id) ch = x;
+      if (!ch) return { ok: false, reason: 'no-such-challenge' };
+      if (claimed.includes(id)) return { ok: false, reason: 'already-claimed', id };
+      const prog = balloonChallengeProgress(ch, st);
+      if (!prog.done) return { ok: false, reason: 'not-done', have: prog.have, goal: prog.goal };
+      claimed.push(id);
+      st.challengesClaimed.push(id);
+      st.xp += ch.xp;
+      st.rank = balloonRankFor(st.xp);
+      return { ok: true, id: ch.id, xp: ch.xp };
+    },
+    achievements() {
+      const out = [];
+      for (const a of BALLOON_ACHIEVEMENTS) out.push({ id: a.id, name: a.name, desc: a.desc, done: !!a.check(st) });
+      return out;
+    },
+    donateFinds() {
+      const ids = Object.keys(st.inventory);
+      let donated = 0;
+      for (const id of ids) donated += st.inventory[id];
+      st.inventory = {};
+      return { ok: true, donated, finds: ids };
+    },
+    bundleSale() {
+      let count = 0;
+      for (const k in st.inventory) count += st.inventory[k];
+      if (count < 10) return { ok: false, reason: 'not-enough', have: count, need: 10 };
+      let total = 0;
+      for (const id in st.inventory) total += balloonPriceFor(id, st.dayDrift, st.rank, st.upgrades) * st.inventory[id];
+      total = Math.round(total * 1.1 * 10) / 10;
+      st.inventory = {};
+      st.findsSold += count;
+      st.earned += total;
+      st.dailyEarned += total;
+      return { ok: true, total, count, bonus: 'bundle +10%' };
+    },
+    checkFuel() {
+      const max = balloonFuelMax(st.upgrades);
+      return { ok: true, resource: st.resource, max, name: 'fuel', percent: max ? Math.round((st.resource / max) * 100) : 0 };
+    },
+    refillFuel() {
+      st.resource = balloonFuelMax(st.upgrades);
+      return { ok: true, resource: st.resource, max: st.resource };
+    },
+    countSights() {
+      let count = 0;
+      for (const k in st.inventory) count += st.inventory[k];
+      return { ok: true, count, total: count };
+    },
+    get helpers() { return hired.slice(); },
+    get claimed() { return claimed.slice(); },
+    get wagesPaid() { return wages; },
   };
 }
 
 export function createHotAirBalloonMarket(system) {
+  const st = system.state;
   let currentEvent = null;
-  let currentSeason = 'spring';
+  let currentSeason = st.season || 'spring';
   let dealsClaimed = 0;
-  let bulkSold = 0;
+  let bulkTraded = 0;
 
-  function setEvent(eventId) {
-    const ev = BALLOON_MARKET.find((x) => x.id === eventId);
-    if (!ev) return { ok: false, reason: 'no-such-event' };
-    currentEvent = eventId;
-    return { ok: true, event: eventId, name: ev.name };
-  }
-
-  function setSeason(seasonId) {
-    const s = BALLOON_SEASONS.find((x) => x.id === seasonId);
-    if (!s) return { ok: false, reason: 'no-such-season' };
-    currentSeason = seasonId;
-    system.state.season = seasonId;
-    return { ok: true, season: seasonId };
-  }
-
-  function eventPrice(sightId, basePrice) {
-    let price = basePrice;
-    price *= balloonEventMult(currentEvent, sightId);
-    price *= balloonSeasonMult(currentSeason);
-    return Math.round(price * 10) / 10;
-  }
-
-  function bulkDeal(sightId, qty) {
-    const have = system.state.inventory[sightId] || 0;
-    if (have < qty || qty < 20) return { ok: false, reason: 'need-20-plus', have };
-    const unit = balloonPriceFor(sightId, system.state.dayDrift, system.state.rank, system.state.upgrades);
-    const total = Math.round(eventPrice(sightId, unit) * qty * 1.1 * 10) / 10;
-    system.state.inventory[sightId] -= qty;
-    system.state.findsSold += qty;
-    system.state.earned += total;
-    bulkSold += qty;
-    dealsClaimed += 1;
-    return { ok: true, total, qty, bonus: 'bulk +10%' };
-  }
-
-  function dailyDeals() {
-    const deals = [];
-    for (const f of BALLOON_SIGHTS) {
-      const mult = balloonEventMult(currentEvent, f.id);
-      if (mult !== 1) {
-        deals.push({ find: f.id, name: f.name, mult, event: currentEvent });
-      }
-    }
-    return deals;
-  }
-
-  function marketSummary() {
-    return {
-      event: currentEvent,
-      season: currentSeason,
-      dealsClaimed,
-      bulkSold,
-      deals: dailyDeals(),
-    };
+  function priced(itemId, basePrice) {
+    const em = currentEvent ? balloonEventMult(currentEvent, itemId) : 1;
+    const sm = balloonSeasonMult(currentSeason);
+    return Math.round(basePrice * em * sm * 10) / 10;
   }
 
   return {
-    setEvent, setSeason, eventPrice, bulkDeal, dailyDeals, marketSummary,
+    setEvent(id) {
+      let ev = null;
+      for (const m of BALLOON_MARKET) if (m.id === id) ev = m;
+      if (!ev) return { ok: false, reason: 'no-such-event' };
+      currentEvent = id;
+      st.event = id;
+      return { ok: true, event: id };
+    },
+    setSeason(id) {
+      let s = null;
+      for (const x of BALLOON_SEASONS) if (x.id === id) s = x;
+      if (!s) return { ok: false, reason: 'no-such-season' };
+      currentSeason = id;
+      st.season = id;
+      return { ok: true, season: id };
+    },
+    eventPrice(itemId, basePrice) {
+      return priced(itemId, basePrice);
+    },
+    bulkDeal(sightId, qty) {
+      if (!qty || qty < 20) return { ok: false, reason: 'not-enough', qty: qty || 0, need: 20 };
+      const held = st.inventory[sightId] || 0;
+      if (held < qty) return { ok: false, reason: 'not-enough-held', have: held, need: qty };
+      const s = sightById(sightId);
+      if (!s) return { ok: false, reason: 'no-such-find' };
+      const unit = priced(sightId, s.value);
+      const total = Math.round(unit * qty * 1.1 * 10) / 10;
+      st.inventory[sightId] = held - qty;
+      if (st.inventory[sightId] <= 0) delete st.inventory[sightId];
+      st.findsSold += qty;
+      st.earned += total;
+      st.dailyEarned += total;
+      bulkTraded += qty;
+      dealsClaimed += 1;
+      return { ok: true, total, qty, unit, bonus: 'bulk +10%' };
+    },
+    dailyDeals() {
+      const out = [];
+      for (const m of BALLOON_MARKET) out.push({ id: m.id, name: m.name, finds: m.finds.slice(), mult: m.mult, desc: m.desc });
+      return out;
+    },
+    marketSummary() {
+      return { event: currentEvent, season: currentSeason, dealsClaimed, bulkTraded, deals: this.dailyDeals() };
+    },
     get event() { return currentEvent; },
     get season() { return currentSeason; },
   };
 }
-
-export const HOTAIRBALLOON_META = {
-  system: 'balloon',
-  version: '7c-B2',
-  author: 'builder-2',
-  dataCount: BALLOON_ROUTES.length,
-  findCount: BALLOON_SIGHTS.length,
-  upgradeCount: BALLOON_UPGRADES.length,
-  rankCount: BALLOON_RANKS.length,
-};

@@ -1,149 +1,442 @@
-// ghosthunting.js — Ghost Hunting: paranormal contracts after dark.
-// Take contracts from haunted locations, sweep the rooms with detectors,
-// collect three pieces of evidence to identify the ghost, then capture it
-// before your sanity runs out. Each ghost type has tells, a weakness, and
-// a price. Work at night: the veil is thinnest between 00:00 and 04:00.
-// Pure logic, no rendering, no imports.
-// Factory: createGhostHuntingSystem(deps) with deps { rng, getHour, getDay,
-// getCash, addCash, addHeat, log, getPlayerPos }.
-
-// ---------------------------------------------------------------------------
-// Data tables
-// ---------------------------------------------------------------------------
-
-// Evidence types: what each tool can find, and how strong the signal is.
 export const EVIDENCE_TYPES = [
-  { id: 'emf5', name: 'EMF Level 5', tool: 'emf', desc: 'Electromagnetic spike off the charts.', weight: 3 },
-  { id: 'freezing', name: 'Freezing Temperatures', tool: 'thermo', desc: 'Breath fogs. The room is below zero.', weight: 3 },
-  { id: 'spiritbox', name: 'Spirit Box Voice', tool: 'spiritbox', desc: 'A voice answers through the static.', weight: 3 },
-  { id: 'writing', name: 'Ghost Writing', tool: 'book', desc: 'Words appear in the notebook by themselves.', weight: 3 },
-  { id: 'fingerprints', name: 'Fingerprints', tool: 'uv', desc: 'Handprints glow under UV light.', weight: 3 },
-  { id: 'orbs', name: 'Ghost Orbs', tool: 'camera', desc: 'Floating lights on the photo.', weight: 2 },
-  { id: 'dots', name: 'DOTS Projection', tool: 'dots', desc: 'A silhouette runs through the laser grid.', weight: 2 },
-  { id: 'whisper', name: 'Whisper Recording', tool: 'recorder', desc: 'A whisper on playback that nobody said aloud.', weight: 2 },
+  { id: 'emf', name: 'EMF Level 5', tool: 'emf', desc: 'A spike on the EMF reader', weight: 10 },
+  { id: 'freezing', name: 'Freezing Temps', tool: 'thermometer', desc: 'Breath fogs in the room', weight: 10 },
+  { id: 'spirit-box', name: 'Spirit Box', tool: 'spirit-box', desc: 'A voice through the static', weight: 10 },
+  { id: 'fingerprints', name: 'Fingerprints', tool: 'uv-light', desc: 'Glowing prints on the glass', weight: 10 },
+  { id: 'orbs', name: 'Ghost Orbs', tool: 'camera', desc: 'Floating lights in the photo', weight: 10 },
+  { id: 'writing', name: 'Ghost Writing', tool: 'book', desc: 'Words appear in the book', weight: 10 },
+  { id: 'dots', name: 'D.O.T.S.', tool: 'dots', desc: 'A figure crosses the projector', weight: 10 },
+  { id: 'salt', name: 'Salt Disturbed', tool: 'salt', desc: 'Footprints in the salt', weight: 10 },
 ];
 
-// Ghost types: evidence triple that identifies them, behaviour, weakness.
 export const GHOST_TYPES = [
-  { id: 'spirit', name: 'Spirit', evidence: ['emf5', 'spiritbox', 'writing'], aggression: 1, speed: 1, weakness: 'smudge', reward: 300, desc: 'The common ghost. Mostly harmless, mostly curious.' },
-  { id: 'wraith', name: 'Wraith', evidence: ['emf5', 'spiritbox', 'dots'], aggression: 2, speed: 2, weakness: 'salt', reward: 400, desc: 'Fast, and it hates salt lines.' },
-  { id: 'phantom', name: 'Phantom', evidence: ['spiritbox', 'fingerprints', 'dots'], aggression: 2, speed: 1, weakness: 'photo', reward: 450, desc: 'Stares at you. Drains sanity just by looking.' },
-  { id: 'poltergeist', name: 'Poltergeist', evidence: ['spiritbox', 'fingerprints', 'writing'], aggression: 3, speed: 1, weakness: 'empty-room', reward: 500, desc: 'Throws everything that is not nailed down.' },
-  { id: 'banshee', name: 'Banshee', evidence: ['fingerprints', 'orbs', 'dots'], aggression: 3, speed: 2, weakness: 'crucifix', reward: 550, desc: 'Screams. Targets one person and does not stop.' },
-  { id: 'jinn', name: 'Jinn', evidence: ['emf5', 'fingerprints', 'freezing'], aggression: 3, speed: 3, weakness: 'breaker-off', reward: 600, desc: 'Fast when the power is on. Terrifying either way.' },
-  { id: 'mare', name: 'Mare', evidence: ['spiritbox', 'writing', 'orbs'], aggression: 2, speed: 1, weakness: 'lights-on', reward: 500, desc: 'Strongest in the dark. Keep the lights on.' },
-  { id: 'revenant', name: 'Revenant', evidence: ['orbs', 'writing', 'freezing'], aggression: 4, speed: 1, weakness: 'hide', reward: 650, desc: 'Slow until it knows where you are. Then it runs.' },
-  { id: 'shade', name: 'Shade', evidence: ['emf5', 'writing', 'freezing'], aggression: 1, speed: 1, weakness: 'group', reward: 350, desc: 'Shy. Hides when people gather.' },
-  { id: 'demon', name: 'Demon', evidence: ['fingerprints', 'writing', 'freezing'], aggression: 5, speed: 2, weakness: 'crucifix', reward: 900, desc: 'The worst one. Hunts early, hunts often.' },
-  { id: 'yurei', name: 'Yurei', evidence: ['orbs', 'freezing', 'dots'], aggression: 3, speed: 2, weakness: 'smudge', reward: 700, desc: 'A vengeful spirit. Sanity drains twice as fast near it.' },
-  { id: 'oni', name: 'Oni', evidence: ['emf5', 'freezing', 'dots'], aggression: 4, speed: 2, weakness: 'photo', reward: 750, desc: 'More active when people are near. Loves an audience.' },
-  { id: 'mimic', name: 'The Mimic', evidence: ['spiritbox', 'fingerprints', 'freezing'], aggression: 4, speed: 2, weakness: 'orbs', reward: 1000, desc: 'Copies other ghosts. Always shows orbs — the tell.' },
-  { id: 'hantu', name: 'Hantu', evidence: ['emf5', 'spiritbox', 'orbs'], aggression: 2, speed: 3, weakness: 'salt', reward: 650, desc: 'A local legend. Moves like the wind between rooms.' },
+  { id: 'spirit', name: 'Spirit', evidence: ['emf', 'spirit-box', 'writing'], aggression: 2, speed: 2, weakness: 'smudge', reward: 200, desc: 'The most common ghost' },
+  { id: 'wraith', name: 'Wraith', evidence: ['emf', 'spirit-box', 'dots'], aggression: 3, speed: 4, weakness: 'salt', reward: 250, desc: 'Fast and hard to track' },
+  { id: 'phantom', name: 'Phantom', evidence: ['spirit-box', 'fingerprints', 'dots'], aggression: 2, speed: 3, weakness: 'photo', reward: 250, desc: 'Fades when photographed' },
+  { id: 'poltergeist', name: 'Poltergeist', evidence: ['spirit-box', 'fingerprints', 'writing'], aggression: 4, speed: 2, weakness: 'empty-room', reward: 300, desc: 'Throws everything it can reach' },
+  { id: 'banshee', name: 'Banshee', evidence: ['fingerprints', 'orbs', 'dots'], aggression: 4, speed: 3, weakness: 'crucifix', reward: 300, desc: 'Her scream drains sanity fast' },
+  { id: 'jinn', name: 'Jinn', evidence: ['emf', 'fingerprints', 'freezing'], aggression: 4, speed: 4, weakness: 'power-off', reward: 350, desc: 'Fast when the power is on' },
+  { id: 'mare', name: 'Mare', evidence: ['spirit-box', 'orbs', 'writing'], aggression: 3, speed: 2, weakness: 'light', reward: 300, desc: 'Strikes in the dark' },
+  { id: 'revenant', name: 'Revenant', evidence: ['orbs', 'writing', 'freezing'], aggression: 5, speed: 1, weakness: 'hiding', reward: 350, desc: 'Slow, but it never stops' },
+  { id: 'shade', name: 'Shade', evidence: ['emf', 'writing', 'freezing'], aggression: 2, speed: 2, weakness: 'group', reward: 250, desc: 'Shy when watched' },
+  { id: 'demon', name: 'Demon', evidence: ['fingerprints', 'writing', 'freezing'], aggression: 5, speed: 4, weakness: 'crucifix', reward: 500, desc: 'The most dangerous ghost' },
+  { id: 'yurei', name: 'Yurei', evidence: ['orbs', 'freezing', 'dots'], aggression: 3, speed: 2, weakness: 'smudge', reward: 300, desc: 'Drains sanity faster than any other' },
+  { id: 'oni', name: 'Oni', evidence: ['emf', 'freezing', 'dots'], aggression: 5, speed: 3, weakness: 'smudge', reward: 400, desc: 'Aggressive and strong' },
+  { id: 'yokai', name: 'Yokai', evidence: ['spirit-box', 'orbs', 'dots'], aggression: 3, speed: 3, weakness: 'talking', reward: 300, desc: 'Angered by voices' },
+  { id: 'mimic', name: 'Mimic', evidence: ['freezing', 'spirit-box', 'fingerprints'], aggression: 4, speed: 3, weakness: 'orbs', reward: 450, desc: 'Copies other ghosts, always shows orbs' },
 ];
 
-// Haunted locations: size (rooms), base reward, haunting level.
 export const HAUNTED_LOCATIONS = [
-  { id: 'farmhouse', name: 'Old Farmhouse', rooms: 6, reward: 200, haunt: 1, desc: 'A farmhouse nobody has lived in for thirty years.' },
-  { id: 'apartment', name: 'Apartment 13', rooms: 5, reward: 220, haunt: 1, desc: 'Tenants keep leaving in the middle of the night.' },
-  { id: 'school', name: 'Abandoned School', rooms: 10, reward: 350, haunt: 2, desc: 'The bell still rings at 3 AM. There is no bell.' },
-  { id: 'hospital', name: 'St. Mercy Hospital', rooms: 12, reward: 450, haunt: 3, desc: 'Wheelchairs move by themselves down the ward.' },
-  { id: 'hotel', name: 'Grand Royale Hotel', rooms: 14, reward: 500, haunt: 3, desc: 'Room 666 is always booked. Nobody checks in.' },
-  { id: 'prison', name: 'Blackgate Prison', rooms: 16, reward: 600, haunt: 4, desc: 'The cells lock from the inside now.' },
-  { id: 'manor', name: 'Blackwood Manor', rooms: 18, reward: 700, haunt: 4, desc: 'Three families vanished here. The portraits watch you.' },
-  { id: 'asylum', name: 'Sunnyvale Asylum', rooms: 20, reward: 800, haunt: 5, desc: 'The doctors left in 1974. The patients never did.' },
-  { id: 'theatre', name: 'Orpheum Theatre', rooms: 9, reward: 400, haunt: 2, desc: 'A phantom audience applauds every midnight show.' },
-  { id: 'church', name: 'St. Agnes Church', rooms: 7, reward: 300, haunt: 2, desc: 'Candles light themselves during the sermon.' },
-  { id: 'lighthouse', name: 'Foggy Point Lighthouse', rooms: 8, reward: 380, haunt: 3, desc: 'The keeper still climbs the stairs every night.' },
-  { id: 'mall', name: 'Dead Mall', rooms: 15, reward: 550, haunt: 3, desc: 'The food court plays music. The power is off.' },
+  { id: 'blackgate', name: 'Blackgate Prison', rooms: 12, reward: 400, haunt: 5, desc: 'Cold cells and old chains' },
+  { id: 'royale-hotel', name: 'Royale Hotel', rooms: 10, reward: 300, haunt: 4, desc: 'A grand hotel with one locked floor' },
+  { id: 'asylum', name: 'Sunnyvale Asylum', rooms: 14, reward: 500, haunt: 5, desc: 'Abandoned wards, whispering halls' },
+  { id: 'manor', name: 'Willow Manor', rooms: 9, reward: 250, haunt: 3, desc: 'A dusty old manor' },
+  { id: 'school', name: 'Elm Street School', rooms: 8, reward: 200, haunt: 3, desc: 'Chalk dust and cold corridors' },
+  { id: 'farmhouse', name: 'Miller Farmhouse', rooms: 7, reward: 180, haunt: 2, desc: 'A quiet farmhouse, mostly' },
+  { id: 'hospital', name: 'St. Mary Hospital', rooms: 11, reward: 350, haunt: 4, desc: 'Empty beds, beeping monitors' },
+  { id: 'theatre', name: 'Grand Theatre', rooms: 8, reward: 220, haunt: 3, desc: 'The show never ended here' },
+  { id: 'lighthouse', name: 'Cape Lighthouse', rooms: 5, reward: 280, haunt: 4, desc: 'The light still turns by itself' },
+  { id: 'church', name: 'Old Chapel', rooms: 6, reward: 200, haunt: 3, desc: 'Pews and candle smoke' },
+  { id: 'warehouse', name: 'Dock Warehouse', rooms: 7, reward: 150, haunt: 2, desc: 'Crates and cold drafts' },
+  { id: 'cabin', name: 'Pine Cabin', rooms: 4, reward: 120, haunt: 1, desc: 'A small cabin in the woods' },
 ];
 
-// Equipment: what you can buy, what it detects, consumable or not.
 export const GHOST_EQUIPMENT = [
-  { id: 'emf', name: 'EMF Reader', price: 100, detect: 'emf5', consumable: false, desc: 'Beeps faster as the ghost gets closer.' },
-  { id: 'thermo', name: 'Thermometer', price: 120, detect: 'freezing', consumable: false, desc: 'Reads room temperature. Ghosts bring the cold.' },
-  { id: 'spiritbox', name: 'Spirit Box', price: 150, detect: 'spiritbox', consumable: false, desc: 'Scans radio static for voices.' },
-  { id: 'book', name: 'Ghost Writing Book', price: 80, detect: 'writing', consumable: true, desc: 'Leave it in the ghost room and wait.' },
-  { id: 'uv', name: 'UV Light', price: 90, detect: 'fingerprints', consumable: false, desc: 'Reveals prints on doors and windows.' },
-  { id: 'camera', name: 'Photo Camera', price: 200, detect: 'orbs', consumable: true, desc: 'Photos can catch orbs — and the ghost itself.' },
-  { id: 'dots', name: 'DOTS Projector', price: 250, detect: 'dots', consumable: false, desc: 'Laser grid. Silhouettes run through it.' },
-  { id: 'recorder', name: 'Voice Recorder', price: 110, detect: 'whisper', consumable: false, desc: 'Records whispers nobody said.' },
-  { id: 'smudge', name: 'Smudge Sticks', price: 40, detect: null, consumable: true, desc: 'Burn to calm the ghost for 60 seconds.' },
-  { id: 'salt', name: 'Salt Bags', price: 30, detect: null, consumable: true, desc: 'A salt line slows most ghosts down.' },
-  { id: 'crucifix', name: 'Crucifix', price: 150, detect: null, consumable: true, desc: 'Stops a hunt once. Place it well.' },
-  { id: 'candle', name: 'Candle', price: 15, detect: null, consumable: true, desc: 'Light keeps the dark — and the Mare — away.' },
-  { id: 'sanity-pills', name: 'Sanity Pills', price: 60, detect: null, consumable: true, desc: 'Restores 25 sanity. Tastes awful.' },
-  { id: 'trap', name: 'Ghost Trap', price: 500, detect: null, consumable: true, desc: 'Required to capture a ghost once identified.' },
+  { id: 'emf', name: 'EMF Reader', price: 0, detect: 'emf', consumable: false, desc: 'Detects electromagnetic spikes' },
+  { id: 'thermometer', name: 'Thermometer', price: 30, detect: 'freezing', consumable: false, desc: 'Finds freezing temperatures' },
+  { id: 'spirit-box', name: 'Spirit Box', price: 50, detect: 'spirit-box', consumable: false, desc: 'Hears voices in the static' },
+  { id: 'uv-light', name: 'UV Light', price: 35, detect: 'fingerprints', consumable: false, desc: 'Reveals fingerprints' },
+  { id: 'camera', name: 'Photo Camera', price: 60, detect: 'orbs', consumable: true, desc: 'Captures orbs and ghosts' },
+  { id: 'book', name: 'Ghost Writing Book', price: 40, detect: 'writing', consumable: true, desc: 'The ghost writes in it' },
+  { id: 'dots', name: 'D.O.T.S. Projector', price: 65, detect: 'dots', consumable: false, desc: 'Projects a dot grid' },
+  { id: 'smudge', name: 'Smudge Sticks', price: 15, detect: null, consumable: true, desc: 'Calms the ghost' },
+  { id: 'salt', name: 'Salt', price: 10, detect: 'salt', consumable: true, desc: 'Marks footprints, slows the ghost' },
+  { id: 'crucifix', name: 'Crucifix', price: 30, detect: null, consumable: true, desc: 'Stops a hunt' },
+  { id: 'candle', name: 'Candle', price: 5, detect: null, consumable: true, desc: 'Restores a little sanity' },
+  { id: 'sanity-pills', name: 'Sanity Pills', price: 20, detect: null, consumable: true, desc: 'Restores a lot of sanity' },
+  { id: 'trap', name: 'Ghost Trap', price: 100, detect: null, consumable: true, desc: 'Captures the ghost' },
+  { id: 'flashlight', name: 'Flashlight', price: 15, detect: null, consumable: false, desc: 'Keeps the dark away' },
 ];
 
-// Hunter ranks.
 export const HUNTER_RANKS = [
-  { id: 'amateur', name: 'Amateur', xpNeeded: 0, perk: 'Basic contracts only.' },
-  { id: 'investigator', name: 'Investigator', xpNeeded: 200, perk: 'Medium locations unlock.' },
-  { id: 'professional', name: 'Professional', xpNeeded: 600, perk: 'Hard locations unlock, +10% reward.' },
-  { id: 'expert', name: 'Expert', xpNeeded: 1500, perk: '+20% reward, hunts start later.' },
-  { id: 'master', name: 'Master Hunter', xpNeeded: 3500, perk: '+35% reward, sanity drains slower.' },
+  { id: 'amateur', name: 'Amateur', xpNeeded: 0, perk: 'Basic contracts' },
+  { id: 'investigator', name: 'Investigator', xpNeeded: 150, perk: 'Harder locations' },
+  { id: 'professional', name: 'Professional', xpNeeded: 400, perk: 'More equipment' },
+  { id: 'expert', name: 'Expert', xpNeeded: 900, perk: 'High reward contracts' },
+  { id: 'master', name: 'Master', xpNeeded: 1800, perk: 'Sanity drains slower' },
 ];
 
-// Ghost hunting missions.
 export const GHOST_MISSIONS = [
-  { id: 'first-evidence', name: 'First Evidence', desc: 'Collect your first piece of evidence.', reward: 100 },
-  { id: 'first-id', name: 'First Identification', desc: 'Correctly identify a ghost.', reward: 250 },
-  { id: 'first-capture', name: 'First Capture', desc: 'Capture a ghost in the trap.', reward: 500 },
-  { id: 'five-captures', name: 'Ghostbuster', desc: 'Capture 5 ghosts.', reward: 1200 },
-  { id: 'demon-capture', name: 'Demon Slayer', desc: 'Capture a Demon.', reward: 2000 },
-  { id: 'perfect-contract', name: 'Perfect Contract', desc: 'Identify and capture with sanity above 50%.', reward: 800 },
-  { id: 'all-ghosts', name: 'Bestiary Complete', desc: 'Identify every ghost type at least once.', reward: 5000 },
-  { id: 'no-death', name: 'Survivor', desc: 'Complete 10 contracts without dying.', reward: 1500 },
-  { id: 'photo-ghost', name: 'Gotcha!', desc: 'Photograph the ghost itself.', reward: 600 },
-  { id: 'night-owl', name: 'Night Owl', desc: 'Complete a contract between 00:00 and 04:00.', reward: 400 },
+  { id: 'first-capture', name: 'First Capture', desc: 'Capture your first ghost', reward: 100 },
+  { id: 'capture-5', name: 'Five Captures', desc: 'Capture 5 ghosts', reward: 300 },
+  { id: 'capture-10', name: 'Ten Captures', desc: 'Capture 10 ghosts', reward: 600 },
+  { id: 'identify-5', name: 'Identifier', desc: 'Correctly identify 5 ghosts', reward: 200 },
+  { id: 'perfect-contract', name: 'Perfect Contract', desc: 'Finish a contract without losing sanity below 50', reward: 250 },
+  { id: 'photo-ghost', name: 'Ghost Photographer', desc: 'Photograph a ghost', reward: 150 },
+  { id: 'night-owl', name: 'Night Owl', desc: 'Capture a ghost at night', reward: 200 },
+  { id: 'survive-hunt', name: 'Hunt Survivor', desc: 'Survive 3 hunts', reward: 300 },
+  { id: 'bestiary-5', name: 'Bestiary Builder', desc: 'Identify 5 different ghosts', reward: 400 },
+  { id: 'demon-capture', name: 'Demon Slayer', desc: 'Capture a demon', reward: 800 },
 ];
 
-// Room names for the sweep: each location builds rooms from this pool.
-export const ROOM_NAMES = ['Living Room', 'Kitchen', 'Bedroom', 'Bathroom', 'Basement', 'Attic', 'Hallway', 'Garage', 'Library', 'Dining Room', 'Nursery', 'Cellar', 'Chapel', 'Ward', 'Cell Block', 'Lobby', 'Stage', 'Office', 'Storage', 'Balcony'];
+export const ROOM_NAMES = [
+  'Kitchen', 'Living Room', 'Bedroom', 'Bathroom', 'Basement', 'Attic', 'Hallway',
+  'Garage', 'Nursery', 'Library', 'Dining Room', 'Cellar', 'Office', 'Laundry Room',
+  'Pantry', 'Guest Room', 'Study', 'Workshop', 'Balcony', 'Storage Room',
+];
 
-// Hunt events: things that happen while you sweep.
 export const HUNT_EVENTS = [
-  { id: 'flicker', name: 'Lights Flicker', sanity: -2, desc: 'The lights flicker. Something is near.' },
-  { id: 'whisper', name: 'Whisper', sanity: -3, desc: 'A whisper right behind your ear.' },
-  { id: 'footsteps', name: 'Footsteps', sanity: -4, desc: 'Footsteps in the next room. Nobody is there.' },
-  { id: 'object-thrown', name: 'Object Thrown', sanity: -5, desc: 'A chair slides across the floor by itself.' },
-  { id: 'apparition', name: 'Apparition', sanity: -8, desc: 'A figure stands at the end of the hall — then it is gone.' },
-  { id: 'cold-spot', name: 'Cold Spot', sanity: -2, desc: 'Your breath fogs. The temperature just dropped.' },
-  { id: 'radio', name: 'Radio Static', sanity: -3, desc: 'The radio turns itself on, tuned to static.' },
-  { id: 'door-slam', name: 'Door Slam', sanity: -5, desc: 'Every door in the house slams at once.' },
+  { id: 'lights-flicker', name: 'Lights Flicker', sanity: -5, desc: 'The lights die for a second' },
+  { id: 'whisper', name: 'Whisper', sanity: -8, desc: 'A voice whispers your name' },
+  { id: 'door-slam', name: 'Door Slam', sanity: -10, desc: 'Every door slams at once' },
+  { id: 'cold-spot', name: 'Cold Spot', sanity: -6, desc: 'The air turns freezing' },
+  { id: 'shadow', name: 'Shadow Figure', sanity: -12, desc: 'A figure stands in the corner' },
+  { id: 'scream', name: 'Distant Scream', sanity: -15, desc: 'A scream echoes through the house' },
+  { id: 'objects-move', name: 'Objects Move', sanity: -7, desc: 'Chairs slide across the floor' },
+  { id: 'radio-static', name: 'Radio Static', sanity: -4, desc: 'The radio crackles to life' },
 ];
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+export const FIELD_NOTES = [
+  'The ghost always starts in one room and stays near it.',
+  'Three pieces of evidence are enough to name the ghost.',
+  'Smudge sticks buy you a minute of calm.',
+  'Never let your sanity hit zero.',
+  'Orbs can appear anywhere, not just in the ghost room.',
+  'A crucifix placed well can end a hunt early.',
+  'The mimic always shows orbs, even though they are not its evidence.',
+  'Photograph the ghost for a bonus and proof.',
+];
 
-function clampNum(v, lo, hi) {
-  return v < lo ? lo : v > hi ? hi : v;
+export const EMF_LEVELS = [
+  { level: 1, desc: 'No activity', danger: 0 },
+  { level: 2, desc: 'Faint activity', danger: 1 },
+  { level: 3, desc: 'Moderate activity', danger: 2 },
+  { level: 4, desc: 'Strong activity', danger: 3 },
+  { level: 5, desc: 'Extreme activity', danger: 5 },
+];
+
+export const CURSED_OBJECTS = [
+  { id: 'doll', name: 'Porcelain Doll', value: 150, curse: 'whispers at night', desc: 'Its eyes follow you' },
+  { id: 'mirror', name: 'Black Mirror', value: 300, curse: 'shows the wrong reflection', desc: 'Do not look too long' },
+  { id: 'music-box', name: 'Music Box', value: 200, curse: 'plays by itself', desc: 'A tune nobody taught it' },
+  { id: 'ring', name: 'Cursed Ring', value: 250, curse: 'cold to the touch', desc: 'It will not come off easily' },
+  { id: 'painting', name: 'Haunted Painting', value: 400, curse: 'the face changes', desc: 'The eyes move when you blink' },
+  { id: 'tarot', name: 'Tarot Deck', value: 120, curse: 'always draws death', desc: 'Shuffles itself' },
+];
+
+export const GHOST_LORE = [
+  { ghost: 'spirit', note: 'The first ghost every hunter meets.' },
+  { ghost: 'wraith', note: 'It fears salt more than anything.' },
+  { ghost: 'phantom', note: 'It vanishes the moment you take its photo.' },
+  { ghost: 'poltergeist', note: 'It throws things when it is bored.' },
+  { ghost: 'banshee', note: 'Her scream is a warning, not an attack.' },
+  { ghost: 'jinn', note: 'It moves faster with the power on.' },
+  { ghost: 'mare', note: 'It hunts in the dark and hates the light.' },
+  { ghost: 'revenant', note: 'Slow, but it never gives up.' },
+  { ghost: 'shade', note: 'It hides when too many people watch.' },
+  { ghost: 'demon', note: 'The most dangerous ghost of all.' },
+  { ghost: 'yurei', note: 'It drains sanity with every breath.' },
+  { ghost: 'oni', note: 'A brute that smashes through walls.' },
+  { ghost: 'yokai', note: 'It gets angry when you talk too much.' },
+  { ghost: 'mimic', note: 'It copies other ghosts. Trust the orbs.' },
+];
+
+export const SANITY_EFFECTS = [
+  { min: 80, max: 100, effect: 'Calm and focused', huntChance: 0.01 },
+  { min: 60, max: 79, effect: 'Nervous', huntChance: 0.02 },
+  { min: 40, max: 59, effect: 'Shaken', huntChance: 0.03 },
+  { min: 20, max: 39, effect: 'Terrified', huntChance: 0.05 },
+  { min: 0, max: 19, effect: 'Barely holding on', huntChance: 0.1 },
+];
+
+export const HUNTER_JOURNAL = [
+  'Day one: the house was quiet. Too quiet.',
+  'The EMF spiked in the basement again.',
+  'I heard my name in the static tonight.',
+  'The doll moved. I know it moved.',
+  'Smudge sticks are worth every cent.',
+  'The mimic fooled me once. Never again.',
+  'A photo of the ghost pays for the whole trip.',
+];
+
+export const HAUNTED_OBJECTS = [
+  { id: 'doll', name: 'Porcelain Doll', value: 150, risk: 3, desc: 'Its eyes follow you' },
+  { id: 'mirror', name: 'Black Mirror', value: 300, risk: 5, desc: 'Do not look too long' },
+  { id: 'music-box', name: 'Music Box', value: 200, risk: 2, desc: 'Plays by itself' },
+  { id: 'ring', name: 'Cursed Ring', value: 250, risk: 4, desc: 'Cold to the touch' },
+  { id: 'painting', name: 'Haunted Painting', value: 400, risk: 5, desc: 'The face changes' },
+  { id: 'tarot', name: 'Tarot Deck', value: 120, risk: 2, desc: 'Always draws death' },
+  { id: 'vase', name: 'Cracked Vase', value: 80, risk: 1, desc: 'Hums when the wind blows' },
+  { id: 'clock', name: 'Stopped Clock', value: 180, risk: 3, desc: 'Always shows midnight' },
+];
+
+export const SEANCE_RULES = [
+  'Never speak to the dead after midnight.',
+  'Always keep a candle lit during the seance.',
+  'Do not break the circle.',
+  'Thank the spirit before you leave.',
+  'If the planchette spins, end the session.',
+];
+
+export const GEAR_CHECKLIST = [
+  { item: 'emf', why: 'Detects EMF evidence' },
+  { item: 'thermometer', why: 'Finds freezing temperatures' },
+  { item: 'spirit-box', why: 'Hears spirit box voices' },
+  { item: 'uv-light', why: 'Reveals fingerprints' },
+  { item: 'camera', why: 'Captures orbs and ghost photos' },
+  { item: 'book', why: 'Collects ghost writing' },
+  { item: 'dots', why: 'Shows D.O.T.S. figures' },
+  { item: 'smudge', why: 'Calms the ghost during a hunt' },
+  { item: 'salt', why: 'Slows the ghost and marks footprints' },
+  { item: 'crucifix', why: 'Stops a hunt' },
+  { item: 'candle', why: 'Restores sanity' },
+  { item: 'trap', why: 'Captures the ghost' },
+];
+
+export const GHOST_SHOWS = [
+  'Ghost Hunters Live',
+  'Paranormal Files',
+  'The Haunted Hour',
+  'Spirits After Dark',
+];
+
+export const SPIRIT_BOX_PHRASES = [
+  'Leave...',
+  'Behind you.',
+  'Cold.',
+  'Get out.',
+  'Help me.',
+  'It is here.',
+  'Do not trust it.',
+  'Run.',
+];
+
+export const GHOST_FILMS = [
+  { title: 'The Haunting', year: 1963, note: 'A classic haunted house film' },
+  { title: 'Poltergeist', year: 1982, note: 'The TV people are here' },
+  { title: 'The Conjuring', year: 2013, note: 'Based on a real case' },
+  { title: 'Paranormal Activity', year: 2007, note: 'Found footage that started a craze' },
+];
+
+export const HAUNTED_GRADES = [
+  { grade: 'A', desc: 'Extremely haunted' },
+  { grade: 'B', desc: 'Very haunted' },
+  { grade: 'C', desc: 'Moderately haunted' },
+  { grade: 'D', desc: 'Mildly haunted' },
+];
+
+export const HUNTER_CALLSIGNS = ['Ghost', 'Specter', 'Warden', 'Lantern', 'Rook', 'Echo'];
+
+export const HUNTER_MOTTOS = [
+  'We go in so you do not have to.',
+  'Every ghost has a name.',
+  'Fear is just data.',
+  'The dark is only dark until you look.',
+];
+
+export const GHOST_PROVERBS = [
+  'The dead speak to those who listen.',
+  'A haunted house is just a house with history.',
+  'Salt keeps more than food safe.',
+  'Never hunt alone after midnight.',
+];
+
+export const FAMOUS_HAUNTINGS = [
+  { place: 'Amityville House', year: 1974, note: 'The most famous haunting in America' },
+  { place: 'Tower of London', year: 1536, note: 'Ghosts of queens walk the halls' },
+  { place: 'Bermuda Triangle', year: 1945, note: 'Ships and planes vanish without a trace' },
+];
+
+function ghostById(id) {
+  return GHOST_TYPES.find((g) => g.id === id);
 }
 
-export function ghostByEvidence(evidenceIds) {
-  const set = new Set(evidenceIds);
-  return GHOST_TYPES.filter((g) => g.evidence.every((e) => set.has(e)));
+function locationById(id) {
+  return HAUNTED_LOCATIONS.find((l) => l.id === id);
 }
 
-export function possibleGhosts(evidenceIds) {
-  const set = new Set(evidenceIds);
-  return GHOST_TYPES.filter((g) => g.evidence.every((e) => set.has(e) || !evidenceIds.includes(e)) && g.evidence.some((e) => set.has(e)));
+function equipmentById(id) {
+  return GHOST_EQUIPMENT.find((e) => e.id === id);
 }
 
-// ---------------------------------------------------------------------------
-// Factory
-// ---------------------------------------------------------------------------
+function rankById(id) {
+  return HUNTER_RANKS.find((r) => r.id === id) || HUNTER_RANKS[0];
+}
 
-export function createGhostHuntingSystem(deps) {
-  const d = deps || {};
-  const rng = d.rng || Math.random;
-  const getHour = d.getHour || (() => 0);
-  const getDay = d.getDay || (() => 1);
-  const getCash = d.getCash || (() => 0);
-  const addCash = d.addCash || (() => {});
-  const log = d.log || (() => {});
-  const getPlayerPos = d.getPlayerPos || (() => ({ x: 0, z: 0 }));
+function rankIndex(id) {
+  const i = HUNTER_RANKS.findIndex((r) => r.id === id);
+  return i < 0 ? 0 : i;
+}
+
+export function ghostByEvidence(evidence) {
+  return GHOST_TYPES.filter((g) => g.evidence.every((e) => evidence.includes(e)));
+}
+
+export function possibleGhosts(evidence) {
+  return GHOST_TYPES.filter((g) => {
+    const shared = g.evidence.filter((e) => evidence.includes(e));
+    const contradicted = evidence.some((e) => !g.evidence.includes(e) && EVIDENCE_TYPES.some((t) => t.id === e));
+    return shared.length >= 1 && !contradicted;
+  });
+}
+
+export function emfMeaning(level) {
+  return EMF_LEVELS.find((l) => l.level === level) || EMF_LEVELS[0];
+}
+
+export function sanityBand(sanity) {
+  return SANITY_EFFECTS.find((b) => sanity >= b.min && sanity <= b.max) || SANITY_EFFECTS[0];
+}
+
+export function identifyFromEvidence(evidence) {
+  const exact = ghostByEvidence(evidence);
+  const possible = GHOST_TYPES.filter((g) => {
+    if (exact.includes(g)) return false;
+    const shared = g.evidence.filter((e) => evidence.includes(e)).length;
+    return shared >= 2;
+  });
+  return { exact, possible };
+}
+
+export function evidenceLeftToFind(ghostId, found) {
+  const g = ghostById(ghostId);
+  if (!g) return [];
+  return g.evidence.filter((e) => !found.includes(e));
+}
+
+export function ghostWeakness(ghostId) {
+  const g = ghostById(ghostId);
+  return g ? g.weakness : 'unknown';
+}
+
+export function huntDurationFor(ghostId) {
+  const g = ghostById(ghostId);
+  if (!g) return 25;
+  return 20 + g.aggression * 5;
+}
+
+export function rewardEstimate(locationId, ghostId, rankMult) {
+  const loc = locationById(locationId);
+  const ghost = ghostById(ghostId);
+  if (!loc || !ghost) return 0;
+  return Math.round((loc.reward + ghost.reward) * (rankMult || 1));
+}
+
+export function bestiaryProgress(bestiary) {
+  const found = Object.keys(bestiary).filter((k) => bestiary[k]).length;
+  const total = GHOST_TYPES.length;
+  return { found, total, pct: Math.round((found / total) * 100) };
+}
+
+export function rankProgressHunter(xp) {
+  let current = HUNTER_RANKS[0];
+  let next = null;
+  for (let i = 0; i < HUNTER_RANKS.length; i++) {
+    if (xp >= HUNTER_RANKS[i].xpNeeded) current = HUNTER_RANKS[i];
+    else { next = HUNTER_RANKS[i]; break; }
+  }
+  const needed = next ? Math.max(0, next.xpNeeded - xp) : 0;
+  return { current, next, needed };
+}
+
+export function equipmentValue(owned, consumables) {
+  let sum = 0;
+  for (const id of owned) {
+    const item = equipmentById(id);
+    if (item) sum += item.price;
+  }
+  for (const id of Object.keys(consumables || {})) {
+    const item = equipmentById(id);
+    if (item) sum += item.price * consumables[id];
+  }
+  return sum;
+}
+
+export function nightBonusFor(hour) {
+  return hour >= 0 && hour < 4 ? 1.25 : 1;
+}
+
+export function recommendedEquipment(ghostId) {
+  const g = ghostById(ghostId);
+  if (!g) return [];
+  const tools = [];
+  for (const evId of g.evidence) {
+    const ev = EVIDENCE_TYPES.find((e) => e.id === evId);
+    if (ev) tools.push(ev.tool);
+  }
+  return tools;
+}
+
+export function hauntedObjectValue(objectId) {
+  const o = HAUNTED_OBJECTS.find((x) => x.id === objectId);
+  return o ? o.value : 0;
+}
+
+export function hauntedObjectRisk(objectId) {
+  const o = HAUNTED_OBJECTS.find((x) => x.id === objectId);
+  return o ? o.risk : 0;
+}
+
+export function gearChecklistFor(evidence) {
+  return GEAR_CHECKLIST.filter((g) => {
+    if (g.item === 'smudge' || g.item === 'salt' || g.item === 'crucifix' || g.item === 'candle' || g.item === 'trap') return true;
+    const ev = EVIDENCE_TYPES.find((e) => e.tool === g.item);
+    return ev && evidence.includes(ev.id);
+  });
+}
+
+export function seanceRisk(hour, aggression) {
+  const night = hour >= 0 && hour < 4 ? 2 : 1;
+  return Math.min(10, aggression * night);
+}
+
+export function cursedSalePrice(objectId, rankMult) {
+  const o = CURSED_OBJECTS.find((x) => x.id === objectId);
+  if (!o) return 0;
+  return Math.round(o.value * (rankMult || 1));
+}
+
+export function randomSpiritPhrase(rng) {
+  const r = rng || Math.random;
+  return SPIRIT_BOX_PHRASES[Math.floor(r() * SPIRIT_BOX_PHRASES.length)];
+}
+
+export function hauntedGradeFor(haunt) {
+  if (haunt >= 5) return 'A';
+  if (haunt >= 4) return 'B';
+  if (haunt >= 2) return 'C';
+  return 'D';
+}
+
+export function filmForYearGhost(year) {
+  return GHOST_FILMS.find((f) => f.year === year) || null;
+}
+
+export function randomCallsign(rng) {
+  const r = rng || Math.random;
+  return HUNTER_CALLSIGNS[Math.floor(r() * HUNTER_CALLSIGNS.length)];
+}
+
+export function mottoForHunter(index) {
+  return HUNTER_MOTTOS[((index % HUNTER_MOTTOS.length) + HUNTER_MOTTOS.length) % HUNTER_MOTTOS.length];
+}
+
+export function proverbGhost(index) {
+  return GHOST_PROVERBS[((index % GHOST_PROVERBS.length) + GHOST_PROVERBS.length) % GHOST_PROVERBS.length];
+}
+
+export function hauntingFor(place) {
+  return FAMOUS_HAUNTINGS.find((h) => h.place === place) || null;
+}
+
+export function createGhostHuntingSystem(deps = {}) {
+  const rng = typeof deps.rng === 'function' ? deps.rng : Math.random;
+  const getHour = typeof deps.getHour === 'function' ? deps.getHour : () => 12;
+  const getDay = typeof deps.getDay === 'function' ? deps.getDay : () => 1;
+  const getCash = typeof deps.getCash === 'function' ? deps.getCash : () => 0;
+  const addCash = typeof deps.addCash === 'function' ? deps.addCash : () => {};
+  const log = typeof deps.log === 'function' ? deps.log : () => {};
+  const getPlayerPos = typeof deps.getPlayerPos === 'function' ? deps.getPlayerPos : () => ({ x: 0, z: 0 });
 
   const state = {
     xp: 0,
@@ -170,90 +463,54 @@ export function createGhostHuntingSystem(deps) {
     bestiary: {},
   };
 
-  function rank() {
-    return HUNTER_RANKS.find((r) => r.id === state.rank) || HUNTER_RANKS[0];
-  }
-
-  function rewardMult() {
-    if (state.rank === 'master') return 1.35;
-    if (state.rank === 'expert') return 1.2;
-    if (state.rank === 'professional') return 1.1;
-    return 1;
-  }
-
   function refreshRank() {
-    let best = HUNTER_RANKS[0];
-    for (const r of HUNTER_RANKS) if (state.xp >= r.xpNeeded) best = r;
-    if (best.id !== state.rank) {
-      state.rank = best.id;
-      log(`Hunter rank up: ${best.name}! ${best.perk}`);
-    }
+    state.rank = rankProgressHunter(state.xp).current.id;
+  }
+
+  function gainXp(amount) {
+    state.xp += amount;
+    refreshRank();
   }
 
   function checkMission(id) {
     if (state.missionsDone[id]) return;
-    const m = GHOST_MISSIONS.find((x) => x.id === id);
-    if (!m) return;
+    const mission = GHOST_MISSIONS.find((m) => m.id === id);
+    if (!mission) return;
     let done = false;
-    switch (id) {
-      case 'first-evidence': done = state.evidenceFound.length >= 1; break;
-      case 'first-id': done = Object.keys(state.identified).length >= 1; break;
-      case 'first-capture': done = state.totalCaptures >= 1; break;
-      case 'five-captures': done = state.totalCaptures >= 5; break;
-      case 'demon-capture': done = (state.captured.demon || 0) >= 1; break;
-      case 'perfect-contract': done = state.perfectContracts >= 1; break;
-      case 'all-ghosts': done = Object.keys(state.bestiary).length >= GHOST_TYPES.length; break;
-      case 'no-death': done = state.huntsSurvived >= 10 && state.totalDeaths === 0; break;
-      case 'photo-ghost': done = state.ghostPhotos >= 1; break;
-      case 'night-owl': done = (state.nightOwlDone || 0) >= 1; break;
-      default: done = false;
-    }
+    if (id === 'first-capture') done = state.totalCaptures >= 1;
+    else if (id === 'capture-5') done = state.totalCaptures >= 5;
+    else if (id === 'capture-10') done = state.totalCaptures >= 10;
+    else if (id === 'identify-5') done = Object.values(state.identified).reduce((s, n) => s + n, 0) >= 5;
+    else if (id === 'perfect-contract') done = state.perfectContracts >= 1;
+    else if (id === 'photo-ghost') done = state.ghostPhotos >= 1;
+    else if (id === 'night-owl') done = (state.nightOwlCaptures || 0) >= 1;
+    else if (id === 'survive-hunt') done = state.huntsSurvived >= 3;
+    else if (id === 'bestiary-5') done = bestiaryProgress(state.bestiary).found >= 5;
+    else if (id === 'demon-capture') done = (state.captured.demon || 0) >= 1;
     if (!done) return;
     state.missionsDone[id] = true;
-    addCash(m.reward);
-    log(`Ghost mission complete: ${m.name} (+$${m.reward}).`);
+    addCash(mission.reward);
+    log(`Mission complete: ${mission.name}`);
   }
 
-  function buyEquipment(itemId, qty) {
-    const item = GHOST_EQUIPMENT.find((e) => e.id === itemId);
-    if (!item) return { ok: false, error: 'unknown item' };
-    const n = item.consumable ? clampNum(Math.floor(qty) || 1, 1, 10) : 1;
-    if (!item.consumable && state.equipmentOwned.includes(itemId)) {
-      return { ok: false, error: 'already owned' };
-    }
-    const cost = item.price * n;
-    if (getCash() < cost) return { ok: false, error: 'not enough cash' };
-    addCash(-cost);
-    if (item.consumable) {
-      state.consumables[itemId] = (state.consumables[itemId] || 0) + n;
-      // Consumable detection tools (book, camera) must also count as owned
-      // so sweepRoom accepts them.
-      if (item.detect && !state.equipmentOwned.includes(itemId)) state.equipmentOwned.push(itemId);
-    } else {
-      state.equipmentOwned.push(itemId);
-    }
-    log(`Bought ${item.name}${n > 1 ? ` x${n}` : ''} ($${cost}).`);
-    return { ok: true, item, qty: n };
-  }
-
-  function generateContract() {
-    const loc = HAUNTED_LOCATIONS[Math.floor(rng() * HAUNTED_LOCATIONS.length)];
+  function makeContract() {
+    const cap = Math.min(5, 1 + rankIndex(state.rank));
+    const pool = HAUNTED_LOCATIONS.filter((l) => l.haunt <= cap);
+    const loc = pool.length ? pool[Math.floor(rng() * pool.length)] : HAUNTED_LOCATIONS[0];
     const ghost = GHOST_TYPES[Math.floor(rng() * GHOST_TYPES.length)];
-    const rankIdx = HUNTER_RANKS.findIndex((r) => r.id === state.rank);
-    const maxHaunt = rankIdx === 0 ? 2 : rankIdx === 1 ? 3 : 5;
-    const location = loc.haunt <= maxHaunt ? loc : HAUNTED_LOCATIONS[0];
+    const roomCount = Math.min(loc.rooms, 8);
+    const ghostRoomIdx = Math.floor(rng() * roomCount);
     const rooms = [];
-    const shuffled = [...ROOM_NAMES].sort(() => rng() - 0.5);
-    for (let i = 0; i < location.rooms; i++) rooms.push({ name: shuffled[i % shuffled.length], searched: false, ghostRoom: false });
-    const ghostRoomIdx = Math.floor(rng() * rooms.length);
-    rooms[ghostRoomIdx].ghostRoom = true;
+    for (let i = 0; i < roomCount; i++) {
+      rooms.push({ name: ROOM_NAMES[Math.floor(rng() * ROOM_NAMES.length)], searched: false, ghostRoom: i === ghostRoomIdx });
+    }
     return {
-      id: `contract-${Date.now()}-${Math.floor(rng() * 1e6)}`,
-      locationId: location.id,
-      locationName: location.name,
+      id: `contract-${Date.now()}-${Math.floor(rng() * 100000)}`,
+      locationId: loc.id,
+      locationName: loc.name,
       ghostId: ghost.id,
       ghostName: ghost.name,
-      reward: Math.round((location.reward + ghost.reward) * rewardMult()),
+      reward: loc.reward + ghost.reward,
       rooms,
       ghostRoomIdx,
       status: 'offered',
@@ -261,730 +518,391 @@ export function createGhostHuntingSystem(deps) {
     };
   }
 
-  function refreshContracts() {
-    const day = getDay();
-    state.contracts = [];
-    const count = 3 + HUNTER_RANKS.findIndex((r) => r.id === state.rank);
-    for (let i = 0; i < count; i++) state.contracts.push(generateContract());
-    state.contractDay = day;
-    return state.contracts;
-  }
-
-  function contracts() {
-    if (state.contractDay !== getDay() || state.contracts.length === 0) refreshContracts();
-    return state.contracts.filter((c) => c.status === 'offered');
-  }
-
-  function acceptContract(contractId) {
-    const c = state.contracts.find((x) => x.id === contractId && x.status === 'offered');
-    if (!c) return { ok: false, error: 'contract not available' };
-    if (state.active) return { ok: false, error: 'already on a contract' };
-    c.status = 'active';
-    const hour = getHour();
-    const nightBonus = (hour >= 0 && hour < 4) ? 1.25 : 1;
-    state.active = {
-      contractId: c.id,
-      locationId: c.locationId,
-      locationName: c.locationName,
-      ghostId: c.ghostId,
-      ghostName: c.ghostName,
-      reward: Math.round(c.reward * nightBonus),
-      rooms: c.rooms,
-      ghostRoomIdx: c.ghostRoomIdx,
-      evidence: [],
-      huntActive: false,
-      huntTimer: 0,
-      smudgeTimer: 0,
-      crucifixUsed: false,
-      startedHour: hour,
-      photos: 0,
-    };
-    state.sanity = 100;
-    state.contractsToday++;
-    log(`Contract accepted: ${c.locationName}. Find 3 evidence, identify the ghost, trap it. Reward $${state.active.reward}.`);
-    return { ok: true, contract: state.active };
-  }
-
-  function sweepRoom(roomIdx, toolId) {
-    const a = state.active;
-    if (!a) return { ok: false, error: 'no active contract' };
-    if (roomIdx < 0 || roomIdx >= a.rooms.length) return { ok: false, error: 'no such room' };
-    const tool = GHOST_EQUIPMENT.find((e) => e.id === toolId);
-    if (!tool) return { ok: false, error: 'unknown tool' };
-    if (!state.equipmentOwned.includes(toolId)) return { ok: false, error: `you do not own a ${tool.name}` };
-    const room = a.rooms[roomIdx];
-    const ghost = GHOST_TYPES.find((g) => g.id === a.ghostId);
-    const isGhostRoom = roomIdx === a.ghostRoomIdx;
-    let found = null;
-    let reading = null;
-    // Each tool only finds its own evidence type, and only in the ghost room
-    // (except orbs, which can appear anywhere at low odds).
-    if (tool.detect) {
-      const canFind = ghost.evidence.includes(tool.detect);
-      const inRoom = isGhostRoom || (tool.detect === 'orbs' && rng() < 0.15);
-      if (canFind && inRoom && !a.evidence.includes(tool.detect)) {
-        a.evidence.push(tool.detect);
-        state.evidenceFound.push(tool.detect);
-        found = tool.detect;
-        const ev = EVIDENCE_TYPES.find((e) => e.id === tool.detect);
-        log(`Evidence found: ${ev.name} in the ${room.name}!`);
-        checkMission('first-evidence');
-      } else if (canFind && inRoom) {
-        reading = 'You already recorded that evidence here.';
-      } else if (!canFind) {
-        reading = `No ${tool.detect} here. This ghost does not leave that trace.`;
-      } else {
-        reading = 'Nothing here. The ghost is in another room.';
-      }
-    } else {
-      reading = 'That item is for protection, not detection.';
-    }
-    room.searched = true;
-    // Searching the ghost room drains sanity and can trigger a hunt event.
-    if (isGhostRoom) {
-      state.sanity = clampNum(state.sanity - (2 + ghost.aggression), 0, 100);
-      if (rng() < 0.35) triggerHuntEvent();
-    }
-    // Sanity check: at 0 the ghost hunts.
-    if (state.sanity <= 0 && !a.huntActive) startHunt();
-    return { ok: true, room: room.name, found, reading, evidence: [...a.evidence], sanity: Math.round(state.sanity) };
-  }
-
-  function triggerHuntEvent() {
-    const ev = HUNT_EVENTS[Math.floor(rng() * HUNT_EVENTS.length)];
-    const a = state.active;
-    const ghost = a ? GHOST_TYPES.find((g) => g.id === a.ghostId) : null;
-    const drain = ghost && ghost.id === 'yurei' ? ev.sanity * 2 : ev.sanity;
-    state.sanity = clampNum(state.sanity + drain, 0, 100);
-    log(`${ev.name}: ${ev.desc} (sanity ${drain})`);
-    return { ok: true, event: ev, sanity: Math.round(state.sanity) };
-  }
-
-  function startHunt() {
-    const a = state.active;
-    if (!a || a.huntActive) return { ok: false, error: 'no hunt to start' };
-    a.huntActive = true;
-    a.huntTimer = 20 + (GHOST_TYPES.find((g) => g.id === a.ghostId) || { aggression: 1 }).aggression * 5;
-    log('THE GHOST IS HUNTING! Hide or break line of sight!');
-    return { ok: true, duration: a.huntTimer };
-  }
-
-  function useConsumable(itemId) {
-    const a = state.active;
-    const count = state.consumables[itemId] || 0;
-    if (count <= 0) return { ok: false, error: `no ${itemId} left` };
-    state.consumables[itemId]--;
-    switch (itemId) {
-      case 'smudge':
-        if (a) { a.smudgeTimer = 60; a.huntActive = false; }
-        log('Smudge sticks burned. The ghost calms down.');
-        return { ok: true, effect: 'ghost calmed for 60s' };
-      case 'salt':
-        if (a) a.huntTimer = Math.max(0, (a.huntTimer || 0) - 10);
-        log('Salt line laid. The ghost slows down.');
-        return { ok: true, effect: 'hunt shortened by 10s' };
-      case 'crucifix':
-        if (a && a.huntActive) {
-          a.huntActive = false;
-          a.crucifixUsed = true;
-          log('The crucifix burns bright — the hunt ends!');
-          return { ok: true, effect: 'hunt stopped' };
-        }
-        log('Crucifix placed. It will stop one hunt.');
-        if (a) a.crucifixPlaced = true;
-        return { ok: true, effect: 'crucifix placed' };
-      case 'candle':
-        state.sanity = clampNum(state.sanity + 5, 0, 100);
-        log('Candle lit. The dark feels less heavy.');
-        return { ok: true, effect: '+5 sanity' };
-      case 'sanity-pills':
-        state.sanity = clampNum(state.sanity + 25, 0, 100);
-        log('Sanity pills taken. +25 sanity.');
-        return { ok: true, effect: '+25 sanity' };
-      case 'trap':
-        return placeTrap();
-      default:
-        return { ok: false, error: 'cannot use that here' };
+  function drainSanity(amount) {
+    state.sanity = Math.max(0, Math.min(100, state.sanity - amount));
+    if (state.sanity <= 0 && state.active && !state.active.huntActive) {
+      startHuntInternal();
     }
   }
 
-  function identifyGhost(ghostId) {
-    const a = state.active;
-    if (!a) return { ok: false, error: 'no active contract' };
-    if (a.evidence.length < 3) return { ok: false, error: 'need 3 evidence first' };
-    const guess = GHOST_TYPES.find((g) => g.id === ghostId);
-    if (!guess) return { ok: false, error: 'unknown ghost' };
-    const correct = guess.id === a.ghostId;
-    a.identifiedAs = ghostId;
-    a.identifiedCorrect = correct;
-    if (correct) {
-      state.identified[ghostId] = (state.identified[ghostId] || 0) + 1;
-      state.bestiary[ghostId] = true;
-      state.xp += 60;
-      refreshRank();
-      checkMission('first-id');
-      checkMission('all-ghosts');
-      log(`Identified: ${guess.name}! ${guess.desc} Weakness: ${guess.weakness}.`);
-      return { ok: true, correct: true, ghost: guess };
-    }
-    state.sanity = clampNum(state.sanity - 10, 0, 100);
-    log(`Wrong guess — that is not a ${guess.name}. The ghost is angry. (-10 sanity)`);
-    return { ok: true, correct: false, hint: 'Two of your three evidence point elsewhere. Re-check the rooms.' };
+  function startHuntInternal() {
+    const active = state.active;
+    if (!active) return;
+    active.huntActive = true;
+    active.huntTimer = huntDurationFor(active.ghostId);
+    log('A hunt has begun!');
   }
 
-  function placeTrap() {
-    const a = state.active;
-    if (!a) return { ok: false, error: 'no active contract' };
-    if (!a.identifiedCorrect) return { ok: false, error: 'identify the ghost first' };
-    if (a.huntActive) return { ok: false, error: 'cannot trap during a hunt' };
-    const ghost = GHOST_TYPES.find((g) => g.id === a.ghostId);
-    const inGhostRoom = a.lastRoom === a.ghostRoomIdx;
-    const chance = inGhostRoom ? 0.95 : 0.6;
-    const roll = rng();
-    if (roll > chance) {
-      log('The trap snapped shut on empty air. The ghost was not here.');
-      return { ok: true, captured: false, reason: 'wrong room — try the ghost room' };
-    }
-    return captureGhost(ghost);
-  }
-
-  function captureGhost(ghost) {
-    const a = state.active;
-    state.totalCaptures++;
+  function runCapture() {
+    const active = state.active;
+    const ghost = ghostById(active.ghostId);
+    state.totalCaptures += 1;
     state.captured[ghost.id] = (state.captured[ghost.id] || 0) + 1;
-    state.totalContracts++;
-    state.xp += 100 + ghost.aggression * 20;
-    const perfect = state.sanity >= 50;
-    if (perfect) state.perfectContracts++;
+    state.totalContracts += 1;
     const hour = getHour();
-    if (hour >= 0 && hour < 4) state.nightOwlDone = (state.nightOwlDone || 0) + 1;
-    const reward = a.reward;
+    if (hour >= 0 && hour < 4) {
+      state.nightOwlCaptures = (state.nightOwlCaptures || 0) + 1;
+    }
+    if (state.sanity >= 50) state.perfectContracts += 1;
+    const reward = Math.round(active.reward * nightBonusFor(hour));
     addCash(reward);
-    state.huntsSurvived++;
-    log(`CAPTURED the ${ghost.name}! Contract complete: +$${reward}${perfect ? ' (perfect — sanity above 50%)' : ''}.`);
+    gainXp(100);
+    log(`Captured ${ghost.name}! Earned ${reward}`);
     state.active = null;
     state.sanity = 100;
-    refreshRank();
+    state.evidenceFound = [];
     checkMission('first-capture');
-    checkMission('five-captures');
-    checkMission('demon-capture');
+    checkMission('capture-5');
+    checkMission('capture-10');
     checkMission('perfect-contract');
-    checkMission('no-death');
     checkMission('night-owl');
-    return { ok: true, captured: true, ghost: ghost.name, reward, perfect };
+    checkMission('demon-capture');
+    return { ok: true, captured: true, ghost, reward };
   }
 
-  function takePhoto(roomIdx) {
-    const a = state.active;
-    if (!a) return { ok: false, error: 'no active contract' };
-    if ((state.consumables.camera || 0) <= 0 && !state.equipmentOwned.includes('camera')) {
-      return { ok: false, error: 'you need a camera' };
-    }
-    state.photosTaken++;
-    a.photos++;
-    const isGhostRoom = roomIdx === a.ghostRoomIdx;
-    const ghostVisible = isGhostRoom && rng() < 0.4;
-    if (ghostVisible) {
-      state.ghostPhotos++;
-      state.xp += 40;
-      log('PHOTO: the ghost itself is in the frame! +$100 photo bonus.');
-      addCash(100);
-      checkMission('photo-ghost');
-      return { ok: true, subject: 'ghost', xp: 40 };
-    }
-    if (isGhostRoom && rng() < 0.5) {
-      log('Photo: ghost orbs floating in the frame.');
-      if (!a.evidence.includes('orbs') && GHOST_TYPES.find((g) => g.id === a.ghostId).evidence.includes('orbs')) {
-        a.evidence.push('orbs');
-        state.evidenceFound.push('orbs');
-        checkMission('first-evidence');
+  const system = {
+    state,
+
+    buyEquipment(itemId, qty) {
+      const item = equipmentById(itemId);
+      if (!item) return { ok: false, error: 'unknown item' };
+      if (!item.consumable && state.equipmentOwned.includes(itemId)) {
+        return { ok: false, error: 'already owned' };
       }
-      return { ok: true, subject: 'orbs' };
-    }
-    log('Photo: an empty room. Nothing unusual.');
-    return { ok: true, subject: 'nothing' };
-  }
+      const quantity = item.consumable ? Math.max(1, Math.min(10, qty || 1)) : 1;
+      const total = item.price * quantity;
+      if (getCash() < total) return { ok: false, error: 'not enough cash' };
+      addCash(-total);
+      if (item.consumable) {
+        state.consumables[itemId] = (state.consumables[itemId] || 0) + quantity;
+        if (item.detect) state.equipmentOwned.push(itemId);
+      } else {
+        state.equipmentOwned.push(itemId);
+      }
+      log(`Bought ${item.name}`);
+      return { ok: true, item, qty: quantity };
+    },
 
-  function abandonContract() {
-    const a = state.active;
-    if (!a) return { ok: false, error: 'no active contract' };
-    state.active = null;
-    state.sanity = 100;
-    state.totalDeaths += 0;
-    log(`Abandoned the ${a.locationName} contract. The ghost keeps the house.`);
-    return { ok: true };
-  }
+    contracts() {
+      if (state.contractDay !== getDay() || state.contracts.length === 0) this.refreshContracts();
+      return state.contracts;
+    },
 
-  function dieInHunt() {
-    const a = state.active;
-    state.totalDeaths++;
-    state.huntsSurvived = 0;
-    if (a) {
-      log(`The ${a.ghostName} caught you in ${a.locationName}. You wake up outside, equipment lost.`);
-      state.active = null;
-    }
-    state.sanity = 100;
-    // Death costs the consumables carried in.
-    state.consumables = {};
-    return { ok: true, deaths: state.totalDeaths };
-  }
+    refreshContracts() {
+      state.contracts = [];
+      const count = 3 + rankIndex(state.rank);
+      for (let i = 0; i < count; i++) state.contracts.push(makeContract());
+      state.contractDay = getDay();
+      return state.contracts;
+    },
 
-  function tick(dt) {
-    const day = getDay();
-    if (day !== state.day) {
-      state.day = day;
-      state.contractsToday = 0;
-      refreshContracts();
-    }
-    const a = state.active;
-    if (!a) return;
-    // Sanity slowly drains while inside; faster at night, faster for Yurei.
-    const hour = getHour();
-    const night = hour >= 0 && hour < 5 ? 1.5 : 1;
-    const drain = (a.ghostId === 'yurei' ? 0.5 : 0.3) * night * (state.rank === 'master' ? 0.7 : 1);
-    state.sanity = clampNum(state.sanity - drain * dt, 0, 100);
-    if (a.smudgeTimer > 0) a.smudgeTimer -= dt;
-    if (a.huntActive) {
-      a.huntTimer -= dt;
-      state.sanity = clampNum(state.sanity - 1.5 * dt, 0, 100);
-      if (a.huntTimer <= 0) {
-        if (a.crucifixPlaced && !a.crucifixUsed) {
-          a.crucifixPlaced = false;
-          a.crucifixUsed = true;
-          a.huntActive = false;
-          log('The crucifix stops the hunt!');
+    acceptContract(contractId) {
+      const contract = state.contracts.find((c) => c.id === contractId);
+      if (!contract) return { ok: false, error: 'contract not offered' };
+      if (state.active) return { ok: false, error: 'contract already active' };
+      const hour = getHour();
+      const reward = Math.round(contract.reward * nightBonusFor(hour));
+      const active = {
+        contractId: contract.id,
+        locationId: contract.locationId,
+        locationName: contract.locationName,
+        ghostId: contract.ghostId,
+        ghostName: contract.ghostName,
+        reward,
+        rooms: contract.rooms.map((r) => ({ ...r })),
+        ghostRoomIdx: contract.ghostRoomIdx,
+        evidence: [],
+        huntActive: false,
+        huntTimer: 0,
+        smudgeTimer: 0,
+        crucifixUsed: false,
+        startedHour: hour,
+        photos: 0,
+      };
+      state.contracts = state.contracts.filter((c) => c.id !== contractId);
+      state.active = active;
+      state.sanity = 100;
+      state.evidenceFound = [];
+      state.contractsToday += 1;
+      log(`Accepted contract at ${contract.locationName}`);
+      return { ok: true, active };
+    },
+
+    sweepRoom(roomIdx, toolId) {
+      const active = state.active;
+      if (!active) return { ok: false, error: 'no active contract' };
+      if (typeof roomIdx !== 'number' || roomIdx < 0 || roomIdx >= active.rooms.length) {
+        return { ok: false, error: 'invalid room' };
+      }
+      const tool = equipmentById(toolId);
+      if (!tool) return { ok: false, error: 'unknown tool' };
+      if (!state.equipmentOwned.includes(toolId)) return { ok: false, error: 'tool not owned' };
+      const room = active.rooms[roomIdx];
+      const ghost = ghostById(active.ghostId);
+      let found = null;
+      let reading = 'No activity here.';
+      if (tool.detect) {
+        const inGhostRoom = roomIdx === active.ghostRoomIdx;
+        const matches = ghost.evidence.includes(tool.detect);
+        if (matches && inGhostRoom && !active.evidence.includes(tool.detect)) {
+          found = tool.detect;
+        } else if (tool.detect === 'orbs' && !active.evidence.includes('orbs') && rng() < 0.15) {
+          found = 'orbs';
+        }
+        if (found) {
+          active.evidence.push(found);
+          state.evidenceFound.push(found);
+          reading = `Evidence found: ${found}`;
+        } else if (matches && inGhostRoom) {
+          reading = 'The readings are strong here.';
         } else {
-          a.huntActive = false;
-          dieInHunt();
-          return;
+          reading = 'Faint readings only.';
         }
       }
-    } else if (state.sanity <= 25 && rng() < dt * 0.05) {
-      startHunt();
-    }
-    if (state.sanity <= 0 && !a.huntActive) startHunt();
-  }
+      room.searched = true;
+      if (roomIdx === active.ghostRoomIdx) drainSanity(2 + ghost.aggression);
+      if (rng() < 0.35) this.triggerHuntEvent();
+      if (state.sanity <= 0 && active && !active.huntActive) startHuntInternal();
+      return { ok: true, room: room.name, found, reading, evidence: [...active.evidence], sanity: Math.round(state.sanity) };
+    },
 
-  function missions() {
-    return GHOST_MISSIONS.map((m) => ({ ...m, done: !!state.missionsDone[m.id] }));
-  }
+    triggerHuntEvent() {
+      const event = HUNT_EVENTS[Math.floor(rng() * HUNT_EVENTS.length)];
+      let drain = -event.sanity;
+      const active = state.active;
+      if (active && active.ghostId === 'yurei') drain *= 2;
+      state.sanity = Math.max(0, Math.min(100, state.sanity - drain));
+      log(`Hunt event: ${event.name}`);
+      return { ok: true, event, sanity: Math.round(state.sanity) };
+    },
 
-  function hudLine() {
-    if (!state.active && state.totalCaptures === 0) return '';
-    if (!state.active) return `Ghost Hunter ${rank().name} | ${state.totalCaptures} captured`;
-    return `Ghost ${state.active.locationName} | sanity ${Math.round(state.sanity)}% | evidence ${state.active.evidence.length}/3${state.active.huntActive ? ' | HUNTING — HIDE!' : ''}`;
-  }
+    startHunt() {
+      if (!state.active) return { ok: false, error: 'no active contract' };
+      if (state.active.huntActive) return { ok: false, error: 'hunt already active' };
+      startHuntInternal();
+      return { ok: true, duration: state.active.huntTimer };
+    },
 
-  function summary() {
-    return {
-      rank: state.rank,
-      xp: state.xp,
-      totalCaptures: state.totalCaptures,
-      totalContracts: state.totalContracts,
-      totalDeaths: state.totalDeaths,
-      bestiary: Object.keys(state.bestiary).length,
-      ghostTypes: GHOST_TYPES.length,
-      missionsDone: Object.keys(state.missionsDone).length,
-      sanity: Math.round(state.sanity),
-      active: state.active ? state.active.locationName : null,
-    };
-  }
+    useConsumable(itemId) {
+      if ((state.consumables[itemId] || 0) <= 0) return { ok: false, error: 'none held' };
+      const active = state.active;
+      if (itemId === 'trap') {
+        state.consumables[itemId] -= 1;
+        return this.placeTrap();
+      }
+      state.consumables[itemId] -= 1;
+      let effect = 'Used.';
+      if (itemId === 'smudge') {
+        if (active) {
+          active.smudgeTimer = 60;
+          active.huntActive = false;
+        }
+        effect = 'The ghost calms down for a minute.';
+      } else if (itemId === 'salt') {
+        if (active) active.huntTimer = Math.max(0, active.huntTimer - 10);
+        effect = 'Salt slows the hunt.';
+      } else if (itemId === 'crucifix') {
+        if (active) {
+          if (active.huntActive) {
+            active.huntActive = false;
+            active.crucifixUsed = true;
+            effect = 'The crucifix ends the hunt.';
+          } else {
+            active.crucifixPlaced = true;
+            effect = 'Crucifix placed.';
+          }
+        }
+      } else if (itemId === 'candle') {
+        state.sanity = Math.min(100, state.sanity + 5);
+        effect = 'Sanity restored a little.';
+      } else if (itemId === 'sanity-pills') {
+        state.sanity = Math.min(100, state.sanity + 25);
+        effect = 'Sanity restored a lot.';
+      } else {
+        return { ok: false, error: 'cannot use this item' };
+      }
+      return { ok: true, effect };
+    },
 
-  function serialize() {
-    return {
-      xp: state.xp,
-      rank: state.rank,
-      equipmentOwned: [...state.equipmentOwned],
-      consumables: { ...state.consumables },
-      totalCaptures: state.totalCaptures,
-      totalContracts: state.totalContracts,
-      totalDeaths: state.totalDeaths,
-      perfectContracts: state.perfectContracts,
-      ghostPhotos: state.ghostPhotos,
-      photosTaken: state.photosTaken,
-      identified: { ...state.identified },
-      captured: { ...state.captured },
-      bestiary: { ...state.bestiary },
-      missionsDone: { ...state.missionsDone },
-      huntsSurvived: state.huntsSurvived,
-    };
-  }
+    identifyGhost(ghostId) {
+      const active = state.active;
+      if (!active) return { ok: false, error: 'no active contract' };
+      if (active.evidence.length < 3) return { ok: false, error: 'need three evidence' };
+      const ghost = ghostById(ghostId);
+      if (!ghost) return { ok: false, error: 'unknown ghost' };
+      if (ghostId === active.ghostId) {
+        active.identifiedGuess = ghostId;
+        active.identifiedCorrect = true;
+        state.identified[ghostId] = (state.identified[ghostId] || 0) + 1;
+        state.bestiary[ghostId] = true;
+        gainXp(60);
+        log(`${ghost.name}: ${ghost.desc} Weakness: ${ghost.weakness}`);
+        checkMission('identify-5');
+        checkMission('bestiary-5');
+        return { ok: true, correct: true, ghost };
+      }
+      drainSanity(10);
+      log('Wrong identification!');
+      return { ok: true, correct: false, hint: 'That does not match the evidence.' };
+    },
 
-  function deserialize(s) {
-    if (!s || typeof s !== 'object') return;
-    if (typeof s.xp === 'number') state.xp = s.xp;
-    if (typeof s.rank === 'string') state.rank = s.rank;
-    if (Array.isArray(s.equipmentOwned)) state.equipmentOwned = [...s.equipmentOwned];
-    if (s.consumables) state.consumables = { ...s.consumables };
-    for (const k of ['totalCaptures', 'totalContracts', 'totalDeaths', 'perfectContracts', 'ghostPhotos', 'photosTaken', 'huntsSurvived']) {
-      if (typeof s[k] === 'number') state[k] = s[k];
-    }
-    for (const k of ['identified', 'captured', 'bestiary', 'missionsDone']) {
-      if (s[k]) state[k] = { ...s[k] };
-    }
-  }
+    placeTrap() {
+      const active = state.active;
+      if (!active) return { ok: false, error: 'no active contract' };
+      if (!active.identifiedCorrect) return { ok: false, error: 'identify the ghost first' };
+      if (active.huntActive) return { ok: false, error: 'cannot place a trap during a hunt' };
+      const inGhostRoom = active.lastRoom === active.ghostRoomIdx;
+      const chance = inGhostRoom ? 0.95 : 0.6;
+      if (rng() >= chance) {
+        log('Trap failed!');
+        return { ok: true, captured: false, reason: 'wrong-room' };
+      }
+      return runCapture();
+    },
 
-  return {
-    state,
-    buyEquipment,
-    contracts,
-    refreshContracts,
-    acceptContract,
-    sweepRoom,
-    triggerHuntEvent,
-    startHunt,
-    useConsumable,
-    identifyGhost,
-    placeTrap,
-    takePhoto,
-    abandonContract,
-    dieInHunt,
-    missions,
-    tick,
-    hudLine,
-    summary,
-    serialize,
-    deserialize,
+    takePhoto(roomIdx) {
+      const active = state.active;
+      if (!active) return { ok: false, error: 'no active contract' };
+      if (!state.equipmentOwned.includes('camera')) return { ok: false, error: 'no camera' };
+      state.photosTaken += 1;
+      active.photos += 1;
+      const ghost = ghostById(active.ghostId);
+      let subject = 'nothing';
+      let xp = 0;
+      if (roomIdx === active.ghostRoomIdx && rng() < 0.4) {
+        subject = 'ghost';
+        state.ghostPhotos += 1;
+        addCash(100);
+        gainXp(40);
+        xp = 40;
+        checkMission('photo-ghost');
+      } else if (rng() < 0.5) {
+        subject = 'orbs';
+        if (ghost.evidence.includes('orbs') && !active.evidence.includes('orbs')) {
+          active.evidence.push('orbs');
+          state.evidenceFound.push('orbs');
+        }
+      }
+      return { ok: true, subject, xp };
+    },
+
+    abandonContract() {
+      if (!state.active) return { ok: false, error: 'no active contract' };
+      state.active = null;
+      state.sanity = 100;
+      state.evidenceFound = [];
+      log('Contract abandoned');
+      return { ok: true };
+    },
+
+    dieInHunt() {
+      state.totalDeaths += 1;
+      state.huntsSurvived = 0;
+      state.active = null;
+      state.sanity = 100;
+      state.evidenceFound = [];
+      state.consumables = {};
+      log('You died in the hunt');
+      return { ok: true, deaths: state.totalDeaths };
+    },
+
+    missions() {
+      return GHOST_MISSIONS.map((m) => ({ ...m, done: !!state.missionsDone[m.id] }));
+    },
+
+    tick(dt) {
+      const day = getDay();
+      if (day !== state.day) {
+        state.day = day;
+        state.contractsToday = 0;
+        this.refreshContracts();
+      }
+      const active = state.active;
+      if (!active) return;
+      const hour = getHour();
+      const night = hour >= 0 && hour < 4;
+      let rate = night ? 0.3 * 1.5 : 0.3;
+      if (active.ghostId === 'yurei') rate = 0.5;
+      if (state.rank === 'master') rate *= 0.7;
+      state.sanity = Math.max(0, state.sanity - rate * (dt || 0));
+      if (active.smudgeTimer > 0) active.smudgeTimer = Math.max(0, active.smudgeTimer - (dt || 0));
+      if (active.huntActive) {
+        active.huntTimer -= dt || 0;
+        state.sanity = Math.max(0, state.sanity - 1.5 * (dt || 0));
+        if (active.huntTimer <= 0) {
+          if (active.crucifixPlaced) {
+            active.huntActive = false;
+            active.crucifixPlaced = false;
+            log('The crucifix ended the hunt');
+          } else {
+            this.dieInHunt();
+            return;
+          }
+        }
+      } else {
+        if (state.sanity <= 25 && rng() < 0.05 * (dt || 0)) startHuntInternal();
+        if (state.sanity <= 0) startHuntInternal();
+      }
+    },
+
+    hudLine() {
+      if (!state.active && state.totalCaptures === 0) return '';
+      const rank = rankById(state.rank);
+      if (!state.active) return `Ghost Hunter ${rank.name} | ${state.totalCaptures} captured`;
+      const active = state.active;
+      let line = `Ghost ${active.locationName} | sanity ${Math.round(state.sanity)}% | evidence ${active.evidence.length}/3`;
+      if (active.huntActive) line += ' | HUNTING!';
+      return line;
+    },
+
+    summary() {
+      return {
+        xp: state.xp,
+        rank: state.rank,
+        totalCaptures: state.totalCaptures,
+        totalContracts: state.totalContracts,
+        totalDeaths: state.totalDeaths,
+        sanity: Math.round(state.sanity),
+        bestiary: bestiaryProgress(state.bestiary).found,
+        missionsDone: Object.keys(state.missionsDone).length,
+      };
+    },
+
+    serialize() {
+      return {
+        xp: state.xp,
+        rank: state.rank,
+        equipmentOwned: [...state.equipmentOwned],
+        consumables: { ...state.consumables },
+        totalCaptures: state.totalCaptures,
+        totalContracts: state.totalContracts,
+        totalDeaths: state.totalDeaths,
+        perfectContracts: state.perfectContracts,
+        ghostPhotos: state.ghostPhotos,
+        photosTaken: state.photosTaken,
+        identified: { ...state.identified },
+        captured: { ...state.captured },
+        bestiary: { ...state.bestiary },
+        missionsDone: { ...state.missionsDone },
+        huntsSurvived: state.huntsSurvived,
+      };
+    },
+
+    deserialize(saved) {
+      if (!saved || typeof saved !== 'object') return;
+      if (typeof saved.xp === 'number') state.xp = saved.xp;
+      if (typeof saved.rank === 'string') state.rank = saved.rank;
+      if (Array.isArray(saved.equipmentOwned)) state.equipmentOwned = [...saved.equipmentOwned];
+      if (saved.consumables && typeof saved.consumables === 'object') state.consumables = { ...saved.consumables };
+      const numeric = ['totalCaptures', 'totalContracts', 'totalDeaths', 'perfectContracts', 'ghostPhotos', 'photosTaken', 'huntsSurvived'];
+      for (const key of numeric) {
+        if (typeof saved[key] === 'number') state[key] = saved[key];
+      }
+      for (const key of ['identified', 'captured', 'bestiary', 'missionsDone']) {
+        if (saved[key] && typeof saved[key] === 'object') state[key] = { ...saved[key] };
+      }
+    },
   };
-}
 
-// ---------------------------------------------------------------------------
-// Extra reference data: hunter field notes (flavour for the journal)
-// ---------------------------------------------------------------------------
-
-export const FIELD_NOTES = [
-  'EMF 5 plus freezing temps? Check the writing. It is probably a Shade.',
-  'If the lights keep dying, the ghost is a Mare. Keep a candle lit.',
-  'A Demon hunts early. Never stay below 50% sanity in its house.',
-  'The Mimic always shows orbs. If you see orbs, suspect the Mimic.',
-  'Salt buys you seconds. Smudge buys you a minute.',
-  'Photograph the ghost room twice — the second photo is often the proof.',
-  'Spirit Box voices lie about their name. Trust the evidence, not the voice.',
-  'The ghost room is always the coldest room in the house.',
-];
-
-
-// ---------------------------------------------------------------------------
-// Part 3 — EMF readings, ghost lore, cursed objects, hunter journal
-// ---------------------------------------------------------------------------
-
-// EMF reading scale: what each level means.
-export const EMF_LEVELS = [
-  { level: 1, desc: 'Background noise. Nothing here.', danger: 0 },
-  { level: 2, desc: 'A flicker. Could be wiring.', danger: 0 },
-  { level: 3, desc: 'A real reading. Something is in this room.', danger: 1 },
-  { level: 4, desc: 'Strong activity. The ghost is close.', danger: 2 },
-  { level: 5, desc: 'EMF 5! The ghost is right here!', danger: 3 },
-];
-
-// Cursed objects: rare finds inside haunted houses.
-export const CURSED_OBJECTS = [
-  { id: 'doll', name: 'Porcelain Doll', value: 300, curse: 'Moves when you blink.', desc: 'Its eyes follow you around the room.' },
-  { id: 'mirror', name: 'Black Mirror', value: 500, curse: 'Shows a room that is not yours.', desc: 'Do not look into it after midnight.' },
-  { id: 'music-box', name: 'Music Box', value: 250, curse: 'Plays by itself at 3 AM.', desc: 'The tune is one nobody wrote.' },
-  { id: 'painting', name: 'Weeping Painting', value: 400, curse: 'The painted eyes cry real tears.', desc: 'The artist vanished the day he finished it.' },
-  { id: 'ring', name: 'Cursed Ring', value: 800, curse: 'Wearing it brings bad luck.', desc: 'Three owners. Three accidents.' },
-  { id: 'diary', name: 'Haunted Diary', value: 200, curse: 'New entries appear every night.', desc: 'The last entry is always tomorrow date.' },
-];
-
-// Ghost lore: field notes for each ghost type.
-export const GHOST_LORE = [
-  { ghost: 'spirit', note: 'The most common ghost. Died peacefully, stayed anyway.' },
-  { ghost: 'wraith', note: 'Died in a car crash. Hates salt because the road was salted that winter.' },
-  { ghost: 'phantom', note: 'Watches. Always watches. Never blinks.' },
-  { ghost: 'poltergeist', note: 'A angry teenager, forever. Throws things when ignored.' },
-  { ghost: 'banshee', note: 'Her scream was heard three streets away the night she died.' },
-  { ghost: 'jinn', note: 'Older than the house. Older than the city. Be careful.' },
-  { ghost: 'mare', note: 'Feeds on fear in the dark. Light is its enemy.' },
-  { ghost: 'revenant', note: 'Came back for revenge. It is still looking.' },
-  { ghost: 'shade', note: 'Shy in life, shy in death. Hides from crowds.' },
-  { ghost: 'demon', note: 'Do not say its name three times. Do not say it once.' },
-  { ghost: 'yurei', note: 'A vengeful spirit in white. Sanity drains twice as fast near it.' },
-  { ghost: 'oni', note: 'A demon of the mountains. Loves an audience.' },
-  { ghost: 'mimic', note: 'Copies other ghosts to hide. Always shows orbs — the tell.' },
-  { ghost: 'hantu', note: 'A local legend. Moves like wind between rooms.' },
-];
-
-// Sanity effects: what happens at each sanity band.
-export const SANITY_EFFECTS = [
-  { min: 80, max: 100, effect: 'Clear-headed. Steady hands.', huntChance: 0.01 },
-  { min: 60, max: 79, effect: 'Nervous. You hear things.', huntChance: 0.03 },
-  { min: 40, max: 59, effect: 'Shaky. Shadows move at the edge of sight.', huntChance: 0.06 },
-  { min: 20, max: 39, effect: 'Panicking. The ghost knows you are afraid.', huntChance: 0.12 },
-  { min: 0, max: 19, effect: 'Breaking. The hunt is coming.', huntChance: 0.25 },
-];
-
-// Hunter journal prompts (flavour).
-export const HUNTER_JOURNAL = [
-  'Always check the coldest room first.',
-  'Three evidence, then identify. Never guess early.',
-  'A crucifix stops one hunt. Place it where you will run.',
-  'Smudge sticks buy you sixty seconds. Use them well.',
-  'If the ghost is a Mare, keep the lights on.',
-  'Photograph the ghost room twice. The second photo tells the truth.',
-  'Sanity pills taste awful. Take them anyway.',
-];
-
-// Pure helpers.
-
-export function emfMeaning(level) {
-  const row = EMF_LEVELS.find((e) => e.level === level);
-  return row || EMF_LEVELS[0];
-}
-
-export function sanityBand(sanity) {
-  const s = Math.max(0, Math.min(100, sanity));
-  return SANITY_EFFECTS.find((e) => s >= e.min && s <= e.max) || SANITY_EFFECTS[0];
-}
-
-export function identifyFromEvidence(evidenceIds) {
-  const matches = GHOST_TYPES.filter((g) => g.evidence.every((e) => evidenceIds.includes(e)));
-  const possible = GHOST_TYPES.filter((g) => g.evidence.filter((e) => evidenceIds.includes(e)).length >= 2);
-  return { exact: matches, possible };
-}
-
-export function evidenceLeftToFind(ghostId, foundIds) {
-  const ghost = GHOST_TYPES.find((g) => g.id === ghostId);
-  if (!ghost) return [];
-  return ghost.evidence.filter((e) => !foundIds.includes(e));
-}
-
-export function ghostWeakness(ghostId) {
-  const ghost = GHOST_TYPES.find((g) => g.id === ghostId);
-  return ghost ? ghost.weakness : 'unknown';
-}
-
-export function huntDurationFor(ghostId) {
-  const ghost = GHOST_TYPES.find((g) => g.id === ghostId);
-  return ghost ? 20 + ghost.aggression * 5 : 25;
-}
-
-export function rewardEstimate(locationId, ghostId, rankMult) {
-  const loc = HAUNTED_LOCATIONS.find((l) => l.id === locationId);
-  const ghost = GHOST_TYPES.find((g) => g.id === ghostId);
-  if (!loc || !ghost) return 0;
-  return Math.round((loc.reward + ghost.reward) * (rankMult || 1));
-}
-
-export function bestiaryProgress(bestiary) {
-  const found = Object.keys(bestiary).length;
-  return { found, total: GHOST_TYPES.length, pct: Math.round((found / GHOST_TYPES.length) * 100) };
-}
-
-export function rankProgressHunter(xp) {
-  let current = HUNTER_RANKS[0];
-  let next = null;
-  for (let i = 0; i < HUNTER_RANKS.length; i++) {
-    if (xp >= HUNTER_RANKS[i].xpNeeded) current = HUNTER_RANKS[i];
-    else { next = HUNTER_RANKS[i]; break; }
-  }
-  return { current, next, toNext: next ? next.xpNeeded - xp : 0 };
-}
-
-export function equipmentValue(equipmentOwned, consumables) {
-  let total = 0;
-  for (const id of equipmentOwned) {
-    const item = GHOST_EQUIPMENT.find((e) => e.id === id);
-    if (item) total += item.price;
-  }
-  for (const [id, qty] of Object.entries(consumables)) {
-    const item = GHOST_EQUIPMENT.find((e) => e.id === id);
-    if (item) total += item.price * qty;
-  }
-  return total;
-}
-
-export function nightBonusFor(hour) {
-  return hour >= 0 && hour < 4 ? 1.25 : 1;
-}
-
-export function recommendedEquipment(ghostId) {
-  const ghost = GHOST_TYPES.find((g) => g.id === ghostId);
-  if (!ghost) return [];
-  return ghost.evidence.map((e) => {
-    const ev = EVIDENCE_TYPES.find((x) => x.id === e);
-    return ev ? ev.tool : null;
-  }).filter(Boolean);
-}
-
-
-// ---------------------------------------------------------------------------
-// Part 4 — Haunted objects, séance rules, hunter gear checklist
-// ---------------------------------------------------------------------------
-
-// Haunted objects found in houses (sellable, but cursed).
-export const HAUNTED_OBJECTS = [
-  { id: 'cursed-doll', name: 'Cursed Doll', value: 300, risk: 2, desc: 'Its head turns when you leave the room.' },
-  { id: 'old-radio', name: 'Old Radio', value: 150, risk: 1, desc: 'Plays stations that do not exist.' },
-  { id: 'antique-clock', name: 'Antique Clock', value: 400, risk: 2, desc: 'Ticks backwards at midnight.' },
-  { id: 'wedding-dress', name: 'Wedding Dress', value: 350, risk: 3, desc: 'The bride never wore it. She still wants to.' },
-  { id: 'toy-train', name: 'Toy Train', value: 100, risk: 1, desc: 'Runs around the track by itself.' },
-  { id: 'typewriter', name: 'Typewriter', value: 250, risk: 2, desc: 'Types messages from the dead.' },
-  { id: 'cradle', name: 'Empty Cradle', value: 200, risk: 3, desc: 'Rocks gently. There is no wind.' },
-  { id: 'chess-set', name: 'Chess Set', value: 180, risk: 1, desc: 'The pieces move overnight.' },
-];
-
-// Séance rules (flavour + a real mechanic hook).
-export const SEANCE_RULES = [
-  'Never hold a séance alone.',
-  'Never ask the ghost its name. It will tell you anyway.',
-  'If the candle goes out, leave the room.',
-  'Always say goodbye before you close the circle.',
-  'A séance at 3 AM is the strongest. And the most dangerous.',
-];
-
-// Hunter gear checklist (what to pack per contract).
-export const GEAR_CHECKLIST = [
-  { item: 'emf', why: 'Find the ghost room.' },
-  { item: 'thermo', why: 'Confirm freezing temps.' },
-  { item: 'spiritbox', why: 'Hear the voice.' },
-  { item: 'book', why: 'Ghost writing evidence.' },
-  { item: 'uv', why: 'Fingerprints on doors.' },
-  { item: 'camera', why: 'Orbs and ghost photos.' },
-  { item: 'dots', why: 'Silhouettes in the laser grid.' },
-  { item: 'smudge', why: 'Calm the ghost for 60 seconds.' },
-  { item: 'crucifix', why: 'Stop one hunt.' },
-  { item: 'sanity-pills', why: 'Stay sane enough to finish.' },
-  { item: 'trap', why: 'Catch the ghost once identified.' },
-  { item: 'salt', why: 'Slow the ghost down.' },
-];
-
-// Ghost hunting TV shows (flavour).
-export const GHOST_SHOWS = [
-  'Ghost Hunters Live',
-  'The Haunted Files',
-  'Night Shift Paranormal',
-  'The Séance Hour',
-];
-
-// Pure helpers.
-
-export function hauntedObjectValue(objectId) {
-  const o = HAUNTED_OBJECTS.find((x) => x.id === objectId);
-  return o ? o.value : 0;
-}
-
-export function hauntedObjectRisk(objectId) {
-  const o = HAUNTED_OBJECTS.find((x) => x.id === objectId);
-  return o ? o.risk : 0;
-}
-
-export function gearChecklistFor(evidenceIds) {
-  return GEAR_CHECKLIST.filter((g) => {
-    if (!g.item) return false;
-    const ev = EVIDENCE_TYPES.find((e) => e.tool === g.item);
-    if (!ev) return ['smudge', 'crucifix', 'sanity-pills', 'trap', 'salt'].includes(g.item);
-    return evidenceIds.includes(ev.id);
-  });
-}
-
-export function seanceRisk(hour, ghostAggression) {
-  const night = hour >= 0 && hour < 4 ? 2 : 1;
-  return Math.min(10, ghostAggression * night);
-}
-
-export function cursedSalePrice(objectId, rankMult) {
-  const o = HAUNTED_OBJECTS.find((x) => x.id === objectId);
-  if (!o) return 0;
-  return Math.round(o.value * (rankMult || 1));
-}
-
-
-// ---------------------------------------------------------------------------
-// Part 5 — Spirit box phrases, ghost films, haunted house grades
-// ---------------------------------------------------------------------------
-
-export const SPIRIT_BOX_PHRASES = [
-  'Get out.',
-  'Behind you.',
-  'Cold.',
-  'Leave.',
-  'Help me.',
-  'It is dark here.',
-  'Three.',
-  'Do not.',
-];
-
-export const GHOST_FILMS = [
-  { title: 'The Haunting', year: 1963, note: 'The classic. Still scary.' },
-  { title: 'Poltergeist', year: 1982, note: 'They are here.' },
-  { title: 'The Others', year: 2001, note: 'The twist changes everything.' },
-  { title: 'Paranormal Activity', year: 2007, note: 'Found footage. Real fear.' },
-];
-
-export const HAUNTED_GRADES = [
-  { grade: 'A', desc: 'Active haunting. Daily events.' },
-  { grade: 'B', desc: 'Frequent activity. Weekly events.' },
-  { grade: 'C', desc: 'Occasional activity. Monthly events.' },
-  { grade: 'D', desc: 'Dormant. Mostly quiet.' },
-];
-
-export function randomSpiritPhrase(rng) {
-  return SPIRIT_BOX_PHRASES[Math.floor(rng() * SPIRIT_BOX_PHRASES.length)];
-}
-
-export function hauntedGradeFor(hauntLevel) {
-  if (hauntLevel >= 5) return 'A';
-  if (hauntLevel >= 4) return 'B';
-  if (hauntLevel >= 2) return 'C';
-  return 'D';
-}
-
-export function filmForYearGhost(year) {
-  return GHOST_FILMS.find((f) => f.year === year) || null;
-}
-
-
-// ---------------------------------------------------------------------------
-// Part 6 — Hunter callsigns, ghost hunter mottos
-// ---------------------------------------------------------------------------
-
-export const HUNTER_CALLSIGNS = [
-  'Ghost',
-  'Spook',
-  'Shadow',
-  'Wraith',
-  'Spectre',
-  'Phantom',
-];
-
-export const HUNTER_MOTTOS = [
-  'We find what hides.',
-  'Three evidence. One truth.',
-  'The dark is just a room without lights.',
-  'Every ghost has a story. We listen.',
-];
-
-export function randomCallsign(rng) {
-  return HUNTER_CALLSIGNS[Math.floor(rng() * HUNTER_CALLSIGNS.length)];
-}
-
-export function mottoForHunter(index) {
-  return HUNTER_MOTTOS[index % HUNTER_MOTTOS.length];
-}
-
-
-// ---------------------------------------------------------------------------
-// Part 7 — Ghost hunter proverbs, famous hauntings
-// ---------------------------------------------------------------------------
-
-export const GHOST_PROVERBS = [
-  'The dead do not rest. They wait.',
-  'Every house has a story. Some houses tell it.',
-  'Fear is the ghost real weapon.',
-  'Listen first. The evidence speaks.',
-];
-
-export const FAMOUS_HAUNTINGS = [
-  { place: 'Amityville', year: 1975, note: 'The house on Ocean Avenue.' },
-  { place: 'The Tower of London', year: 1483, note: 'The princes in the tower.' },
-  { place: 'Bodmin Jail', year: 1779, note: 'Cornwall most haunted jail.' },
-];
-
-export function proverbGhost(index) {
-  return GHOST_PROVERBS[index % GHOST_PROVERBS.length];
-}
-
-export function hauntingFor(place) {
-  return FAMOUS_HAUNTINGS.find((h) => h.place === place) || null;
+  return system;
 }

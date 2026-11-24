@@ -1,572 +1,291 @@
-// Solara Nights - Comedy Club (Round 7 mega-rebuild, written fresh).
-// The Chuckle Cellar comedy club: book acts, fill the brick-walled
-// room, and pray the hecklers stay funny. A good night is laughter
-// you can feel in the floorboards; a bad night is silence and one
-// man coughing. Open mics find the next star, headliners pay the
-// rent, and the drink menu quietly does the rest.
-// Pure logic: no rendering, no imports. The game wires it through the
-// standard ctx { rng, getDay, getHour, getCash, addCash, addHeat, log,
-// getPlayerPos, getWeather } and drives tick/tickDay from the main loop.
-// Mechanic: venue.
-
 export const COMEDY_ACTS = [
-  { id: 'nervous-ned', name: "Nervous Ned's First Mic", price: 100, rarity: 0.35, difficulty: 1, style: 'Awkward charm', duration: 5, crowd: 2,
-    desc: 'Shaking hands, brave heart, one great joke about pigeons.' },
-  { id: 'sarcastic-sue', name: 'Sarcastic Sue', price: 400, rarity: 0.2, difficulty: 2, style: 'Deadpan', duration: 15, crowd: 3,
-    desc: 'She has never smiled on stage. The crowd loves her for it.' },
-  { id: 'two-headed-duo', name: 'The Two-Headed Duo', price: 650, rarity: 0.15, difficulty: 3, style: 'Double act', duration: 20, crowd: 4,
-    desc: 'Two brains, one microphone, constant interruptions.' },
-  { id: 'yes-and-troupe', name: 'The Yes-And Troupe', price: 800, rarity: 0.12, difficulty: 3, style: 'Improv', duration: 25, crowd: 4,
-    desc: 'They build a whole play from one word shouted by a stranger.' },
-  { id: 'grumpy-gus', name: 'Grumpy Gus', price: 500, rarity: 0.18, difficulty: 2, style: 'Curmudgeon', duration: 15, crowd: 3,
-    desc: 'Hates everything, especially the audience. They adore him.' },
-  { id: 'musical-mabel', name: 'Musical Mabel', price: 750, rarity: 0.13, difficulty: 3, style: 'Songs and jokes', duration: 20, crowd: 4,
-    desc: 'A ukulele, a sharp tongue, and choruses the room sings along to.' },
-  { id: 'prop-pete', name: 'Prop Pete', price: 550, rarity: 0.16, difficulty: 2, style: 'Prop comedy', duration: 15, crowd: 3,
-    desc: 'A suitcase of impossible objects and perfect timing.' },
-  { id: 'dark-dana', name: 'Dark Dana', price: 900, rarity: 0.1, difficulty: 4, style: 'Dark humor', duration: 20, crowd: 3,
-    desc: 'Jokes so dark the room laughs and then feels guilty.' },
-  { id: 'storyteller-sam', name: 'Storyteller Sam', price: 700, rarity: 0.14, difficulty: 3, style: 'Long tales', duration: 25, crowd: 4,
-    desc: 'One story, twenty minutes, and a punchline nobody sees coming.' },
-  { id: 'headliner-hugo', name: 'Headliner Hugo', price: 2000, rarity: 0.05, difficulty: 5, style: 'Arena comic', duration: 40, crowd: 5,
-    desc: 'The name on the marquee. The reason the room sells out.' },
-  { id: 'roast-ralph', name: 'Roast Ralph', price: 1100, rarity: 0.08, difficulty: 4, style: 'Roast master', duration: 25, crowd: 4,
-    desc: 'He will roast the front row, the mayor, and himself, in that order.' },
-  { id: 'mime-molly', name: 'Mime Molly', price: 300, rarity: 0.25, difficulty: 1, style: 'Silent act', duration: 10, crowd: 2,
-    desc: 'Not a word spoken. The invisible box routine kills every time.' },
+  { id: 'open-mic-night', name: 'Open Mic Night', price: 80, rarity: 0.2, difficulty: 1, style: 'Stand-up', duration: 60, crowd: 30, desc: 'Brave newcomers testing five minutes of nerves.' },
+  { id: 'improv-troupe', name: 'Improv Troupe', price: 140, rarity: 0.35, difficulty: 1, style: 'Improv', duration: 75, crowd: 40, desc: 'A whole show invented from one audience word.' },
+  { id: 'one-liner-king', name: 'One-Liner King', price: 160, rarity: 0.4, difficulty: 2, style: 'Stand-up', duration: 70, crowd: 45, desc: 'Ninety jokes an hour, no mercy for the slow.' },
+  { id: 'musical-comic', name: 'Musical Comic', price: 190, rarity: 0.45, difficulty: 2, style: 'Musical', duration: 80, crowd: 50, desc: 'Songs about landlords, laundry and lost love.' },
+  { id: 'roast-battle', name: 'Roast Battle', price: 240, rarity: 0.55, difficulty: 3, style: 'Roast', duration: 90, crowd: 65, desc: 'Two comics, one stage, no survivors.' },
+  { id: 'sketch-crew', name: 'Sketch Crew', price: 210, rarity: 0.5, difficulty: 2, style: 'Sketch', duration: 85, crowd: 55, desc: 'Quick scenes, wild wigs and perfect timing.' },
+  { id: 'prop-master', name: 'Prop Master', price: 130, rarity: 0.3, difficulty: 1, style: 'Prop', duration: 65, crowd: 35, desc: 'A suitcase of tricks and a rubber chicken.' },
+  { id: 'dark-humor', name: 'Dark Humor', price: 230, rarity: 0.6, difficulty: 3, style: 'Stand-up', duration: 75, crowd: 60, desc: 'Jokes that make the room gasp, then howl.' },
+  { id: 'clean-comedy', name: 'Clean Comedy', price: 170, rarity: 0.4, difficulty: 2, style: 'Family', duration: 70, crowd: 48, desc: 'Grandma-approved laughs for the whole family.' },
+  { id: 'clown-car', name: 'Clown Car Act', price: 120, rarity: 0.35, difficulty: 1, style: 'Slapstick', duration: 60, crowd: 38, desc: 'Pies, pratfalls and a car that never stops.' },
+  { id: 'ventriloquist', name: 'Ventriloquist', price: 260, rarity: 0.65, difficulty: 3, style: 'Ventriloquism', duration: 80, crowd: 62, desc: 'A wooden dummy with a sharper tongue than its owner.' },
+  { id: 'headliner-gala', name: 'Headliner Gala', price: 480, rarity: 0.9, difficulty: 5, style: 'Stand-up', duration: 120, crowd: 95, desc: 'The biggest name in comedy, one night only.' },
 ];
 
 export const COMEDY_UPGRADES = [
-  { id: 'brick-wall', name: 'Brick Wall Backdrop', cost: 120, effect: 'room-plus', desc: 'The classic wall. Every comic photographs better against it.' },
-  { id: 'spotlight', name: 'Spotlight Rig', cost: 200, effect: 'stage-plus', desc: 'One perfect circle of light. Instant drama.' },
-  { id: 'sound-system', name: 'Sound System', cost: 350, effect: 'sound-plus', desc: 'Every mumble in the back row becomes a punchline.' },
-  { id: 'drink-menu', name: 'Drink Menu', cost: 300, effect: 'bar-plus', desc: 'Clever cocktails named after the acts. They sell themselves.' },
-  { id: 'green-room', name: 'Green Room', cost: 500, effect: 'acts-plus', desc: 'Comics arrive relaxed and stay for the second show.' },
-  { id: 'marquee-sign', name: 'Marquee Sign', cost: 700, effect: 'crowd-plus', desc: 'The name in lights pulls walk-ins off the street.' },
-  { id: 'late-license', name: 'Late License', cost: 1000, effect: 'hours-plus', desc: 'The last show runs past midnight. So does the bar.' },
-  { id: 'grand-stage', name: 'Grand Stage', cost: 1600, effect: 'capacity-plus', desc: 'A bigger stage for bigger names and bigger rooms.' },
+  { id: 'brick-wall', name: 'Brick Wall', cost: 100, effect: 'crowd +10%', desc: 'The classic comedy backdrop, freshly painted.' },
+  { id: 'grand-stage', name: 'Grand Stage', cost: 300, effect: 'capacity +2', desc: 'A wider stage for bigger bills.' },
+  { id: 'spotlight', name: 'Spotlight', cost: 150, effect: 'payout +10%', desc: 'One perfect circle of light.' },
+  { id: 'two-drink-min', name: 'Two-Drink Minimum', cost: 180, effect: 'earned +8%', desc: 'Looser crowds laugh louder.' },
+  { id: 'late-show', name: 'Late Show', cost: 220, effect: 'crowd +15%', desc: 'A midnight slot for the brave.' },
+  { id: 'sound-booth', name: 'Sound Booth', cost: 160, effect: 'visitors +10%', desc: 'Every punchline lands clean.' },
+  { id: 'vip-couch', name: 'VIP Couch', cost: 260, effect: 'payout +15%', desc: 'Front-row comfort for big spenders.' },
+  { id: 'house-band', name: 'House Band', cost: 240, effect: 'crowd +12%', desc: 'A trio that plays comics on and off.' },
 ];
 
 export const COMEDY_RANKS = [
-  { level: 0, name: 'Open Mic', xp: 0, perk: 'Shows pay base rate.' },
-  { level: 1, name: 'Regular', xp: 150, perk: '+5% prices, the room knows your name.' },
-  { level: 2, name: 'Club Favorite', xp: 400, perk: '+10% prices, Friday nights sell out.' },
-  { level: 3, name: 'Headliner', xp: 800, perk: '+15% prices, agents return your calls.' },
-  { level: 4, name: 'Comedy Legend', xp: 1500, perk: '+20% prices, your marquee never goes dark.' },
+  { level: 0, name: 'Open Mic Rookie', xp: 0, perk: 'Still bombing gracefully.' },
+  { level: 1, name: 'Club Regular', xp: 150, perk: 'The crowd knows your name.' },
+  { level: 2, name: 'Headliner', xp: 400, perk: 'Your face is on the poster.' },
+  { level: 3, name: 'Comedy Star', xp: 800, perk: 'Sold-out weekends, every week.' },
+  { level: 4, name: 'Comedy Legend', xp: 1500, perk: 'They named the room after you.' },
 ];
 
 export const COMEDY_STAFF = [
-  { id: 'emcee-ed', name: 'Ed the Emcee', wage: 30, skill: 'host', bonus: 0.15, desc: 'Warms the room in ninety seconds flat.' },
-  { id: 'bartender-bea', name: 'Bea the Bartender', wage: 35, skill: 'bar', bonus: 0.2, desc: 'Pours fast, remembers orders, laughs at the right jokes.' },
-  { id: 'sound-sam', name: 'Sam the Sound Tech', wage: 30, skill: 'sound', bonus: 0.15, desc: 'The mic is always on. The feedback never is.' },
-  { id: 'door-dee', name: 'Dee the Door', wage: 25, skill: 'door', bonus: 0.1, desc: 'Counts heads, spots trouble, welcomes regulars by name.' },
+  { id: 'host-milo', name: 'Milo the Host', wage: 45, skill: 'host', bonus: 2, desc: 'Warms the room before every act.' },
+  { id: 'bouncer-rae', name: 'Rae the Bouncer', wage: 40, skill: 'security', bonus: 2, desc: 'Handles hecklers with a smile.' },
+  { id: 'bartender-kim', name: 'Kim the Bartender', wage: 50, skill: 'bar', bonus: 3, desc: 'Pours fast and remembers every order.' },
+  { id: 'tech-sam', name: 'Sam the Sound Tech', wage: 55, skill: 'tech', bonus: 2, desc: 'Keeps the mic live and the feedback dead.' },
 ];
 
 export const COMEDY_DAILY_EVENTS = [
-  { id: 'heckler-night', name: 'Heckler Night', effect: 'visitors', amount: 30,
-    text: 'One loud heckler becomes the best part of the show.' },
-  { id: 'critic-front-row', name: 'Critic in the Front Row', effect: 'rep', amount: 2,
-    text: 'The city critic laughs out loud. Twice.' },
-  { id: 'sold-out-friday', name: 'Sold-Out Friday', effect: 'visitors', amount: 70,
-    text: 'Not a seat left by seven in the evening.' },
-  { id: 'mic-failure', name: 'Mic Failure', effect: 'cost', amount: 60,
-    text: 'The mic dies mid-punchline. A spare is fetched, slowly.' },
-  { id: 'surprise-celebrity', name: 'Surprise Celebrity', effect: 'earn', amount: 450,
-    text: 'A famous comic drops in unannounced. Chaos, joy, queues.' },
-  { id: 'drink-spill', name: 'Drink Spill', effect: 'cost', amount: 50,
-    text: 'A tray of cocktails meets the front row. Apologies and towels.' },
-  { id: 'quiet-monday', name: 'Quiet Monday', effect: 'xp', amount: 15,
-    text: 'Twelve people, one dog, and a very brave open mic.' },
-  { id: 'radio-plug', name: 'Radio Plug', effect: 'visitors', amount: 45,
-    text: 'The morning show mentions the club. Phones ring all day.' },
-  { id: 'bachelor-party', name: 'Bachelor Party', effect: 'earn', amount: 280,
-    text: 'Fifteen loud guests, one nervous groom, big bar tab.' },
-  { id: 'viral-clip', name: 'Viral Clip', effect: 'earn', amount: 320,
-    text: 'A thirty-second clip of last night explodes online.' },
+  { id: 'heckler-night', name: 'Heckler Night', effect: 'heat', amount: 2, text: 'A loud table will not stop talking back.' },
+  { id: 'viral-bit', name: 'Viral Bit', effect: 'visitors', amount: 28, text: 'A clip of last night explodes online.' },
+  { id: 'corporate-gig', name: 'Corporate Gig', effect: 'earn', amount: 110, text: 'A company books the whole room for a party.' },
+  { id: 'mic-failure', name: 'Mic Failure', effect: 'cost', amount: 30, text: 'The main mic dies mid-set; a spare costs money.' },
+  { id: 'date-night', name: 'Date Night', effect: 'visitors', amount: 18, text: 'Couples fill the tables for a laugh.' },
+  { id: 'review-boost', name: 'Review Boost', effect: 'rep', amount: 3, text: 'A critic calls the club the funniest in town.' },
+  { id: 'open-mic-gem', name: 'Open Mic Gem', effect: 'xp', amount: 22, text: 'A nobody steals the night with five perfect minutes.' },
+  { id: 'leaky-ceiling', name: 'Leaky Ceiling', effect: 'cost', amount: 25, text: 'Rain drips onto the front row.' },
+  { id: 'sold-out', name: 'Sold Out', effect: 'earn', amount: 140, text: 'Every seat taken, standing room only.' },
+  { id: 'quiet-tuesday', name: 'Quiet Tuesday', effect: 'rep', amount: 1, text: 'A small crowd, but they laugh at everything.' },
 ];
 
 export const COMEDY_TIPS = [
-  { id: 'heckler-gold', name: 'Heckler Gold', text: 'A good comic turns a heckler into the best five minutes of the night.' },
-  { id: 'open-mic-farm', name: 'Open Mic Farm', text: 'Cheap open mics find tomorrow\'s headliners. Book them often.' },
-  { id: 'bar-math', name: 'Bar Math', text: 'The bar earns while the jokes land. A good drink menu is a second show.' },
-  { id: 'friday-peak', name: 'Friday Peak', text: 'Save the headliner for Friday. The room is fullest and loudest.' },
-  { id: 'mic-check', name: 'Mic Check', text: 'Check the mic before the doors open. Silence is the only unfunny thing.' },
-  { id: 'front-row', name: 'Front Row', text: 'Seat the brave ones up front. Roasts land better on volunteers.' },
-  { id: 'late-show', name: 'Late Show', text: 'The late license turns one night into two paydays.' },
-  { id: 'clip-it', name: 'Clip It', text: 'Film the best bit every night. One viral clip fills a month of seats.' },
+  { id: 'tip-rain', name: 'Rainy Nights', text: 'Rain pushes people indoors and onto your seats.' },
+  { id: 'tip-stage', name: 'Grand Stage', text: 'Buy the Grand Stage to book two more acts.' },
+  { id: 'tip-mic', name: 'Open Mic', text: 'Host an open mic to boost an act before its show.' },
+  { id: 'tip-streak', name: 'Keep Laughing', text: 'Nightly shows grow your streak fast.' },
+  { id: 'tip-prices', name: 'Price Watch', text: 'Door prices drift every day, so check the board.' },
+  { id: 'tip-staff', name: 'Good Hosts', text: 'A warm host turns a cold room into a hot one.' },
+  { id: 'tip-donate', name: 'Give Back', text: 'Free shows for the youth centre build reputation.' },
+  { id: 'tip-rank', name: 'Climb Up', text: 'Every show played pushes you toward Headliner.' },
 ];
 
 export const COMEDY_CHALLENGES = [
-  { id: 'first-steps', name: 'First Steps', target: 'runsDone', goal: 3, xp: 40, desc: 'Finish 3 comedy club runs.' },
-  { id: 'regular', name: 'Regular', target: 'runsDone', goal: 10, xp: 90, desc: 'Finish 10 comedy club runs.' },
-  { id: 'collector', name: 'Collector', target: 'itemsOwned', goal: 4, xp: 100, desc: 'Own 4 different comedy club entries.' },
-  { id: 'big-earner', name: 'Big Earner', target: 'earned', goal: 500, xp: 120, desc: 'Earn $500 from the comedy club business.' },
-  { id: 'crowd-favourite', name: 'Crowd Favourite', target: 'visitors', goal: 200, xp: 110, desc: 'Draw 200 visitors through the comedy club business.' },
-  { id: 'respected', name: 'Respected Name', target: 'reputation', goal: 10, xp: 100, desc: 'Reach 10 reputation in the comedy club business.' },
-  { id: 'best-day', name: 'Best Day Ever', target: 'bestRun', goal: 400, xp: 130, desc: 'Score a single run worth $400 or more.' },
-  { id: 'fully-kitted', name: 'Fully Kitted', target: 'upgradesOwned', goal: 6, xp: 150, desc: 'Own 6 upgrades for the comedy club business.' },
+  { id: 'ch-runs-5', name: 'Five Shows', target: 'runsDone', goal: 5, xp: 50, desc: 'Run 5 shows.' },
+  { id: 'ch-earn-500', name: 'First 500', target: 'earned', goal: 500, xp: 80, desc: 'Earn $500 in total.' },
+  { id: 'ch-visitors-200', name: 'Packed Room', target: 'visitors', goal: 200, xp: 60, desc: 'Welcome 200 visitors.' },
+  { id: 'ch-items-4', name: 'Four Acts', target: 'itemsOwned', goal: 4, xp: 70, desc: 'Book 4 acts.' },
+  { id: 'ch-upgrades-3', name: 'Well Equipped', target: 'upgradesOwned', goal: 3, xp: 60, desc: 'Own 3 upgrades.' },
+  { id: 'ch-rep-10', name: 'Respected', target: 'reputation', goal: 10, xp: 50, desc: 'Reach 10 reputation.' },
+  { id: 'ch-streak-3', name: 'On a Roll', target: 'streak', goal: 3, xp: 90, desc: 'Reach a 3-show streak.' },
+  { id: 'ch-best-300', name: 'Killer Set', target: 'bestRun', goal: 300, xp: 100, desc: 'Earn $300 from a single show.' },
 ];
 
 export const COMEDY_ACHIEVEMENTS = [
-  { id: 'first-run', name: 'First Run', target: 'runsDone', goal: 1, desc: 'Finish your first comedy club run.' },
-  { id: 'first-sale', name: 'First Payday', target: 'earned', goal: 1, desc: 'Collect your first dollar of comedy club earnings.' },
-  { id: 'ten-runs', name: 'Ten Runs Deep', target: 'runsDone', goal: 10, desc: 'Finish 10 comedy club runs.' },
-  { id: 'thousand-club', name: 'Thousand Club', target: 'earned', goal: 1000, desc: 'Earn $1,000 in total from the comedy club business.' },
-  { id: 'five-hundred-faces', name: 'Five Hundred Faces', target: 'visitors', goal: 500, desc: 'Welcome 500 visitors through the comedy club business.' },
-  { id: 'rank-three', name: 'Rising Star', target: 'rank', goal: 3, desc: 'Reach rank 3 in the comedy club business.' },
-  { id: 'full-shelf', name: 'Full Shelf', target: 'itemsOwned', goal: 8, desc: 'Own 8 different comedy club entries at once.' },
-  { id: 'streak-five', name: 'On A Roll', target: 'bestStreak', goal: 5, desc: 'Build a 5-run streak without a failed comedy club run.' },
+  { id: 'ach-runs-10', name: 'Show Runner', target: 'runsDone', goal: 10, desc: 'Run 10 shows.' },
+  { id: 'ach-earn-1000', name: 'Golden Door', target: 'earned', goal: 1000, desc: 'Earn $1,000 in total.' },
+  { id: 'ach-visitors-500', name: 'City Favourite', target: 'visitors', goal: 500, desc: 'Welcome 500 visitors.' },
+  { id: 'ach-items-6', name: 'Full Lineup', target: 'itemsOwned', goal: 6, desc: 'Book 6 acts.' },
+  { id: 'ach-upgrades-5', name: 'Fully Loaded', target: 'upgradesOwned', goal: 5, desc: 'Own 5 upgrades.' },
+  { id: 'ach-rep-20', name: 'Beloved', target: 'reputation', goal: 20, desc: 'Reach 20 reputation.' },
+  { id: 'ach-streak-5', name: 'Unstoppable', target: 'streak', goal: 5, desc: 'Reach a 5-show streak.' },
+  { id: 'ach-best-500', name: 'Record Night', target: 'bestRun', goal: 500, desc: 'Earn $500 from a single show.' },
 ];
 
 export const COMEDY_LEADERBOARD = [
-  { name: 'The Laugh Factory', score: 4200, desc: 'Big room, big names, big queues.' },
-  { name: 'Chuckle Hut', score: 3100, desc: 'Small, scruffy, and strangely beloved.' },
-  { name: 'The Joke Joint', score: 2400, desc: 'Cheap beer, brave comics, loyal crowd.' },
-  { name: 'Basement Banter', score: 1500, desc: 'Underground in every sense of the word.' },
-  { name: 'You', score: 0, desc: 'Climbing the comedy club ladder.' },
+  { name: 'Laugh Factory', score: 920, desc: 'The old club across town.' },
+  { name: 'Joke Joint', score: 700, desc: 'Tiny room, huge laughs.' },
+  { name: 'The Giggle Room', score: 480, desc: 'A basement with a big heart.' },
+  { name: 'Punchline Pub', score: 190, desc: 'New kids on the block.' },
+  { name: 'You', score: 0, desc: 'The new name on the board.' },
 ];
 
 export const COMEDY_RECORDS = [
-  { id: 'biggest-run', name: 'Biggest Run', stat: 'bestRun', unit: '$', desc: 'Best single-run payout.' },
-  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$', desc: 'Most money earned overall.' },
-  { id: 'most-visitors', name: 'Most Visitors', stat: 'visitors', unit: 'people', desc: 'Most visitors welcomed.' },
-  { id: 'most-runs', name: 'Most Runs', stat: 'runsDone', unit: 'runs', desc: 'Most runs finished.' },
-  { id: 'best-streak', name: 'Best Streak', stat: 'bestStreak', unit: 'runs', desc: 'Longest run streak.' },
+  { id: 'rec-runs', name: 'Most Shows', stat: 'runsDone', unit: 'shows', desc: 'Total shows run.' },
+  { id: 'rec-earned', name: 'Top Earnings', stat: 'earned', unit: '$', desc: 'Total money earned.' },
+  { id: 'rec-visitors', name: 'Biggest Crowd', stat: 'visitors', unit: 'laughers', desc: 'Total visitors welcomed.' },
+  { id: 'rec-best', name: 'Best Show', stat: 'bestRun', unit: '$', desc: 'Best single-show payout.' },
+  { id: 'rec-streak', name: 'Longest Streak', stat: 'bestStreak', unit: 'shows', desc: 'Longest run of shows.' },
 ];
 
 export const COMEDY_MARKET_EVENTS = [
-  { id: 'nervous-ned-surge', name: "Nervous Ned's First Mic Surge", item: 'nervous-ned', mult: 1.35, desc: "Demand for Nervous Ned's First Mic swings hard this week." },
-  { id: 'sarcastic-sue-surge', name: 'Sarcastic Sue Surge', item: 'sarcastic-sue', mult: 0.7, desc: 'Demand for Sarcastic Sue swings hard this week.' },
-  { id: 'two-headed-duo-surge', name: 'The Two-Headed Duo Surge', item: 'two-headed-duo', mult: 1.35, desc: 'Demand for The Two-Headed Duo swings hard this week.' },
-  { id: 'yes-and-troupe-surge', name: 'The Yes-And Troupe Surge', item: 'yes-and-troupe', mult: 0.7, desc: 'Demand for The Yes-And Troupe swings hard this week.' },
-  { id: 'grumpy-gus-surge', name: 'Grumpy Gus Surge', item: 'grumpy-gus', mult: 1.35, desc: 'Demand for Grumpy Gus swings hard this week.' },
-  { id: 'musical-mabel-surge', name: 'Musical Mabel Surge', item: 'musical-mabel', mult: 0.7, desc: 'Demand for Musical Mabel swings hard this week.' },
-  { id: 'prop-pete-surge', name: 'Prop Pete Surge', item: 'prop-pete', mult: 1.35, desc: 'Demand for Prop Pete swings hard this week.' },
-  { id: 'dark-dana-surge', name: 'Dark Dana Surge', item: 'dark-dana', mult: 0.7, desc: 'Demand for Dark Dana swings hard this week.' },
-  { id: 'storyteller-sam-surge', name: 'Storyteller Sam Surge', item: 'storyteller-sam', mult: 1.35, desc: 'Demand for Storyteller Sam swings hard this week.' },
-  { id: 'headliner-hugo-surge', name: 'Headliner Hugo Surge', item: 'headliner-hugo', mult: 0.7, desc: 'Demand for Headliner Hugo swings hard this week.' },
-  { id: 'roast-ralph-surge', name: 'Roast Ralph Surge', item: 'roast-ralph', mult: 1.35, desc: 'Demand for Roast Ralph swings hard this week.' },
-  { id: 'mime-molly-surge', name: 'Mime Molly Surge', item: 'mime-molly', mult: 0.7, desc: 'Demand for Mime Molly swings hard this week.' },
+  { id: 'me-mic', name: 'Mic Craze', item: 'open-mic-night', mult: 1.35, desc: 'Everyone wants to try five minutes.' },
+  { id: 'me-improv', name: 'Improv Dip', item: 'improv-troupe', mult: 0.7, desc: 'Made-up shows cool off.' },
+  { id: 'me-liner', name: 'One-Liner Boom', item: 'one-liner-king', mult: 1.35, desc: 'Short jokes are trending hard.' },
+  { id: 'me-musical', name: 'Musical Lull', item: 'musical-comic', mult: 0.7, desc: 'The songs go quiet this week.' },
+  { id: 'me-roast', name: 'Roast Rush', item: 'roast-battle', mult: 1.35, desc: 'Insults are the hottest ticket.' },
+  { id: 'me-sketch', name: 'Sketch Slump', item: 'sketch-crew', mult: 0.7, desc: 'The wigs rest this week.' },
+  { id: 'me-prop', name: 'Prop Surge', item: 'prop-master', mult: 1.35, desc: 'Rubber chickens are back in fashion.' },
+  { id: 'me-dark', name: 'Dark Dip', item: 'dark-humor', mult: 0.7, desc: 'The room wants lighter laughs.' },
+  { id: 'me-clean', name: 'Clean Boom', item: 'clean-comedy', mult: 1.35, desc: 'Family night fills every seat.' },
+  { id: 'me-clown', name: 'Clown Cool', item: 'clown-car', mult: 0.7, desc: 'The pies stay in the fridge.' },
+  { id: 'me-vent', name: 'Dummy Fever', item: 'ventriloquist', mult: 1.35, desc: 'The dummy is the talk of the town.' },
+  { id: 'me-gala', name: 'Gala Fade', item: 'headliner-gala', mult: 0.7, desc: 'The headliner rests between tours.' },
 ];
 
 export const COMEDY_SEASONS = [
-  { id: 'spring-laughs', name: 'Spring Laughs', mult: 1.1, desc: 'New acts bloom and the room feels fresh.' },
-  { id: 'summer-festival', name: 'Summer Festival', mult: 1.2, desc: 'Festival crowds spill into every late show.' },
-  { id: 'autumn-nights', name: 'Autumn Nights', mult: 1.05, desc: 'Long dark evenings, full warm rooms.' },
-  { id: 'winter-specials', name: 'Winter Specials', mult: 1.15, desc: 'Holiday shows sell out weeks ahead.' },
+  { id: 'summer', name: 'Summer', mult: 1.1, desc: 'Tourists hunt for a laugh.' },
+  { id: 'autumn', name: 'Autumn', mult: 1.0, desc: 'Steady weekend crowds.' },
+  { id: 'winter', name: 'Winter', mult: 0.9, desc: 'Cold nights, smaller rooms.' },
+  { id: 'spring', name: 'Spring', mult: 1.05, desc: 'Fresh acts bloom.' },
 ];
 
 export const COMEDY_FACTS = [
-  { id: 'fact-nervous-ned', text: "Nervous Ned's First Mic: Shaking hands, brave heart, one great joke about pigeons." },
-  { id: 'fact-sarcastic-sue', text: 'Sarcastic Sue: She has never smiled on stage. The crowd loves her for it.' },
-  { id: 'fact-two-headed-duo', text: 'The Two-Headed Duo: Two brains, one microphone, constant interruptions.' },
-  { id: 'fact-yes-and-troupe', text: 'The Yes-And Troupe: They build a whole play from one word shouted by a stranger.' },
-  { id: 'fact-grumpy-gus', text: 'Grumpy Gus: Hates everything, especially the audience. They adore him.' },
-  { id: 'fact-musical-mabel', text: 'Musical Mabel: A ukulele, a sharp tongue, and choruses the room sings along to.' },
-  { id: 'fact-prop-pete', text: 'Prop Pete: A suitcase of impossible objects and perfect timing.' },
-  { id: 'fact-dark-dana', text: 'Dark Dana: Jokes so dark the room laughs and then feels guilty.' },
-  { id: 'fact-storyteller-sam', text: 'Storyteller Sam: One story, twenty minutes, and a punchline nobody sees coming.' },
-  { id: 'fact-headliner-hugo', text: 'Headliner Hugo: The name on the marquee. The reason the room sells out.' },
-  { id: 'fact-roast-ralph', text: 'Roast Ralph: He will roast the front row, the mayor, and himself, in that order.' },
-  { id: 'fact-mime-molly', text: 'Mime Molly: Not a word spoken. The invisible box routine kills every time.' },
-  { id: 'fact-general-0', text: 'The best comedy club operators in Solara check their prices every morning before opening.' },
-  { id: 'fact-general-1', text: 'Regulars remember how you treated them yesterday more than what you charged.' },
-  { id: 'fact-general-2', text: 'A rainy day changes everything: some crowds grow, others vanish entirely.' },
-  { id: 'fact-general-3', text: 'Upgrades pay for themselves if you run the business every single day.' },
-  { id: 'fact-general-4', text: 'Reputation is slow to build and fast to lose. Guard it.' },
-  { id: 'fact-general-5', text: 'The first run of the day is always the cheapest lesson.' },
-  { id: 'fact-general-6', text: 'Staff with the right skill quietly add money to every run.' },
-  { id: 'fact-general-7', text: 'A five-run streak without a failure is worth more than any single big payday.' },
-  { id: 'fact-general-8', text: 'Prices drift daily. Selling on a surge day can double a quiet week.' },
-  { id: 'fact-general-9', text: 'Every rival in town started with one room, one stall, or one microphone.' },
+  { id: 'fact-mic', text: 'The Open Mic Night once launched a TV star.' },
+  { id: 'fact-improv', text: 'The Improv Troupe has never repeated a show.' },
+  { id: 'fact-liner', text: 'The One-Liner King writes 50 jokes a day.' },
+  { id: 'fact-musical', text: 'The Musical Comic tunes his guitar mid-joke.' },
+  { id: 'fact-roast', text: 'Roast Battle losers buy the winners dinner.' },
+  { id: 'fact-sketch', text: 'The Sketch Crew owns 300 wigs.' },
+  { id: 'fact-prop', text: 'The Prop Master chicken is older than the club.' },
+  { id: 'fact-dark', text: 'Dark Humor shows always sell out first.' },
+  { id: 'fact-clean', text: 'Clean Comedy night is the club\'s oldest tradition.' },
+  { id: 'fact-clown', text: 'The Clown Car fits eleven people, somehow.' },
+  { id: 'fact-vent', text: 'The Ventriloquist dummy has its own fan club.' },
+  { id: 'fact-gala', text: 'The Headliner Gala once ran until 3am.' },
+  { id: 'fact-1', text: 'Stand-up comedy started in music halls in the 1800s.' },
+  { id: 'fact-2', text: 'A heckler is a loud audience member who talks back.' },
+  { id: 'fact-3', text: 'The brick wall is the most famous backdrop in comedy.' },
+  { id: 'fact-4', text: 'Comics test new jokes at open mics first.' },
+  { id: 'fact-5', text: 'Laughter can burn up to 40 calories an hour.' },
+  { id: 'fact-6', text: 'The two-drink minimum is a classic club tradition.' },
+  { id: 'fact-7', text: 'Improv was invented as a theatre training game.' },
+  { id: 'fact-8', text: 'Some comics keep a notebook by the bed for 3am jokes.' },
+  { id: 'fact-9', text: 'A tight five is a perfect five-minute set.' },
+  { id: 'fact-10', text: 'The best comedy clubs seat under 200 people.' },
 ];
 
 export const COMEDY_NPC_LINES = [
-  { id: 'npc-0', text: "I came all the way across town for the Nervous Ned's First Mic. Worth it." },
-  { id: 'npc-1', text: 'My cousin runs a comedy club place too, but yours is better. Do not tell him.' },
-  { id: 'npc-2', text: 'Is the The Two-Headed Duo really as good as everyone says? I am about to find out.' },
-  { id: 'npc-3', text: 'I bring my kids here every weekend. They ask for the Sarcastic Sue by name.' },
-  { id: 'npc-4', text: 'You should put the The Yes-And Troupe on a poster. People would come just for that.' },
-  { id: 'npc-5', text: 'I heard the Grumpy Gus here is the best in Solara. The rumour was right.' },
-  { id: 'npc-6', text: 'Quiet day today. The Musical Mabel still made my afternoon.' },
-  { id: 'npc-7', text: 'I saved up for weeks to try the Prop Pete. No regrets.' },
-  { id: 'npc-8', text: 'The staff told me about the Dark Dana. Now I tell everyone I meet.' },
-  { id: 'npc-9', text: 'I have been to every comedy club spot in the city. This one wins.' },
-  { id: 'npc-10', text: 'One day I want to run a comedy club place of my own. I am taking notes.' },
-  { id: 'npc-11', text: 'The Storyteller Sam is the reason my friends finally believe my stories.' },
-  { id: 'npc-12', text: 'Do you ever get tired of the Headliner Hugo? I never would.' },
-  { id: 'npc-13', text: 'I wrote a review about the Roast Ralph last night. Five stars, obviously.' },
-  { id: 'npc-14', text: 'My grandmother loved the Mime Molly. I come here to remember her.' },
-  { id: 'npc-15', text: 'If the Nervous Ned\'s First Mic gets any better, the whole city will queue around the block.' },
+  { id: 'npc-1', text: 'That roast was brutal, I loved it!' },
+  { id: 'npc-2', text: 'I laughed so hard my drink came out my nose.' },
+  { id: 'npc-3', text: 'The dummy is funnier than the man.' },
+  { id: 'npc-4', text: 'I came for a date night and stayed for three sets.' },
+  { id: 'npc-5', text: 'The host is almost as funny as the acts.' },
+  { id: 'npc-6', text: 'That one-liner about landlords killed me.' },
+  { id: 'npc-7', text: 'I have never seen a room laugh that hard.' },
+  { id: 'npc-8', text: 'The musical comic should release an album.' },
+  { id: 'npc-9', text: 'Best Tuesday night in the city.' },
+  { id: 'npc-10', text: 'My cheeks hurt from smiling.' },
+  { id: 'npc-11', text: 'The clown car bit never gets old.' },
+  { id: 'npc-12', text: 'I brought my mum, she laughed the loudest.' },
+  { id: 'npc-13', text: 'That dark set was risky and perfect.' },
+  { id: 'npc-14', text: 'I am signing up for open mic next week.' },
+  { id: 'npc-15', text: 'The bartender knows my order already.' },
+  { id: 'npc-16', text: 'We are coming back every Friday now.' },
 ];
 
 export const COMEDY_GUIDE = [
-  { id: 'guide-0', text: 'Open your first comedy club entry: it costs cash, but it unlocks everything else.' },
-  { id: 'guide-1', text: 'Run it once and watch the timer. A finished run parks its payout in the till.' },
-  { id: 'guide-2', text: 'Collect the till before you start the next run, or the money just sits there.' },
-  { id: 'guide-3', text: 'Check the price board each morning: drift changes what everything is worth.' },
-  { id: 'guide-4', text: 'Buy the cheapest upgrade first. Small edges compound faster than big splurges.' },
-  { id: 'guide-5', text: 'Hire one staff member with a skill that matches what you do most.' },
-  { id: 'guide-6', text: 'Take the daily event as it comes. Some days the city hands you money.' },
-  { id: 'guide-7', text: 'Level up your best entry instead of opening a weak new one.' },
-  { id: 'guide-8', text: 'A boosted entry pays about a third more on its next run. Boost before big days.' },
-  { id: 'guide-9', text: 'Keep a cash buffer. A surprise repair bill on an empty wallet ends runs.' },
-  { id: 'guide-10', text: 'Chase the weekly goal: five runs, $500 earned, one hundred visitors.' },
-  { id: 'guide-11', text: 'When a run finishes, the streak grows. Protect the streak.' },
-  { id: 'guide-12', text: 'Sell an entry you never run. Half its price back beats dust on a shelf.' },
-  { id: 'guide-13', text: 'Reputation opens doors: better events, better staff, better prices.' },
-  { id: 'guide-14', text: 'Read the leaderboard sometimes. The rivals ahead of you started exactly where you are.' },
-  { id: 'guide-15', text: 'Come back tomorrow. Drift resets, events refresh, and the city forgets yesterday.' },
+  { id: 'guide-1', text: 'Step 1: Book an act from the list.' },
+  { id: 'guide-2', text: 'Step 2: Pay the booking cost from your cash.' },
+  { id: 'guide-3', text: 'Step 3: Run the show to start the set.' },
+  { id: 'guide-4', text: 'Step 4: Wait for the show timer to finish.' },
+  { id: 'guide-5', text: 'Step 5: Collect the door sales from the till.' },
+  { id: 'guide-6', text: 'Step 6: Host an open mic to boost the next act.' },
+  { id: 'guide-7', text: 'Step 7: Spend earnings on club upgrades.' },
+  { id: 'guide-8', text: 'Step 8: Hire hosts and bouncers for the floor.' },
+  { id: 'guide-9', text: 'Step 9: Level up acts to raise their value.' },
+  { id: 'guide-10', text: 'Step 10: Watch market events for hot acts.' },
+  { id: 'guide-11', text: 'Step 11: Claim challenges as you hit each goal.' },
+  { id: 'guide-12', text: 'Step 12: Donate to the youth centre for reputation.' },
+  { id: 'guide-13', text: 'Step 13: Check the price board before selling.' },
+  { id: 'guide-14', text: 'Step 14: Keep shows running to grow your streak.' },
+  { id: 'guide-15', text: 'Step 15: Trade in bulk when the market is hot.' },
+  { id: 'guide-16', text: 'Step 16: Become a Comedy Legend.' },
 ];
 
-export function comedyRankFor(xp) {
-  let rank = 0;
-  for (let i = 0; i < COMEDY_RANKS.length; i++) {
-    if (xp >= COMEDY_RANKS[i].xp) rank = i;
-  }
-  return rank;
-}
-
-export function comedyItemById(id) {
-  return COMEDY_ACTS.find((x) => x.id === id) || null;
-}
-
-export function comedyPriceFor(id, drift, rank, upgrades) {
-  const item = COMEDY_ACTS.find((x) => x.id === id);
-  if (!item) return 0;
-  let price = item.price;
-  price *= 1 + (drift[id] || 0);
-  price *= 1 + rank * 0.05;
-  if (upgrades && upgrades.length >= 3) price *= 1.1;
-  return Math.max(1, Math.round(price * 10) / 10);
-}
-
-export function comedyCapacityFor(rank, upgrades) {
-  let cap = 3 + rank;
-  if (upgrades && upgrades.indexOf('grand-stage') >= 0) cap += 2;
-  return cap;
-}
-
-export function comedyPayoutFor(item, rank, upgrades, weather, boosted) {
-  let mult = 0.6 + rank * 0.1 + (boosted ? 0.3 : 0);
-  if (weather === 'rain') mult *= 1.1;
-  if (weather === 'sunny') mult *= 1.0;
-  if (weather === 'storm') mult *= 0.7;
-  if (upgrades && upgrades.length >= 4) mult *= 1.15;
-  return Math.max(5, Math.round(item.price * mult));
-}
-
-export function comedyCrowdFor(item, rank, weather) {
-  let crowd = 10 + item.difficulty * 8 + rank * 5;
-  if (weather === 'rain') crowd = Math.round(crowd * 1.1);
-  if (weather === 'sunny') crowd = Math.round(crowd * 1.0);
-  if (weather === 'storm') crowd = Math.round(crowd * 0.5);
-  return Math.max(1, crowd);
-}
-
-export function comedyUpgradeById(id) {
-  return COMEDY_UPGRADES.find((x) => x.id === id) || null;
-}
-
-export function comedyStaffById(id) {
-  return COMEDY_STAFF.find((x) => x.id === id) || null;
-}
-
-export function comedyEventById(id) {
-  return COMEDY_DAILY_EVENTS.find((x) => x.id === id) || null;
-}
-
-export function comedyTipFor(day) {
-  return COMEDY_TIPS[day % COMEDY_TIPS.length];
-}
-
-export function comedyFactFor(day) {
-  return COMEDY_FACTS[day % COMEDY_FACTS.length];
-}
-
-export function comedyNpcLineFor(day) {
-  return COMEDY_NPC_LINES[day % COMEDY_NPC_LINES.length];
-}
-
-export function comedyGuideStep(step) {
-  return COMEDY_GUIDE[step] || null;
-}
-
-export function comedySeasonMult(seasonId) {
-  const s = COMEDY_SEASONS.find((x) => x.id === seasonId);
-  return s ? s.mult : 1;
-}
-
-export function comedyMarketEventMult(eventId, itemId) {
-  const ev = COMEDY_MARKET_EVENTS.find((x) => x.id === eventId);
-  if (!ev) return 1;
-  return ev.item === itemId ? ev.mult : 1;
-}
-
-export function comedyWeeklyGoal(state) {
-  const goal = { runs: 5, earned: 500, visitors: 100 };
-  const runsDone = state.runsDone >= goal.runs;
-  const earnedDone = state.earned >= goal.earned;
-  const visitorsDone = state.visitors >= goal.visitors;
-  return {
-    runs: { have: state.runsDone, goal: goal.runs, done: runsDone },
-    earned: { have: Math.round(state.earned), goal: goal.earned, done: earnedDone },
-    visitors: { have: state.visitors, goal: goal.visitors, done: visitorsDone },
-    allDone: runsDone && earnedDone && visitorsDone,
-  };
-}
-
-export function comedyEfficiency(state) {
-  const total = state.runsDone + state.failures;
-  if (total === 0) return 100;
-  return Math.round((state.runsDone / total) * 100);
-}
-
-export function comedyProfitPerRun(state) {
-  if (state.runsDone === 0) return 0;
-  return Math.round((state.earned / state.runsDone) * 10) / 10;
-}
-
-export function comedyInventoryValue(state) {
-  let total = 0;
-  for (const id of Object.keys(state.owned || {})) {
-    const item = COMEDY_ACTS.find((x) => x.id === id);
-    if (item) total += item.price * (state.levels[id] || 1);
-  }
-  return Math.round(total * 10) / 10;
-}
-
-export function comedySummary(state) {
-  const rankName = COMEDY_RANKS[state.rank] ? COMEDY_RANKS[state.rank].name : 'Unknown';
-  return 'Comedy Club ' + rankName + ': ' + state.runsDone + ' runs, '
-    + state.itemsOwned + ' entries, $' + Math.round(state.earned)
-    + ' earned, ' + state.visitors + ' visitors.';
-}
-
-export function comedyNextGoal(state) {
-  if (state.itemsOwned < 1) return 'Open your first entry.';
-  if (state.runsDone < 5) return 'Finish 5 runs.';
-  if (state.earned < 500) return 'Earn $500 in total.';
-  if (state.rank < 2) return 'Reach rank ' + COMEDY_RANKS[2].name + '.';
-  if (state.upgradesOwned < 4) return 'Own 4 upgrades.';
-  return 'Become a Comedy Club legend.';
-}
-
-export function comedyRecordFor(recordId, state) {
-  const r = COMEDY_RECORDS.find((x) => x.id === recordId);
-  if (!r) return null;
-  return { id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit };
-}
-
-export function comedyAllRecords(state) {
-  return COMEDY_RECORDS.map((r) => ({
-    id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit, desc: r.desc,
-  }));
-}
-
-export function comedyLeaderboardWith(playerScore) {
-  const board = COMEDY_LEADERBOARD.map((e) => ({
-    name: e.name, score: e.name === 'You' ? playerScore : e.score, desc: e.desc,
-  }));
-  board.sort((a, b) => b.score - a.score);
-  return board.map((e, i) => ({ rank: i + 1, name: e.name, score: e.score, desc: e.desc }));
-}
-
-export function comedySeasonReport(state, seasonId) {
-  const mult = comedySeasonMult(seasonId);
-  return COMEDY_ACTS.map((item) => ({
-    id: item.id,
-    name: item.name,
-    basePrice: item.price,
-    seasonPrice: Math.round(item.price * mult * 10) / 10,
-    owned: !!state.owned[item.id],
-    level: state.levels[item.id] || 0,
-  }));
-}
-
-export function comedyChallengeProgress(challenge, state) {
-  const v = state[challenge.target] || 0;
-  return {
-    id: challenge.id, name: challenge.name, have: Math.floor(v),
-    goal: challenge.goal, done: v >= challenge.goal, xp: challenge.xp,
-  };
-}
-
-export function comedyBestEntryFor(rank) {
-  let best = null;
-  let bestScore = -1;
-  for (const item of COMEDY_ACTS) {
-    if (item.difficulty > rank + 2) continue;
-    const score = item.price * (1 + item.rarity * 2) / item.difficulty;
-    if (score > bestScore) { bestScore = score; best = item; }
-  }
-  return best;
-}
+export const COMEDY_META = { system: 'comedy', version: '7-B4', author: 'builder-4', mechanic: 'venue', dataCount: 12, dataName: 'COMEDY_ACTS' };
 
 export function createComedyClubSystem(ctx) {
   const c = ctx || {};
   const rng = typeof c.rng === 'function' ? c.rng : Math.random;
+  const getDay = typeof c.getDay === 'function' ? c.getDay : () => 1;
+  const getHour = typeof c.getHour === 'function' ? c.getHour : () => 12;
   const getCash = typeof c.getCash === 'function' ? c.getCash : () => 0;
   const addCash = typeof c.addCash === 'function' ? c.addCash : () => {};
   const addHeat = typeof c.addHeat === 'function' ? c.addHeat : () => {};
   const log = typeof c.log === 'function' ? c.log : () => {};
-  const getDay = typeof c.getDay === 'function' ? c.getDay : () => 1;
-  const getHour = typeof c.getHour === 'function' ? c.getHour : () => 12;
-  const getPos = typeof c.getPlayerPos === 'function' ? c.getPlayerPos : () => ({ x: 0, z: 0 });
   const getWeather = typeof c.getWeather === 'function' ? c.getWeather : () => ({ condition: 'clear' });
-  const MECH = 'venue';
+
+  const drift = {};
+  const holdings = {};
+  const prices = {};
+  for (let i = 0; i < COMEDY_ACTS.length; i++) {
+    drift[COMEDY_ACTS[i].id] = 0;
+    holdings[COMEDY_ACTS[i].id] = 0;
+    prices[COMEDY_ACTS[i].id] = COMEDY_ACTS[i].price;
+  }
 
   const state = {
-    xp: 0,
-    rank: 0,
-    runsDone: 0,
-    itemsOwned: 0,
-    visitors: 0,
-    earned: 0,
-    spent: 0,
-    reputation: 0,
-    heat: 0,
-    upgrades: [],
-    upgradesOwned: 0,
-    staff: [],
-    staffHired: 0,
-    owned: {},
-    levels: {},
-    boosted: {},
-    active: null,
-    activeId: null,
-    activeTimer: 0,
-    activeBase: 0,
-    pending: 0,
-    dailyEarned: 0,
-    dailyVisitors: 0,
-    bestRun: 0,
-    bestRunName: null,
-    streak: 0,
-    bestStreak: 0,
-    failures: 0,
-    donations: 0,
-    challengesClaimed: [],
-    lastDay: 1,
-    drift: {},
-    holdings: {},
-    prices: {},
-    viewers: 0,
-    followers: 0,
-    subs: 0,
-    peakViewers: 0,
-    streamMinutes: 0,
-    support: 50,
-    volunteers: 0,
-    donors: 0,
-    polls: 50,
-    occupancy: 0,
-    attendanceToday: 0,
-    dividendsPaid: 0,
-    wagesPaid: 0,
+    xp: 0, rank: 0, runsDone: 0, itemsOwned: 0, visitors: 0, earned: 0, spent: 0,
+    reputation: 0, heat: 0, upgrades: [], upgradesOwned: 0, staff: [], staffHired: 0,
+    owned: {}, levels: {}, boosted: {}, active: null, activeId: null, activeTimer: 0,
+    activeBase: 0, pending: 0, dailyEarned: 0, dailyVisitors: 0, bestRun: 0,
+    bestRunName: null, streak: 0, bestStreak: 0, failures: 0, donations: 0,
+    challengesClaimed: [], lastDay: 1, drift: drift, holdings: holdings, prices: prices,
+    viewers: 0, followers: 0, subs: 0, peakViewers: 0, streamMinutes: 0, support: 50,
+    volunteers: 0, donors: 0, polls: 50, occupancy: 0, attendanceToday: 0,
+    dividendsPaid: 0, wagesPaid: 0,
   };
-  for (const item of COMEDY_ACTS) {
-    state.drift[item.id] = 0;
-    state.prices[item.id] = item.price;
-  }
-
-  function refreshRank() {
-    const r = comedyRankFor(state.xp);
-    if (r > state.rank) {
-      state.rank = r;
-      log('Comedy Club rank up: ' + COMEDY_RANKS[r].name + ' - ' + COMEDY_RANKS[r].perk);
-    }
-  }
 
   function gainXp(n) {
     state.xp += n;
-    refreshRank();
-  }
-
-  function weatherCond() {
-    const w = getWeather();
-    if (w && typeof w.condition === 'string') return w.condition;
-    return 'clear';
-  }
-
-  function staffBonus(skill) {
-    let bonus = 0;
-    for (const id of state.staff) {
-      const s = COMEDY_STAFF.find((x) => x.id === id);
-      if (s && s.skill === skill) bonus += s.bonus;
-    }
-    return bonus;
-  }
-
-  function driftPrices() {
-    for (const item of COMEDY_ACTS) {
-      const roll = rng();
-      if (roll < 0.35) {
-        const change = Math.round((rng() * 0.24 - 0.12) * 100) / 100;
-        state.drift[item.id] = Math.round((state.drift[item.id] + change) * 100) / 100;
-        state.prices[item.id] = Math.max(1, Math.round(item.price * (1 + state.drift[item.id]) * 10) / 10);
-      }
+    const lvl = comedyRankFor(state.xp);
+    if (lvl > state.rank) {
+      state.rank = lvl;
+      log('Rank up! You are now ' + comedyRankNameFor(lvl) + '.');
     }
   }
 
   function bookAct(id) {
-    const item = COMEDY_ACTS.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-act' };
-    if (state.owned[id]) return { ok: false, reason: 'already-owned' };
-    if (state.itemsOwned >= comedyCapacityFor(state.rank, state.upgrades)) {
-      return { ok: false, reason: 'capacity-full', cap: comedyCapacityFor(state.rank, state.upgrades) };
-    }
-    if (state.rank < Math.max(0, item.difficulty - 2)) {
-      return { ok: false, reason: 'rank-too-low', need: Math.max(0, item.difficulty - 2) };
-    }
-    const cost = comedyPriceFor(id, state.drift, 0, []);
-    if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost };
-    addCash(-cost);
+    const item = comedyItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id: id };
+    if (state.owned[id]) return { ok: false, reason: 'already-owned', id: id };
+    const cap = comedyCapacityFor(state.rank, state.upgrades);
+    if (state.itemsOwned >= cap) return { ok: false, reason: 'capacity-full', cap: cap };
+    const need = item.difficulty - 2 > 0 ? item.difficulty - 2 : 0;
+    if (state.rank < need) return { ok: false, reason: 'rank-too-low', rank: need };
+    const cost = comedyPriceFor(id, state.drift[id] || 0, 0, []);
+    if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost: cost };
+    addCash(0 - cost);
     state.spent += cost;
     state.owned[id] = 1;
     state.levels[id] = 1;
     state.itemsOwned += 1;
     gainXp(10);
-    log('Booked ' + item.name + ' for $' + cost + '. Welcome to the Comedy Club business.');
-    return { ok: true, id, cost, name: item.name };
+    log('Booked act ' + item.name + ' for $' + cost + '.');
+    return { ok: true, id: id, cost: cost, name: item.name };
   }
 
   function runShow(id) {
-    const item = COMEDY_ACTS.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-act' };
+    const item = comedyItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id: id };
     if (state.active) return { ok: false, reason: 'already-running', active: state.activeId };
-    if (!state.owned[id]) return { ok: false, reason: 'not-owned' };
+    if (!state.owned[id]) return { ok: false, reason: 'not-owned', id: id };
     state.active = 'run';
     state.activeId = id;
     state.activeTimer = 30 + item.difficulty * 10;
     state.activeBase = item.price;
-    log('Showtime: ' + item.name + ' is under way.');
-    return { ok: true, id, seconds: state.activeTimer };
+    log('Show started: ' + item.name + '.');
+    return { ok: true, id: id, seconds: state.activeTimer };
   }
 
   function settleRun() {
-    const id = state.activeId;
-    const item = COMEDY_ACTS.find((x) => x.id === id);
+    const item = comedyItemById(state.activeId);
+    const doneId = state.activeId;
+    const sky = getWeather();
+    const payout = comedyPayoutFor(item, state.rank, state.upgrades, sky, state.boosted[doneId] === true);
+    const crowd = comedyCrowdFor(item, state.rank, sky);
     state.active = null;
     state.activeId = null;
     state.activeTimer = 0;
-    if (!item) return;
-    const cond = weatherCond();
-    const boosted = !!state.boosted[id];
-    const payout = comedyPayoutFor(item, state.rank, state.upgrades, cond, boosted);
-    const crowd = comedyCrowdFor(item, state.rank, cond);
     state.visitors += crowd;
     state.dailyVisitors += crowd;
     state.attendanceToday += crowd;
     state.pending += payout;
     state.dailyEarned += payout;
     state.runsDone += 1;
-    if (payout > state.bestRun) { state.bestRun = payout; state.bestRunName = item.name; }
+    if (payout > state.bestRun) {
+      state.bestRun = payout;
+      state.bestRunName = item ? item.name : doneId;
+    }
     state.streak += 1;
-    state.bestStreak = Math.max(state.bestStreak, state.streak);
-    state.boosted[id] = false;
-    gainXp(15 + item.difficulty * 3);
-    log('Curtain call for ' + item.name + ': ' + crowd + ' visitors, $' + payout + ' in the till.');
+    if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+    state.boosted[doneId] = false;
+    gainXp(15 + (item ? item.difficulty : 0) * 3);
+    log('Show ' + (item ? item.name : doneId) + ' drew ' + crowd + ' laughers and earned $' + payout + '.');
   }
 
   function collectDoorSales() {
@@ -575,203 +294,212 @@ export function createComedyClubSystem(ctx) {
     state.pending = 0;
     state.earned += amount;
     addCash(amount);
-    log('Collected $' + amount + ' from the till.');
-    return { ok: true, amount };
+    log('Collected $' + amount + ' in door sales.');
+    return { ok: true, amount: amount };
   }
 
-  function sellDrinks(id, qty) {
-    const item = COMEDY_ACTS.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-act' };
-    void qty;
-    if (!state.owned[id]) return { ok: false, reason: 'not-owned' };
+  function sellDrinks(id) {
+    const item = comedyItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id: id };
+    if (!state.owned[id]) return { ok: false, reason: 'not-owned', id: id };
     const refund = Math.round(item.price * 0.5);
     delete state.owned[id];
     delete state.levels[id];
     state.itemsOwned -= 1;
-    addCash(refund);
     state.earned += refund;
+    addCash(refund);
     gainXp(5);
-    log('Sold off ' + item.name + ' for $' + refund + '. Half price, clean break.');
+    log('Sold drink stock from ' + item.name + ' for $' + refund + '.');
     return { ok: true, total: refund, qty: 1 };
   }
 
   function hostOpenMic(id) {
-    const item = COMEDY_ACTS.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-act' };
-    if (!state.owned[id]) return { ok: false, reason: 'not-owned' };
+    const item = comedyItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id: id };
+    if (!state.owned[id]) return { ok: false, reason: 'not-owned', id: id };
     if (getCash() < 40) return { ok: false, reason: 'not-enough-cash', cost: 40 };
     addCash(-40);
     state.spent += 40;
     state.boosted[id] = true;
     state.reputation += 1;
     gainXp(10);
-    log('Open mic spotlight on ' + item.name + ' is boosted for its next run.');
-    return { ok: true, id, boosted: true };
+    log('Hosted an open mic for ' + item.name + '.');
+    return { ok: true, id: id, boosted: true };
   }
 
   function buyUpgrade(id) {
-    const u = COMEDY_UPGRADES.find((x) => x.id === id);
-    if (!u) return { ok: false, reason: 'no-such-upgrade' };
-    if (state.upgrades.indexOf(id) >= 0) return { ok: false, reason: 'already-owned' };
-    if (getCash() < u.cost) return { ok: false, reason: 'not-enough-cash', cost: u.cost };
-    addCash(-u.cost);
-    state.spent += u.cost;
+    const up = comedyUpgradeById(id);
+    if (!up) return { ok: false, reason: 'unknown-upgrade', id: id };
+    if (state.upgrades.indexOf(id) >= 0) return { ok: false, reason: 'already-owned', id: id };
+    if (getCash() < up.cost) return { ok: false, reason: 'not-enough-cash', cost: up.cost };
+    addCash(0 - up.cost);
+    state.spent += up.cost;
     state.upgrades.push(id);
     state.upgradesOwned += 1;
     gainXp(20);
-    log('Bought upgrade: ' + u.name + ' for $' + u.cost + '. ' + u.desc);
-    return { ok: true, id, name: u.name };
+    log('Bought upgrade ' + up.name + ' for $' + up.cost + '.');
+    return { ok: true, id: id, name: up.name };
   }
 
   function hireStaff(id) {
-    const s = COMEDY_STAFF.find((x) => x.id === id);
-    if (!s) return { ok: false, reason: 'no-such-staff' };
-    if (state.staff.indexOf(id) >= 0) return { ok: false, reason: 'already-hired' };
+    const s = comedyStaffById(id);
+    if (!s) return { ok: false, reason: 'unknown-staff', id: id };
+    if (state.staff.indexOf(id) >= 0) return { ok: false, reason: 'already-hired', id: id };
     if (getCash() < s.wage) return { ok: false, reason: 'not-enough-cash', cost: s.wage };
-    addCash(-s.wage);
+    addCash(0 - s.wage);
     state.spent += s.wage;
     state.staff.push(id);
     state.staffHired += 1;
     gainXp(10);
-    log('Hired ' + s.name + ' for $' + s.wage + ' signing fee.');
-    return { ok: true, id, name: s.name, wage: s.wage };
+    log('Hired ' + s.name + ' for $' + s.wage + '.');
+    return { ok: true, id: id, name: s.name, wage: s.wage };
   }
 
   function fireStaff(id) {
-    const i = state.staff.indexOf(id);
-    if (i < 0) return { ok: false, reason: 'not-hired' };
-    state.staff.splice(i, 1);
-    log('Let go of ' + id + '. The team is smaller now.');
-    return { ok: true, id };
+    const at = state.staff.indexOf(id);
+    if (at < 0) return { ok: false, reason: 'not-hired', id: id };
+    state.staff.splice(at, 1);
+    log('Let go of staff member ' + id + '.');
+    return { ok: true, id: id };
   }
 
   function upgradeItem(id) {
-    const item = COMEDY_ACTS.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-act' };
-    if (!state.owned[id]) return { ok: false, reason: 'not-owned' };
+    const item = comedyItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id: id };
+    if (!state.owned[id]) return { ok: false, reason: 'not-owned', id: id };
     const lvl = state.levels[id] || 1;
-    if (lvl >= 5) return { ok: false, reason: 'max-level' };
+    if (lvl >= 5) return { ok: false, reason: 'max-level', id: id, level: lvl };
     const cost = Math.round(item.price * 0.4 * lvl);
-    if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost };
-    addCash(-cost);
+    if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost: cost };
+    addCash(0 - cost);
     state.spent += cost;
     state.levels[id] = lvl + 1;
     gainXp(15);
-    log(item.name + ' upgraded to level ' + (lvl + 1) + ' for $' + cost + '.');
-    return { ok: true, id, level: lvl + 1 };
+    log('Upgraded ' + item.name + ' to level ' + (lvl + 1) + '.');
+    return { ok: true, id: id, level: lvl + 1 };
   }
 
   function priceBoard() {
-    return COMEDY_ACTS.map((item) => ({
-      id: item.id,
-      name: item.name,
-      price: comedyPriceFor(item.id, state.drift, state.rank, state.upgrades),
-      basePrice: item.price,
-      drift: state.drift[item.id],
-      owned: !!state.owned[item.id],
-      level: state.levels[item.id] || 0,
-      difficulty: item.difficulty,
-      rarity: item.rarity,
-    }));
+    const rows = [];
+    for (let i = 0; i < COMEDY_ACTS.length; i++) {
+      const it = COMEDY_ACTS[i];
+      rows.push({
+        id: it.id, name: it.name, price: state.prices[it.id], basePrice: it.price,
+        drift: state.drift[it.id] || 0, owned: state.owned[it.id] ? true : false,
+        level: state.levels[it.id] || 0, difficulty: it.difficulty, rarity: it.rarity,
+      });
+    }
+    return rows;
   }
 
   function listItems() {
-    return COMEDY_ACTS.map((item) => ({
-      id: item.id, name: item.name, price: item.price,
-      difficulty: item.difficulty, rarity: item.rarity, desc: item.desc,
-      owned: !!state.owned[item.id],
-    }));
+    const rows = [];
+    for (let i = 0; i < COMEDY_ACTS.length; i++) {
+      const it = COMEDY_ACTS[i];
+      rows.push({ id: it.id, name: it.name, price: it.price, difficulty: it.difficulty, rarity: it.rarity, desc: it.desc, owned: state.owned[it.id] ? true : false });
+    }
+    return rows;
   }
 
   function info(id) {
-    const item = COMEDY_ACTS.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-act' };
-    return {
-      ok: true, item,
-      owned: !!state.owned[id],
-      level: state.levels[id] || 0,
-      price: comedyPriceFor(id, state.drift, state.rank, state.upgrades),
-      holdings: state.holdings[id] || 0,
-    };
+    const item = comedyItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id: id };
+    return { ok: true, item: item, owned: state.owned[id] ? true : false, level: state.levels[id] || 0, price: state.prices[id], holdings: state.holdings[id] || 0 };
   }
 
   function dailyEvent() {
-    const idx = Math.floor(rng() * COMEDY_DAILY_EVENTS.length);
-    const ev = COMEDY_DAILY_EVENTS[idx];
-    if (!ev) return { event: 'none' };
-    if (ev.effect === 'earn') {
-      state.pending += ev.amount;
-      log(ev.text);
-    } else if (ev.effect === 'cost') {
-      if (getCash() >= ev.amount) {
-        addCash(-ev.amount);
-        state.spent += ev.amount;
-      }
-      log(ev.text);
-    } else if (ev.effect === 'rep') {
-      state.reputation += ev.amount;
-      log(ev.text);
-    } else if (ev.effect === 'visitors') {
-      state.visitors += ev.amount;
-      state.dailyVisitors += ev.amount;
-      log(ev.text);
-    } else if (ev.effect === 'heat') {
-      state.heat += ev.amount;
-      addHeat(ev.amount);
-      log(ev.text);
-    } else if (ev.effect === 'xp') {
-      gainXp(ev.amount);
-      log(ev.text);
-    } else {
-      log(ev.text);
+    if (COMEDY_DAILY_EVENTS.length === 0) return { event: 'none', name: '', effect: '', amount: 0 };
+    const ev = COMEDY_DAILY_EVENTS[Math.floor(rng() * COMEDY_DAILY_EVENTS.length)];
+    switch (ev.effect) {
+      case 'earn':
+        state.pending += ev.amount;
+        break;
+      case 'cost':
+        if (getCash() >= ev.amount) {
+          addCash(0 - ev.amount);
+          state.spent += ev.amount;
+        }
+        break;
+      case 'rep':
+        state.reputation += ev.amount;
+        break;
+      case 'visitors':
+        state.visitors += ev.amount;
+        state.dailyVisitors += ev.amount;
+        break;
+      case 'heat':
+        state.heat += ev.amount;
+        addHeat(ev.amount);
+        break;
+      case 'xp':
+        gainXp(ev.amount);
+        break;
+      default:
+        break;
     }
+    log(ev.text);
     return { event: ev.id, name: ev.name, effect: ev.effect, amount: ev.amount };
   }
 
   function tick(dt) {
     if (!state.active) return;
     state.activeTimer -= dt;
-    if (state.activeTimer <= 0) settleRun();
+    if (state.activeTimer <= 0) {
+      state.activeTimer = 0;
+      settleRun();
+    }
   }
 
   function tickDay(day) {
-    if (day === state.lastDay) return;
+    if (day === state.lastDay) return null;
     state.lastDay = day;
-    driftPrices();
+    for (let i = 0; i < COMEDY_ACTS.length; i++) {
+      const it = COMEDY_ACTS[i];
+      if (rng() < 0.35) {
+        const shift = Math.round((rng() * 0.24 - 0.12) * 100) / 100;
+        const next = Math.round(((state.drift[it.id] || 0) + shift) * 100) / 100;
+        state.drift[it.id] = next;
+        state.prices[it.id] = Math.max(1, Math.round(it.price * (1 + next) * 10) / 10);
+      }
+    }
     state.dailyEarned = 0;
     state.dailyVisitors = 0;
     state.attendanceToday = 0;
     state.occupancy = 0;
-    dailyEvent();
+    return dailyEvent();
   }
 
   function serialize() {
     return JSON.parse(JSON.stringify(state));
   }
 
-  function deserialize(d) {
-    if (!d || typeof d !== 'object') return;
-    for (const k of Object.keys(state)) {
-      if (d[k] !== undefined) state[k] = d[k];
+  function deserialize(saved) {
+    if (!saved || typeof saved !== 'object') return;
+    const keys = Object.keys(saved);
+    for (let i = 0; i < keys.length; i++) state[keys[i]] = saved[keys[i]];
+    if (!state.drift || typeof state.drift !== 'object') state.drift = {};
+    if (!state.prices || typeof state.prices !== 'object') state.prices = {};
+    if (!state.holdings || typeof state.holdings !== 'object') state.holdings = {};
+    for (let i = 0; i < COMEDY_ACTS.length; i++) {
+      const id = COMEDY_ACTS[i].id;
+      if (state.drift[id] === undefined) state.drift[id] = 0;
+      if (state.prices[id] === undefined) state.prices[id] = COMEDY_ACTS[i].price;
+      if (state.holdings[id] === undefined) state.holdings[id] = 0;
     }
-    for (const item of COMEDY_ACTS) {
-      if (state.drift[item.id] === undefined) state.drift[item.id] = 0;
-      if (state.prices[item.id] === undefined) state.prices[item.id] = item.price;
-      if (state.holdings[item.id] === undefined) state.holdings[item.id] = 0;
-    }
-    if (!state.owned) state.owned = {};
-    if (!state.levels) state.levels = {};
-    if (!state.boosted) state.boosted = {};
-    refreshRank();
+    if (!state.owned || typeof state.owned !== 'object') state.owned = {};
+    if (!state.levels || typeof state.levels !== 'object') state.levels = {};
+    if (!state.boosted || typeof state.boosted !== 'object') state.boosted = {};
+    state.rank = comedyRankFor(state.xp);
   }
 
   function stats() {
     let holdingsCount = 0;
-    for (const k of Object.keys(state.holdings)) holdingsCount += state.holdings[k];
+    const hkeys = Object.keys(state.holdings);
+    for (let i = 0; i < hkeys.length; i++) holdingsCount += state.holdings[hkeys[i]] || 0;
     return {
       name: 'Comedy Club',
-      mechanic: MECH,
-      rank: COMEDY_RANKS[state.rank] ? COMEDY_RANKS[state.rank].name : 'Unknown',
+      mechanic: 'venue',
+      rank: comedyRankNameFor(state.rank),
       rankLevel: state.rank,
       xp: state.xp,
       runsDone: state.runsDone,
@@ -796,7 +524,7 @@ export function createComedyClubSystem(ctx) {
       bestStreak: state.bestStreak,
       failures: state.failures,
       donations: Math.round(state.donations),
-      holdingsCount,
+      holdingsCount: holdingsCount,
       viewers: state.viewers,
       followers: state.followers,
       subs: state.subs,
@@ -816,65 +544,62 @@ export function createComedyClubSystem(ctx) {
   }
 
   function hudLine() {
-    if (state.active) {
-      return 'Comedy Club: running ' + state.activeId + ' - ' + Math.max(0, Math.ceil(state.activeTimer)) + 's left';
-    }
-    if (state.pending > 0) {
-      return 'Comedy Club: $' + Math.round(state.pending) + ' waiting in the till';
-    }
-    if (state.itemsOwned > 0) {
-      return 'Comedy Club: ' + state.itemsOwned + ' entries, $' + Math.round(state.earned) + ' earned';
-    }
+    if (state.active) return 'Comedy Club: running ' + state.activeId + ' - ' + Math.ceil(state.activeTimer) + 's left';
+    if (state.pending > 0) return 'Comedy Club: $' + state.pending + ' waiting in the till';
+    if (state.itemsOwned > 0) return 'Comedy Club: ' + state.itemsOwned + ' entries, $' + state.earned + ' earned';
     return '';
   }
 
   function interact(action, a, b) {
-    if (!action || action === 'status') return { ok: true, stats: stats(), hint: 'open <act> to book it, run <act> to play the show, collect to empty the till' };
-    if (action === 'open') return bookAct(a);
-    if (action === 'run') return runShow(a);
-    if (action === 'collect') return collectDoorSales();
-    if (action === 'sell') return sellDrinks(a, b);
-    if (action === 'upgrade') return buyUpgrade(a);
-    if (action === 'levelup') return upgradeItem(a);
-    if (action === 'hire') return hireStaff(a);
-    if (action === 'fire') return fireStaff(a);
-    if (action === 'special') return hostOpenMic(a, b);
-    if (action === 'info') return info(a);
-    if (action === 'prices') return { ok: true, prices: priceBoard() };
-    if (action === 'list') return { ok: true, items: listItems() };
-    if (action === 'event') return dailyEvent();
-    return { ok: false, reason: 'unknown-action', action };
+    if (!action || action === 'status') {
+      return { ok: true, stats: stats(), hint: 'open an act to book it, run an act to play the show, collect to empty the till' };
+    }
+    switch (action) {
+      case 'open': return bookAct(a);
+      case 'run': return runShow(a);
+      case 'collect': return collectDoorSales();
+      case 'sell': return sellDrinks(a, b);
+      case 'upgrade': case 'levelup': return upgradeItem(a);
+      case 'hire': return hireStaff(a);
+      case 'fire': return fireStaff(a);
+      case 'special': return hostOpenMic(a);
+      case 'info': return info(a);
+      case 'prices': return { ok: true, prices: priceBoard() };
+      case 'list': return { ok: true, items: listItems() };
+      case 'event': return dailyEvent();
+      default: return { ok: false, reason: 'unknown-action', action: action };
+    }
   }
 
   return {
     name: 'Comedy Club',
-    state,
-    gainXp,
-    bookAct,
-    runShow,
-    collectDoorSales,
-    sellDrinks,
-    hostOpenMic,
-    buyUpgrade,
-    hireStaff,
-    fireStaff,
-    upgradeItem,
-    priceBoard,
-    listItems,
-    info,
-    dailyEvent,
-    tick,
-    tickDay,
-    serialize,
-    deserialize,
-    stats,
-    hudLine,
-    interact,
+    state: state,
+    gainXp: gainXp,
+    bookAct: bookAct,
+    runShow: runShow,
+    collectDoorSales: collectDoorSales,
+    sellDrinks: sellDrinks,
+    hostOpenMic: hostOpenMic,
+    buyUpgrade: buyUpgrade,
+    hireStaff: hireStaff,
+    fireStaff: fireStaff,
+    upgradeItem: upgradeItem,
+    priceBoard: priceBoard,
+    listItems: listItems,
+    info: info,
+    dailyEvent: dailyEvent,
+    tick: tick,
+    tickDay: tickDay,
+    serialize: serialize,
+    deserialize: deserialize,
+    stats: stats,
+    hudLine: hudLine,
+    interact: interact,
     open: bookAct,
     run: runShow,
     collect: collectDoorSales,
     sell: sellDrinks,
-    upgrade: buyUpgrade,
+    upgrade: upgradeItem,
     hire: hireStaff,
   };
 }
@@ -882,83 +607,86 @@ export function createComedyClubSystem(ctx) {
 export function createComedyClubExtras(system) {
   const helpers = [];
   const claimed = [];
-  let helperWagesPaid = 0;
+  let wagesPaid = 0;
 
   function challenges() {
-    return COMEDY_CHALLENGES.map((ch) => comedyChallengeProgress(ch, system.state));
+    const out = [];
+    for (let i = 0; i < COMEDY_CHALLENGES.length; i++) out.push(comedyChallengeProgress(COMEDY_CHALLENGES[i], system.state));
+    return out;
   }
 
   function claimChallenge(id) {
-    const ch = COMEDY_CHALLENGES.find((x) => x.id === id);
-    if (!ch) return { ok: false, reason: 'no-such-challenge' };
-    if (claimed.indexOf(id) >= 0) return { ok: false, reason: 'already-claimed' };
-    const p = comedyChallengeProgress(ch, system.state);
-    if (!p.done) return { ok: false, reason: 'not-done', have: p.have, goal: p.goal };
+    let ch = null;
+    for (let i = 0; i < COMEDY_CHALLENGES.length; i++) {
+      if (COMEDY_CHALLENGES[i].id === id) ch = COMEDY_CHALLENGES[i];
+    }
+    if (!ch) return { ok: false, reason: 'unknown-challenge', id: id };
+    if (claimed.indexOf(id) >= 0) return { ok: false, reason: 'already-claimed', id: id };
+    const prog = comedyChallengeProgress(ch, system.state);
+    if (!prog.done) return { ok: false, reason: 'not-done', id: id, have: prog.have, goal: prog.goal };
     claimed.push(id);
     system.state.challengesClaimed.push(id);
-    if (typeof system.gainXp === 'function') system.gainXp(ch.xp);
-    return { ok: true, id, xp: ch.xp };
+    system.gainXp(ch.xp);
+    return { ok: true, id: id, xp: ch.xp };
   }
 
   function achievements() {
-    return COMEDY_ACHIEVEMENTS.map((a) => ({
-      id: a.id,
-      name: a.name,
-      desc: a.desc,
-      target: a.target,
-      goal: a.goal,
-      have: Math.floor(system.state[a.target] || 0),
-      done: (system.state[a.target] || 0) >= a.goal,
-    }));
+    const out = [];
+    for (let i = 0; i < COMEDY_ACHIEVEMENTS.length; i++) {
+      const a = COMEDY_ACHIEVEMENTS[i];
+      const have = Math.floor(system.state[a.target] || 0);
+      out.push({ id: a.id, name: a.name, desc: a.desc, target: a.target, goal: a.goal, have: have, done: have >= a.goal });
+    }
+    return out;
   }
 
   function hireHelper(id) {
-    const h = COMEDY_STAFF.find((x) => x.id === id);
-    if (!h) return { ok: false, reason: 'no-such-helper' };
-    if (helpers.indexOf(id) >= 0) return { ok: false, reason: 'already-hired' };
+    const s = comedyStaffById(id);
+    if (!s) return { ok: false, reason: 'unknown-staff', id: id };
+    if (helpers.indexOf(id) >= 0) return { ok: false, reason: 'already-hired', id: id };
     helpers.push(id);
-    return { ok: true, id, name: h.name, wage: h.wage };
+    return { ok: true, id: id, name: s.name, wage: s.wage };
   }
 
   function fireHelper(id) {
-    const i = helpers.indexOf(id);
-    if (i < 0) return { ok: false, reason: 'not-hired' };
-    helpers.splice(i, 1);
-    return { ok: true, id };
+    const at = helpers.indexOf(id);
+    if (at < 0) return { ok: false, reason: 'not-hired', id: id };
+    helpers.splice(at, 1);
+    return { ok: true, id: id };
   }
 
   function payWages() {
     let due = 0;
-    for (const id of helpers) {
-      const h = COMEDY_STAFF.find((x) => x.id === id);
-      if (h) due += h.wage;
+    for (let i = 0; i < helpers.length; i++) {
+      const s = comedyStaffById(helpers[i]);
+      if (s) due += s.wage;
     }
-    helperWagesPaid += due;
+    wagesPaid += due;
     system.state.wagesPaid += due;
-    return { due, helpers: helpers.slice(), totalPaid: helperWagesPaid };
+    return { due: due, helpers: helpers.length, totalPaid: wagesPaid };
   }
 
   function helperBonus(skill) {
-    let bonus = 0;
-    for (const id of helpers) {
-      const h = COMEDY_STAFF.find((x) => x.id === id);
-      if (h && h.skill === skill) bonus += h.bonus;
+    let total = 0;
+    for (let i = 0; i < helpers.length; i++) {
+      const s = comedyStaffById(helpers[i]);
+      if (s && s.skill === skill) total += s.bonus;
     }
-    return bonus;
+    return total;
   }
 
   function donate(amount) {
-    if (!amount || amount <= 0) return { ok: false, reason: 'bad-amount' };
+    if (!amount || amount <= 0) return { ok: false, reason: 'bad-amount', amount: amount };
     system.state.donations += amount;
-    system.state.reputation += Math.floor(amount / 100);
-    return { ok: true, amount, reputation: system.state.reputation };
+    const rep = Math.floor(amount / 100);
+    system.state.reputation += rep;
+    return { ok: true, amount: amount, reputation: rep };
   }
 
   function quickBoost(id) {
-    const item = COMEDY_ACTS.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-act' };
+    if (!comedyItemById(id)) return { ok: false, reason: 'unknown-item', id: id };
     system.state.boosted[id] = true;
-    return { ok: true, id, boosted: true };
+    return { ok: true, id: id, boosted: true };
   }
 
   function inventoryValue() {
@@ -977,36 +705,40 @@ export function createComedyClubExtras(system) {
   }
 
   function staffRoster() {
-    return COMEDY_STAFF.map((s) => ({
-      id: s.id, name: s.name, wage: s.wage, skill: s.skill,
-      hired: helpers.indexOf(s.id) >= 0 || system.state.staff.indexOf(s.id) >= 0,
-    }));
+    const rows = [];
+    for (let i = 0; i < COMEDY_STAFF.length; i++) {
+      const s = COMEDY_STAFF[i];
+      rows.push({ id: s.id, name: s.name, wage: s.wage, skill: s.skill, hired: helpers.indexOf(s.id) >= 0 || system.state.staff.indexOf(s.id) >= 0 });
+    }
+    return rows;
   }
 
   function upgradeCatalog() {
-    return COMEDY_UPGRADES.map((u) => ({
-      id: u.id, name: u.name, cost: u.cost, effect: u.effect, desc: u.desc,
-      owned: system.state.upgrades.indexOf(u.id) >= 0,
-    }));
+    const rows = [];
+    for (let i = 0; i < COMEDY_UPGRADES.length; i++) {
+      const u = COMEDY_UPGRADES[i];
+      rows.push({ id: u.id, name: u.name, cost: u.cost, effect: u.effect, desc: u.desc, owned: system.state.upgrades.indexOf(u.id) >= 0 });
+    }
+    return rows;
   }
 
   return {
-    challenges,
-    claimChallenge,
-    achievements,
-    hireHelper,
-    fireHelper,
-    payWages,
-    helperBonus,
-    donate,
-    quickBoost,
-    inventoryValue,
-    weeklyReport,
-    staffRoster,
-    upgradeCatalog,
+    challenges: challenges,
+    claimChallenge: claimChallenge,
+    achievements: achievements,
+    hireHelper: hireHelper,
+    fireHelper: fireHelper,
+    payWages: payWages,
+    helperBonus: helperBonus,
+    donate: donate,
+    quickBoost: quickBoost,
+    inventoryValue: inventoryValue,
+    weeklyReport: weeklyReport,
+    staffRoster: staffRoster,
+    upgradeCatalog: upgradeCatalog,
     get helpers() { return helpers.slice(); },
     get claimed() { return claimed.slice(); },
-    get wagesPaid() { return helperWagesPaid; },
+    get wagesPaid() { return wagesPaid; },
   };
 }
 
@@ -1016,80 +748,296 @@ export function createComedyClubMarket(system) {
   let dealsClaimed = 0;
   let bulkTraded = 0;
 
-  function setEvent(eventId) {
-    const ev = COMEDY_MARKET_EVENTS.find((x) => x.id === eventId);
-    if (!ev) return { ok: false, reason: 'no-such-event' };
-    currentEvent = eventId;
-    return { ok: true, event: eventId, name: ev.name };
+  function setEvent(id) {
+    let found = null;
+    for (let i = 0; i < COMEDY_MARKET_EVENTS.length; i++) {
+      if (COMEDY_MARKET_EVENTS[i].id === id) found = COMEDY_MARKET_EVENTS[i];
+    }
+    if (!found) return { ok: false, reason: 'unknown-event', id: id };
+    currentEvent = id;
+    return { ok: true, event: id };
   }
 
-  function setSeason(seasonId) {
-    const s = COMEDY_SEASONS.find((x) => x.id === seasonId);
-    if (!s) return { ok: false, reason: 'no-such-season' };
-    currentSeason = seasonId;
-    return { ok: true, season: seasonId };
+  function setSeason(id) {
+    let found = null;
+    for (let i = 0; i < COMEDY_SEASONS.length; i++) {
+      if (COMEDY_SEASONS[i].id === id) found = COMEDY_SEASONS[i];
+    }
+    if (!found) return { ok: false, reason: 'unknown-season', id: id };
+    currentSeason = id;
+    return { ok: true, season: id };
   }
 
   function eventPrice(itemId, basePrice) {
-    let price = basePrice;
-    price *= comedyMarketEventMult(currentEvent, itemId);
-    price *= comedySeasonMult(currentSeason);
-    return Math.round(price * 10) / 10;
+    const mult = comedyMarketEventMult(currentEvent, itemId) * comedySeasonMult(currentSeason);
+    return Math.round(basePrice * mult * 10) / 10;
   }
 
   function bulkDeal(itemId, qty) {
-    const item = COMEDY_ACTS.find((x) => x.id === itemId);
-    if (!item) return { ok: false, reason: 'no-such-act' };
-    if (!qty || qty < 5) return { ok: false, reason: 'need-5-plus', qty: qty || 0 };
+    const item = comedyItemById(itemId);
+    if (!item) return { ok: false, reason: 'unknown-item', id: itemId };
+    if (!qty || qty < 5) return { ok: false, reason: 'too-few', qty: qty };
     const unit = eventPrice(itemId, item.price);
     const total = Math.round(unit * qty * 1.1 * 10) / 10;
     system.state.pending += total;
     system.state.dailyEarned += total;
     bulkTraded += qty;
     dealsClaimed += 1;
-    return { ok: true, total, qty, unit, bonus: 'bulk +10%' };
+    return { ok: true, total: total, qty: qty, unit: unit, bonus: 'bulk +10%' };
   }
 
   function dailyDeals() {
-    const deals = [];
-    for (const item of COMEDY_ACTS) {
-      const mult = comedyMarketEventMult(currentEvent, item.id);
-      if (mult !== 1) {
-        deals.push({ item: item.id, name: item.name, mult, event: currentEvent });
-      }
+    const rows = [];
+    for (let i = 0; i < COMEDY_ACTS.length; i++) {
+      const it = COMEDY_ACTS[i];
+      const mult = comedyMarketEventMult(currentEvent, it.id);
+      if (mult !== 1) rows.push({ item: it.id, name: it.name, mult: mult, event: currentEvent });
     }
-    return deals;
+    return rows;
   }
 
   function marketSummary() {
-    return {
-      event: currentEvent,
-      season: currentSeason,
-      dealsClaimed,
-      bulkTraded,
-      deals: dailyDeals(),
-    };
+    return { event: currentEvent, season: currentSeason, dealsClaimed: dealsClaimed, bulkTraded: bulkTraded, deals: dailyDeals() };
   }
 
   function seasonPrices() {
-    return COMEDY_ACTS.map((item) => ({
-      id: item.id,
-      name: item.name,
-      price: eventPrice(item.id, item.price),
-    }));
+    const rows = [];
+    for (let i = 0; i < COMEDY_ACTS.length; i++) {
+      const it = COMEDY_ACTS[i];
+      rows.push({ id: it.id, name: it.name, price: eventPrice(it.id, it.price) });
+    }
+    return rows;
   }
 
   return {
-    setEvent,
-    setSeason,
-    eventPrice,
-    bulkDeal,
-    dailyDeals,
-    marketSummary,
-    seasonPrices,
+    setEvent: setEvent,
+    setSeason: setSeason,
+    eventPrice: eventPrice,
+    bulkDeal: bulkDeal,
+    dailyDeals: dailyDeals,
+    marketSummary: marketSummary,
+    seasonPrices: seasonPrices,
     get event() { return currentEvent; },
     get season() { return currentSeason; },
   };
+}
+
+function comedySkyCond(weather) {
+  if (typeof weather === 'string') return weather;
+  if (weather && typeof weather.condition === 'string') return weather.condition;
+  return 'clear';
+}
+
+function comedySkyFactor(table, weather) {
+  const hit = table[comedySkyCond(weather)];
+  return hit === undefined ? 1 : hit;
+}
+
+export function comedyRankFor(xp) {
+  let lvl = 0;
+  for (let i = 0; i < COMEDY_RANKS.length; i++) {
+    if (xp >= COMEDY_RANKS[i].xp) lvl = COMEDY_RANKS[i].level;
+  }
+  return lvl;
+}
+
+export function comedyItemById(id) {
+  for (let i = 0; i < COMEDY_ACTS.length; i++) {
+    if (COMEDY_ACTS[i].id === id) return COMEDY_ACTS[i];
+  }
+  return null;
+}
+
+export function comedyPriceFor(id, drift, rank, upgrades) {
+  const item = comedyItemById(id);
+  if (!item) return 0;
+  let p = item.price * (1 + (drift || 0)) * (1 + (rank || 0) * 0.05);
+  if (upgrades && upgrades.length >= 3) p = p * 1.1;
+  const rounded = Math.round(p * 10) / 10;
+  return rounded < 1 ? 1 : rounded;
+}
+
+export function comedyCapacityFor(rank, upgrades) {
+  let cap = 3 + (rank || 0);
+  if (upgrades) {
+    for (let i = 0; i < upgrades.length; i++) {
+      if (upgrades[i] === 'grand-stage') cap += 2;
+    }
+  }
+  return cap;
+}
+
+export function comedyPayoutFor(item, rank, upgrades, weather, boosted) {
+  if (!item) return 0;
+  let mult = 0.6 + (rank || 0) * 0.1;
+  if (boosted) mult += 0.3;
+  mult = mult * comedySkyFactor({ rain: 1.1, sunny: 1.0, storm: 0.7 }, weather);
+  if (upgrades && upgrades.length >= 4) mult = mult * 1.15;
+  const payout = Math.round(item.price * mult);
+  return payout < 5 ? 5 : payout;
+}
+
+export function comedyCrowdFor(item, rank, weather) {
+  const diff = item ? item.difficulty : 0;
+  const base = 10 + diff * 8 + (rank || 0) * 5;
+  const crowd = Math.round(base * comedySkyFactor({ rain: 1.1, sunny: 1.0, storm: 0.5 }, weather));
+  return crowd < 1 ? 1 : crowd;
+}
+
+export function comedyUpgradeById(id) {
+  for (let i = 0; i < COMEDY_UPGRADES.length; i++) {
+    if (COMEDY_UPGRADES[i].id === id) return COMEDY_UPGRADES[i];
+  }
+  return null;
+}
+
+export function comedyStaffById(id) {
+  for (let i = 0; i < COMEDY_STAFF.length; i++) {
+    if (COMEDY_STAFF[i].id === id) return COMEDY_STAFF[i];
+  }
+  return null;
+}
+
+export function comedyEventById(id) {
+  for (let i = 0; i < COMEDY_DAILY_EVENTS.length; i++) {
+    if (COMEDY_DAILY_EVENTS[i].id === id) return COMEDY_DAILY_EVENTS[i];
+  }
+  for (let i = 0; i < COMEDY_MARKET_EVENTS.length; i++) {
+    if (COMEDY_MARKET_EVENTS[i].id === id) return COMEDY_MARKET_EVENTS[i];
+  }
+  return null;
+}
+
+export function comedyTipFor(day) {
+  return COMEDY_TIPS[day % COMEDY_TIPS.length];
+}
+
+export function comedyFactFor(day) {
+  return COMEDY_FACTS[day % COMEDY_FACTS.length];
+}
+
+export function comedyNpcLineFor(day) {
+  return COMEDY_NPC_LINES[day % COMEDY_NPC_LINES.length];
+}
+
+export function comedyGuideStep(step) {
+  if (step < 0 || step >= COMEDY_GUIDE.length) return null;
+  return COMEDY_GUIDE[step];
+}
+
+export function comedySeasonMult(seasonId) {
+  for (let i = 0; i < COMEDY_SEASONS.length; i++) {
+    if (COMEDY_SEASONS[i].id === seasonId) return COMEDY_SEASONS[i].mult;
+  }
+  return 1;
+}
+
+export function comedyMarketEventMult(eventId, itemId) {
+  if (!eventId) return 1;
+  for (let i = 0; i < COMEDY_MARKET_EVENTS.length; i++) {
+    const e = COMEDY_MARKET_EVENTS[i];
+    if (e.id === eventId) return e.item === itemId ? e.mult : 1;
+  }
+  return 1;
+}
+
+export function comedyWeeklyGoal(state) {
+  const runs = { have: state.runsDone, goal: 5, done: state.runsDone >= 5 };
+  const earned = { have: state.earned, goal: 500, done: state.earned >= 500 };
+  const visitors = { have: state.visitors, goal: 100, done: state.visitors >= 100 };
+  return { runs: runs, earned: earned, visitors: visitors, allDone: runs.done && earned.done && visitors.done };
+}
+
+export function comedyEfficiency(state) {
+  const total = state.runsDone + state.failures;
+  if (total === 0) return 100;
+  return Math.round((state.runsDone / total) * 100);
+}
+
+export function comedyProfitPerRun(state) {
+  if (state.runsDone === 0) return 0;
+  return Math.round((state.earned / state.runsDone) * 10) / 10;
+}
+
+export function comedyInventoryValue(state) {
+  let sum = 0;
+  const keys = Object.keys(state.owned);
+  for (let i = 0; i < keys.length; i++) {
+    const item = comedyItemById(keys[i]);
+    if (item) sum += item.price * (state.levels[keys[i]] || 1);
+  }
+  return Math.round(sum * 10) / 10;
+}
+
+export function comedySummary(state) {
+  return 'Comedy Club at rank ' + comedyRankNameFor(state.rank) + ': ' + state.runsDone + ' runs, ' + state.itemsOwned + ' entries, $' + state.earned + ' earned, ' + state.visitors + ' visitors.';
+}
+
+export function comedyNextGoal(state) {
+  if (state.itemsOwned === 0) return 'Open your first entry.';
+  if (state.runsDone < 5) return 'Finish 5 runs.';
+  if (state.earned < 500) return 'Earn $500 in total.';
+  if (state.rank < 2) return 'Reach rank ' + comedyRankNameFor(2) + '.';
+  if (state.upgradesOwned < 4) return 'Own 4 upgrades.';
+  return 'Become a legend of the Comedy Club.';
+}
+
+export function comedyRecordFor(id, state) {
+  let rec = null;
+  for (let i = 0; i < COMEDY_RECORDS.length; i++) {
+    if (COMEDY_RECORDS[i].id === id) rec = COMEDY_RECORDS[i];
+  }
+  if (!rec) return null;
+  const value = state[rec.stat] === undefined ? 0 : state[rec.stat];
+  return { id: rec.id, name: rec.name, stat: rec.stat, unit: rec.unit, desc: rec.desc, value: value };
+}
+
+export function comedyAllRecords(state) {
+  const out = [];
+  for (let i = 0; i < COMEDY_RECORDS.length; i++) out.push(comedyRecordFor(COMEDY_RECORDS[i].id, state));
+  return out;
+}
+
+export function comedyLeaderboardWith(score) {
+  const board = [];
+  for (let i = 0; i < COMEDY_LEADERBOARD.length; i++) {
+    const e = COMEDY_LEADERBOARD[i];
+    board.push(e.name === 'You' ? { name: e.name, score: score, desc: e.desc } : { name: e.name, score: e.score, desc: e.desc });
+  }
+  board.sort((a, b) => b.score - a.score);
+  const ranked = [];
+  for (let i = 0; i < board.length; i++) ranked.push({ rank: i + 1, name: board[i].name, score: board[i].score, desc: board[i].desc });
+  return ranked;
+}
+
+export function comedySeasonReport(state, seasonId) {
+  const mult = comedySeasonMult(seasonId);
+  const rows = [];
+  for (let i = 0; i < COMEDY_ACTS.length; i++) {
+    const it = COMEDY_ACTS[i];
+    rows.push({ id: it.id, name: it.name, basePrice: it.price, seasonPrice: Math.round(it.price * mult * 10) / 10, owned: state.owned[it.id] ? true : false, level: state.levels[it.id] || 0 });
+  }
+  return rows;
+}
+
+export function comedyChallengeProgress(challenge, state) {
+  const have = Math.floor(state[challenge.target] || 0);
+  return { id: challenge.id, name: challenge.name, have: have, goal: challenge.goal, done: have >= challenge.goal, xp: challenge.xp };
+}
+
+export function comedyBestEntryFor(rank) {
+  let best = null;
+  let bestScore = -1;
+  for (let i = 0; i < COMEDY_ACTS.length; i++) {
+    const it = COMEDY_ACTS[i];
+    if (it.difficulty > rank + 2) continue;
+    const score = (it.price * (1 + it.rarity * 2)) / it.difficulty;
+    if (score > bestScore) {
+      bestScore = score;
+      best = it;
+    }
+  }
+  return best;
 }
 
 export function comedyEventFor(day) {
@@ -1100,14 +1048,15 @@ export function comedyDailyEventFor(day) {
   return COMEDY_DAILY_EVENTS[day % COMEDY_DAILY_EVENTS.length];
 }
 
-export function comedyRankNameFor(rank) {
-  const r = COMEDY_RANKS[rank];
-  return r ? r.name : 'Unknown';
+export function comedyRankNameFor(level) {
+  for (let i = 0; i < COMEDY_RANKS.length; i++) {
+    if (COMEDY_RANKS[i].level === level) return COMEDY_RANKS[i].name;
+  }
+  return 'Unknown';
 }
 
 export function comedyTotalValue(state) {
-  const inv = comedyInventoryValue(state);
-  return Math.round((inv + state.pending + state.earned) * 10) / 10;
+  return Math.round((comedyInventoryValue(state) + state.pending + state.earned) * 10) / 10;
 }
 
 export function comedyProgressPercent(state) {
@@ -1117,36 +1066,44 @@ export function comedyProgressPercent(state) {
 }
 
 export function comedyStaffBonusFor(staffIds, skill) {
-  let bonus = 0;
-  for (const id of staffIds) {
-    const s = COMEDY_STAFF.find((x) => x.id === id);
-    if (s && s.skill === skill) bonus += s.bonus;
+  let total = 0;
+  for (let i = 0; i < staffIds.length; i++) {
+    const s = comedyStaffById(staffIds[i]);
+    if (s && s.skill === skill) total += s.bonus;
   }
-  return bonus;
+  return total;
 }
 
 export function comedyCheapestEntry() {
   let best = COMEDY_ACTS[0];
-  for (const item of COMEDY_ACTS) {
-    if (item.price < best.price) best = item;
+  for (let i = 1; i < COMEDY_ACTS.length; i++) {
+    if (COMEDY_ACTS[i].price < best.price) best = COMEDY_ACTS[i];
   }
   return best;
 }
 
 export function comedyPriciestEntry() {
   let best = COMEDY_ACTS[0];
-  for (const item of COMEDY_ACTS) {
-    if (item.price > best.price) best = item;
+  for (let i = 1; i < COMEDY_ACTS.length; i++) {
+    if (COMEDY_ACTS[i].price > best.price) best = COMEDY_ACTS[i];
   }
   return best;
 }
 
 export function comedyEntriesByDifficulty(difficulty) {
-  return COMEDY_ACTS.filter((x) => x.difficulty === difficulty).map((x) => x.id);
+  const ids = [];
+  for (let i = 0; i < COMEDY_ACTS.length; i++) {
+    if (COMEDY_ACTS[i].difficulty === difficulty) ids.push(COMEDY_ACTS[i].id);
+  }
+  return ids;
 }
 
 export function comedyEntriesByRarity(maxRarity) {
-  return COMEDY_ACTS.filter((x) => x.rarity <= maxRarity).map((x) => x.id);
+  const ids = [];
+  for (let i = 0; i < COMEDY_ACTS.length; i++) {
+    if (COMEDY_ACTS[i].rarity <= maxRarity) ids.push(COMEDY_ACTS[i].id);
+  }
+  return ids;
 }
 
 export function comedyGradeFor(runsDone, earned, visitors) {
@@ -1157,12 +1114,3 @@ export function comedyGradeFor(runsDone, earned, visitors) {
   if (score >= 50) return 'C';
   return 'D';
 }
-
-export const COMEDY_META = {
-  system: 'comedy',
-  version: '7-B4',
-  author: 'builder-4',
-  mechanic: 'venue',
-  dataCount: COMEDY_ACTS.length,
-  dataName: 'COMEDY_ACTS',
-};

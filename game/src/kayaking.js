@@ -1,320 +1,279 @@
-// Kayaking — Rio paddles the rivers above Solara.
-// Pay the put-in, read the water, and ride each bend collecting what
-// the river leaves behind: trout, feathers, old lures, driftwood
-// carvings, and the odd thing a flood carried down from the hills.
-// Rapids pay better, and they charge for it — a rock can flip the
-// boat and soak your kit in a second. Scout every rapid you cannot
-// see through, rest in the eddies, and let the current do the work.
-// Pure logic: no rendering, no imports. The game wires it through the
-// standard ctx { rng, getDay, getHour, getCash, addCash, addHeat, log,
-// getPlayerPos, getWeather } and drives tick/tickDay from the main loop.
-
 export const KAYAK_RIVERS = [
-  { id: 'emerald-creek', name: 'Emerald Creek', fee: 25, difficulty: 1,
-    steps: 4, duration: 25, risk: 0, rapids: 'I', length: 4,
-    desc: 'Clear, slow, and kind to beginners.' },
-  { id: 'willow-bend', name: 'Willow Bend', fee: 35, difficulty: 1,
-    steps: 5, duration: 30, risk: 0, rapids: 'I', length: 6,
-    desc: 'Willows trail in the water like green hair.' },
-  { id: 'quiet-lagoon', name: 'Quiet Lagoon', fee: 45, difficulty: 1,
-    steps: 5, duration: 30, risk: 0, rapids: 'I', length: 5,
-    desc: 'Still water, herons, and a lot of sky.' },
-  { id: 'silver-stream', name: 'Silver Stream', fee: 60, difficulty: 2,
-    steps: 5, duration: 35, risk: 1, rapids: 'II', length: 8,
-    desc: 'Fast, bright, and full of trout.' },
-  { id: 'mangrove-maze', name: 'Mangrove Maze', fee: 75, difficulty: 2,
-    steps: 6, duration: 40, risk: 1, rapids: 'II', length: 9,
-    desc: 'Roots and tunnels, easy to get turned around.' },
-  { id: 'pine-rapids', name: 'Pine Rapids', fee: 95, difficulty: 3,
-    steps: 6, duration: 40, risk: 2, rapids: 'III', length: 10,
-    desc: 'Pine-scented water with a proper bite.' },
-  { id: 'granite-gorge', name: 'Granite Gorge', fee: 120, difficulty: 3,
-    steps: 7, duration: 45, risk: 2, rapids: 'III', length: 12,
-    desc: 'Grey walls and water that means it.' },
-  { id: 'moonlit-channel', name: 'Moonlit Channel', fee: 150, difficulty: 4,
-    steps: 7, duration: 50, risk: 2, rapids: 'III', length: 14,
-    desc: 'Best paddled at dusk, when the water turns silver.' },
-  { id: 'thunder-falls', name: 'Thunder Falls', fee: 180, difficulty: 4,
-    steps: 8, duration: 55, risk: 3, rapids: 'IV', length: 15,
-    desc: 'You can hear it a kilometre away.' },
-  { id: 'rapid-run', name: 'Rapid Run', fee: 220, difficulty: 5,
-    steps: 8, duration: 60, risk: 3, rapids: 'IV', length: 18,
-    desc: 'The river drops, twists, and does not forgive.' },
+  { id: 'gentle-creek', name: 'Gentle Creek', fee: 15, difficulty: 1, steps: 5, duration: 110, risk: 0.1, rapids: 1, length: 3, desc: 'A slow creek through meadows.' },
+  { id: 'willow-run', name: 'Willow Run', fee: 20, difficulty: 1, steps: 6, duration: 120, risk: 0.1, rapids: 1, length: 4, desc: 'Willows dip over the water.' },
+  { id: 'otter-stream', name: 'Otter Stream', fee: 30, difficulty: 2, steps: 7, duration: 140, risk: 0.2, rapids: 2, length: 6, desc: 'Otters play along the banks.' },
+  { id: 'pine-river', name: 'Pine River', fee: 35, difficulty: 2, steps: 8, duration: 150, risk: 0.2, rapids: 2, length: 8, desc: 'Pines line both banks.' },
+  { id: 'salmon-run', name: 'Salmon Run', fee: 45, difficulty: 3, steps: 9, duration: 180, risk: 0.3, rapids: 3, length: 10, desc: 'Salmon leap up the rapids.' },
+  { id: 'rocky-rapid', name: 'Rocky Rapid', fee: 50, difficulty: 3, steps: 9, duration: 190, risk: 0.4, rapids: 3, length: 11, desc: 'Rocks split the river into chutes.' },
+  { id: 'misty-river', name: 'Misty River', fee: 55, difficulty: 3, steps: 10, duration: 200, risk: 0.3, rapids: 3, length: 13, desc: 'Mist hangs over the morning water.' },
+  { id: 'gorge-pass', name: 'Gorge Pass', fee: 65, difficulty: 4, steps: 10, duration: 220, risk: 0.5, rapids: 4, length: 15, desc: 'A narrow gorge with fast water.' },
+  { id: 'whitewater-falls', name: 'Whitewater Falls', fee: 75, difficulty: 4, steps: 11, duration: 240, risk: 0.5, rapids: 5, length: 18, desc: 'Falls and foam below the drop.' },
+  { id: 'grand-canyon-river', name: 'Grand Canyon River', fee: 90, difficulty: 5, steps: 12, duration: 280, risk: 0.6, rapids: 5, length: 22, desc: 'The great canyon river run.' },
 ];
 
 export const KAYAK_CATCHES = [
-  { id: 'smooth-pebble', name: 'Smooth Pebble', value: 8, rarity: 0.28,
-    weight: 0.3, desc: 'Polished by a thousand kilometres of river.' },
-  { id: 'wild-mint', name: 'Wild Mint', value: 14, rarity: 0.22,
-    weight: 0.2, desc: 'Grows on the banks, smells like summer.' },
-  { id: 'old-lure', name: 'Old Lure', value: 24, rarity: 0.16,
-    weight: 0.1, desc: 'A spinner snagged on a root, still shiny.' },
-  { id: 'kingfisher-feather', name: 'Kingfisher Feather', value: 32, rarity: 0.12,
-    weight: 0.0, desc: 'Electric blue, dropped on the water.' },
-  { id: 'river-trout', name: 'River Trout', value: 45, rarity: 0.1,
-    weight: 1.2, desc: 'Fat and fighting, straight from the pool.' },
-  { id: 'driftwood-carving', name: 'Driftwood Carving', value: 65, rarity: 0.07,
-    weight: 1.0, desc: 'Someone carved a fish into this driftwood.' },
-  { id: 'heron-feather', name: 'Heron Feather', value: 80, rarity: 0.05,
-    weight: 0.0, desc: 'Grey, long, and lucky to find.' },
-  { id: 'silver-minnow', name: 'Silver Minnow', value: 110, rarity: 0.04,
-    weight: 0.3, desc: 'A minnow that flashes like a coin.' },
-  { id: 'river-pearl', name: 'River Pearl', value: 190, rarity: 0.02,
-    weight: 0.1, desc: 'A freshwater pearl, small and perfect.' },
-  { id: 'lost-paddle', name: 'Lost Paddle', value: 260, rarity: 0.01,
-    weight: 1.5, desc: 'A hand-carved paddle, signed by its maker.' },
+  { id: 'minnow', name: 'Minnow', value: 4, rarity: 0.55, weight: 0.1, desc: 'A tiny minnow from the shallows.' },
+  { id: 'perch', name: 'Perch', value: 8, rarity: 0.45, weight: 0.3, desc: 'A striped perch from the reeds.' },
+  { id: 'crayfish', name: 'Crayfish', value: 12, rarity: 0.38, weight: 0.2, desc: 'A crayfish under a river stone.' },
+  { id: 'trout', name: 'Trout', value: 18, rarity: 0.3, weight: 0.5, desc: 'A speckled trout from cold water.' },
+  { id: 'bass', name: 'Bass', value: 26, rarity: 0.22, weight: 0.8, desc: 'A fighting bass from the deep pool.' },
+  { id: 'eel', name: 'River Eel', value: 40, rarity: 0.15, weight: 0.6, desc: 'A slippery eel from the mud.' },
+  { id: 'catfish', name: 'Catfish', value: 55, rarity: 0.1, weight: 1.5, desc: 'A whiskered catfish from the bottom.' },
+  { id: 'salmon', name: 'Salmon', value: 85, rarity: 0.07, weight: 1.2, desc: 'A leaping salmon on its run.' },
+  { id: 'golden-trout', name: 'Golden Trout', value: 150, rarity: 0.04, weight: 0.6, desc: 'A rare golden trout.' },
+  { id: 'river-pearl', name: 'River Pearl', value: 320, rarity: 0.02, weight: 0.1, desc: 'A pearl from an old river mussel.' },
 ];
 
 export const KAYAK_UPGRADES = [
-  { id: 'paddle', name: 'Carbon Paddle', cost: 90,
-    desc: 'Lighter strokes, longer days.', effect: 'stroke-plus' },
-  { id: 'pfd', name: 'Pro Life Vest', cost: 110,
-    desc: 'Hazards hurt half as much.', effect: 'safety' },
-  { id: 'helmet', name: 'River Helmet', cost: 130,
-    desc: 'Rocks bounce off. Mostly.', effect: 'safety-plus' },
-  { id: 'drybag', name: 'Dry Bag Set', cost: 160,
-    desc: 'Keep finds dry: +6 slots, +20% prices.', effect: 'carry-plus' },
-  { id: 'spray-skirt', name: 'Spray Skirt', cost: 200,
-    desc: 'Stay dry in the rapids.', effect: 'dry-plus' },
-  { id: 'gps', name: 'River GPS', cost: 380,
-    desc: 'Finds are 25% easier to spot.', effect: 'find-plus' },
-  { id: 'kayak', name: 'Expedition Kayak', cost: 650,
-    desc: 'Stamina lasts +40, carry +12.', effect: 'stamina-plus' },
-  { id: 'roof-rack', name: 'Roof Rack', cost: 300,
-    desc: 'Carry the boat anywhere, paddle more rivers.', effect: 'travel-plus' },
+  { id: 'expedition-kayak', name: 'Expedition Kayak', cost: 400, desc: 'A long kayak that holds more stamina.', effect: 'stamina max +40' },
+  { id: 'find-plus', name: 'Catch Spotter', cost: 250, desc: 'Spots rare catches more often.', effect: 'rare catch boost 1.25' },
+  { id: 'price-plus', name: 'Market License', cost: 300, desc: 'Sells catches for more cash.', effect: 'sell price +20%' },
+  { id: 'carry-plus', name: 'Deck Net', cost: 200, desc: 'Carry more catches per run.', effect: 'carry cap +10' },
+  { id: 'paddle-carbon', name: 'Carbon Paddle', cost: 320, desc: 'A light paddle that saves stamina.', effect: 'stamina use down' },
+  { id: 'spray-skirt', name: 'Spray Skirt', cost: 180, desc: 'Keeps the cockpit dry in rapids.', effect: 'hazard down' },
+  { id: 'helmet-pro', name: 'Pro Helmet', cost: 210, desc: 'Protection for rocky rapids.', effect: 'hazard down' },
+  { id: 'dry-bag', name: 'Dry Bag', cost: 150, desc: 'Keeps catches fresh and dry.', effect: 'catch value up' },
 ];
 
 export const KAYAK_RANKS = [
-  { level: 0, name: 'Pond Paddler', xp: 0,
-    perk: 'Calm water pays base rate.' },
-  { level: 1, name: 'River Runner', xp: 120,
-    perk: '+10% find prices.' },
-  { level: 2, name: 'Rapid Runner', xp: 300,
-    perk: 'Class III rivers open up.' },
-  { level: 3, name: 'Gorge Guide', xp: 620,
-    perk: '+20% find prices, class IV unlocked.' },
-  { level: 4, name: 'River Master', xp: 1100,
-    perk: '+30% find prices, rare finds doubled.' },
+  { level: 0, name: 'Paddler', xp: 0, perk: 'Creek runs unlocked' },
+  { level: 1, name: 'River Runner', xp: 120, perk: 'Salmon runs open up' },
+  { level: 2, name: 'Rapid Rider', xp: 300, perk: 'Gorge runs pay better' },
+  { level: 3, name: 'Expedition Leader', xp: 620, perk: 'Rare catches appear more often' },
+  { level: 4, name: 'Whitewater Legend', xp: 1100, perk: 'The canyon run holds no fear' },
 ];
 
 export const KAYAK_EVENTS = [
-  { id: 'salmon-run', name: 'Salmon Run',
-    desc: 'The river is silver with running fish.' },
-  { id: 'rain-swollen', name: 'Rain Swollen',
-    desc: 'Rain lifts the river a full metre.' },
-  { id: 'low-water', name: 'Low Water',
-    desc: 'Rocks show that are usually hidden.' },
-  { id: 'kingfisher-day', name: 'Kingfisher Day',
-    desc: 'Kingfishers flash on every bend.' },
-  { id: 'flood-debris', name: 'Flood Debris',
-    desc: 'The last flood left treasure on the banks.' },
-  { id: 'mist-morning', name: 'Mist Morning',
-    desc: 'The river steams in the cold dawn.' },
-  { id: 'otter-family', name: 'Otter Family',
-    desc: 'Otters play in the eddy below the falls.' },
-  { id: 'dam-release', name: 'Dam Release',
-    desc: 'The dam opens and the river rises fast.' },
-  { id: 'clear-pool', name: 'Clear Pool',
-    desc: 'The pools are glass-clear today.' },
-  { id: 'heron-nest', name: 'Heron Nest',
-    desc: 'A heron nests on the far bank.' },
+  { id: 'calm-water', name: 'Calm Water', desc: 'The river runs smooth and slow.' },
+  { id: 'fishing-fest', name: 'Fishing Fest', desc: 'Anglers line the riverbanks.' },
+  { id: 'rain-swollen', name: 'Rain Swollen', desc: 'Rain swells the river fast.' },
+  { id: 'otter-day', name: 'Otter Day', desc: 'Otters follow the kayaks.' },
+  { id: 'low-water', name: 'Low Water', desc: 'Rocks show where the river runs low.' },
+  { id: 'salmon-leap', name: 'Salmon Leap', desc: 'Salmon leap the rapids in numbers.' },
+  { id: 'mist-morning', name: 'Mist Morning', desc: 'Mist curls over the water.' },
+  { id: 'sunny-paddle', name: 'Sunny Paddle', desc: 'Warm sun on the river.' },
+  { id: 'new-launch', name: 'New Launch', desc: 'A new launch ramp opens.' },
+  { id: 'kingfisher', name: 'Kingfisher', desc: 'A kingfisher flashes past.' },
 ];
 
 export const KAYAK_CONTRACTS = [
-  { id: 'trout-10', name: 'Trout Order', material: 'river-trout', qty: 10,
-    pay: 480, days: 1, rep: 1,
-    desc: 'A riverside restaurant needs ten trout.' },
-  { id: 'mint-15', name: 'Mint Picking', material: 'wild-mint', qty: 15,
-    pay: 220, days: 1, rep: 1,
-    desc: 'A tea house wants wild mint from the banks.' },
-  { id: 'feathers-8', name: 'Feather Collection', material: 'kingfisher-feather', qty: 8,
-    pay: 320, days: 2, rep: 2,
-    desc: 'A fly-tier collects kingfisher feathers.' },
-  { id: 'pearls-3', name: 'Pearl Hunt', material: 'river-pearl', qty: 3,
-    pay: 700, days: 3, rep: 3,
-    desc: 'A jeweller wants three river pearls.' },
-  { id: 'carvings-4', name: 'Carving Hunt', material: 'driftwood-carving', qty: 4,
-    pay: 340, days: 2, rep: 2,
-    desc: 'A gallery buys driftwood carvings.' },
-  { id: 'mixed-30', name: 'River Lot', material: 'mixed', qty: 30,
-    pay: 520, days: 2, rep: 2,
-    desc: 'Any thirty river finds for the market.' },
+  { id: 'trout-order', name: 'Trout Order', material: 'trout', qty: 5, pay: 200, days: 3, rep: 15, desc: 'A restaurant wants five trout.' },
+  { id: 'bass-order', name: 'Bass Order', material: 'bass', qty: 4, pay: 240, days: 3, rep: 15, desc: 'A grill wants four bass.' },
+  { id: 'salmon-order', name: 'Salmon Order', material: 'salmon', qty: 2, pay: 420, days: 4, rep: 25, desc: 'A smokehouse wants two salmon.' },
+  { id: 'pearl-order', name: 'Pearl Order', material: 'river-pearl', qty: 1, pay: 650, days: 5, rep: 35, desc: 'A jeweller wants one river pearl.' },
+  { id: 'perch-order', name: 'Perch Order', material: 'perch', qty: 8, pay: 150, days: 2, rep: 10, desc: 'A school wants eight perch.' },
+  { id: 'catfish-order', name: 'Catfish Order', material: 'catfish', qty: 3, pay: 320, days: 4, rep: 20, desc: 'A diner wants three catfish.' },
 ];
 
 export const KAYAK_CHALLENGES = [
-  { id: 'rivers-10', name: 'Ten Rivers', target: 'sessions', goal: 10, xp: 90,
-    desc: 'Finish 10 river runs.' },
-  { id: 'finds-100', name: 'Century of Finds', target: 'findsFound', goal: 100, xp: 110,
-    desc: 'Collect 100 river finds.' },
-  { id: 'earn-1000', name: 'Grand on the River', target: 'earned', goal: 1000, xp: 130,
-    desc: 'Earn $1,000 from kayaking.' },
-  { id: 'streak-8', name: 'Clean Eight', target: 'bestStreak', goal: 8, xp: 100,
-    desc: 'Eight clean steps in a row.' },
-  { id: 'contracts-3', name: 'Reliable Paddler', target: 'contractsDone', goal: 3, xp: 120,
-    desc: 'Complete 3 river contracts.' },
-  { id: 'actions-200', name: 'Two Hundred Strokes', target: 'actions', goal: 200, xp: 140,
-    desc: 'Take 200 paddle steps.' },
-  { id: 'first-find', name: 'First Find', target: 'findsFound', goal: 1, xp: 60,
-    desc: 'Collect your first river find.' },
-  { id: 'rapids-5', name: 'Rapids Five', target: 'sessions', goal: 5, xp: 80,
-    desc: 'Finish 5 river runs.' },
+  { id: 'first-paddle', name: 'First Paddle', target: 'sessions', goal: 1, xp: 20, desc: 'Finish one kayak run.' },
+  { id: 'five-paddles', name: 'Five Paddles', target: 'sessions', goal: 5, xp: 60, desc: 'Finish five kayak runs.' },
+  { id: 'catch-ten', name: 'Catch Ten', target: 'findsFound', goal: 10, xp: 40, desc: 'Catch ten river finds.' },
+  { id: 'catch-fifty', name: 'Catch Fifty', target: 'findsFound', goal: 50, xp: 120, desc: 'Catch fifty river finds.' },
+  { id: 'earn-five-hundred', name: 'Earn Five Hundred', target: 'earned', goal: 500, xp: 100, desc: 'Earn 500 cash in total.' },
+  { id: 'sell-twenty', name: 'Sell Twenty', target: 'findsSold', goal: 20, xp: 80, desc: 'Sell twenty catches.' },
+  { id: 'contract-three', name: 'Contract Three', target: 'contractsDone', goal: 3, xp: 90, desc: 'Deliver three contracts.' },
+  { id: 'steps-hundred', name: 'Hundred Steps', target: 'stepsDone', goal: 100, xp: 110, desc: 'Take a hundred paddle strokes.' },
 ];
 
 export const KAYAK_ACHIEVEMENTS = [
-  { id: 'first-river', name: 'First River', check: (s) => s.sessions >= 1,
-    desc: 'Finish your first river run.' },
-  { id: 'pearl-club', name: 'Pearl Club', check: (s) => (s.inventory['river-pearl'] || 0) + s.findsSold >= 1,
-    desc: 'Find a river pearl.' },
-  { id: 'rank-3', name: 'Gorge Guide', check: (s) => s.rank >= 3,
-    desc: 'Reach rank Gorge Guide.' },
-  { id: 'rich-river', name: 'River Rich', check: (s) => s.earned >= 3000,
-    desc: 'Earn $3,000 from kayaking.' },
-  { id: 'full-kit', name: 'Full Kit', check: (s) => s.upgrades.length >= 8,
-    desc: 'Own every kayaking upgrade.' },
-  { id: 'no-hazard', name: 'Dry Run', check: (s) => s.sessions >= 10 && s.hazardsTaken === 0,
-    desc: 'Ten runs with zero hazards.' },
-  { id: 'big-yield', name: 'Big Yield', check: (s) => s.bestSessionYield >= 500,
-    desc: 'One run worth $500 or more.' },
-  { id: 'strokes-50', name: 'Fifty Strokes', check: (s) => s.actions >= 50,
-    desc: 'Fifty paddle steps on the river.' },
+  { id: 'wet-paddle', name: 'Wet Paddle', check: (s) => s.sessions >= 1, desc: 'Finish your first run.' },
+  { id: 'river-regular', name: 'River Regular', check: (s) => s.sessions >= 10, desc: 'Finish ten runs.' },
+  { id: 'angler', name: 'Angler', check: (s) => s.findsFound >= 25, desc: 'Catch twenty-five finds.' },
+  { id: 'river-master', name: 'River Master', check: (s) => s.findsFound >= 100, desc: 'Catch a hundred finds.' },
+  { id: 'rich-paddler', name: 'Rich Paddler', check: (s) => s.earned >= 1000, desc: 'Earn a thousand cash.' },
+  { id: 'deal-maker', name: 'Deal Maker', check: (s) => s.contractsDone >= 5, desc: 'Deliver five contracts.' },
+  { id: 'streak-five', name: 'Streak Five', check: (s) => s.bestStreak >= 5, desc: 'Reach a streak of five.' },
+  { id: 'canyon-master', name: 'Canyon Master', check: (s) => s.rank >= 4, desc: 'Reach the top rank.' },
 ];
 
 export const KAYAK_TIPS = [
-  { id: 'stamina-first', name: 'Stamina First',
-    text: 'Stamina is your river. Spend it on rapids, not flat water.' },
-  { id: 'scout-first', name: 'Scout First',
-    text: 'Always scout a rapid you cannot see through.' },
-  { id: 'drybag-money', name: 'Dry Bag Money',
-    text: 'Dry finds sell for more. Keep them dry.' },
-  { id: 'trout-pools', name: 'Trout Pools',
-    text: 'Trout hold in the deep pools below the rapids.' },
-  { id: 'rain-check', name: 'Rain Check',
-    text: 'Rain lifts the river fast. Check the level first.' },
-  { id: 'contract-first', name: 'Contracts First',
-    text: 'Take a river contract, then paddle its river.' },
-  { id: 'helmet-early', name: 'Helmet Early',
-    text: 'Buy the helmet before the gorge.' },
-  { id: 'eddy-rest', name: 'Eddy Rest',
-    text: 'Rest in the eddies. The river never hurries you.' },
+  { id: 'tip-stamina', name: 'Watch Stamina', text: 'Rest before your stamina runs out.' },
+  { id: 'tip-rare', name: 'Rare Catches', text: 'Long rivers hide the rarest catches.' },
+  { id: 'tip-rank', name: 'Rank Up', text: 'Higher rank boosts rare catches.' },
+  { id: 'tip-sell', name: 'Sell Often', text: 'Sell catches before the drift turns.' },
+  { id: 'tip-contract', name: 'Contracts Pay', text: 'Contracts pay more than raw sales.' },
+  { id: 'tip-weather', name: 'Storm Watch', text: 'Storms and hurricanes block paddling.' },
+  { id: 'tip-cap', name: 'Carry Cap', text: 'Upgrade your net to carry more.' },
+  { id: 'tip-season', name: 'Season Prices', text: 'Spring prices beat winter prices.' },
 ];
 
 export const KAYAK_LEADERBOARD = [
-  { name: 'Old Man River', value: 8600, desc: 'Paddled every river in the county.' },
-  { name: 'Sana', value: 6400, desc: 'Slalom champion, three years running.' },
-  { name: 'Rio', value: 0, desc: 'You. Climbing.' },
-  { name: 'Tomas', value: 3500, desc: 'Found the lost paddle, twice.' },
-  { name: 'Lena', value: 1800, desc: 'Guides the dawn trips.' },
+  { name: 'Riva', value: 870, desc: 'Top paddler of the season.' },
+  { name: 'Brook', value: 680, desc: 'Rapid rider of the gorge.' },
+  { name: 'Sal', value: 510, desc: 'Salmon queen of the river.' },
+  { name: 'Ned', value: 300, desc: 'Steady paddler, steady hands.' },
+  { name: 'You', value: 0, desc: 'Your score on the board.' },
 ];
 
 export const KAYAK_RECORDS = [
-  { id: 'most-runs', name: 'Most Runs', stat: 'sessions', unit: 'runs',
-    desc: 'Most river runs finished.' },
-  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$',
-    desc: 'Most money earned from kayaking.' },
-  { id: 'most-finds', name: 'Most Finds', stat: 'findsFound', unit: 'finds',
-    desc: 'Most river finds collected.' },
-  { id: 'best-streak', name: 'Best Streak', stat: 'bestStreak', unit: 'steps',
-    desc: 'Longest clean streak.' },
-  { id: 'best-run', name: 'Best Run', stat: 'bestSessionYield', unit: '$',
-    desc: 'Best single-run yield.' },
+  { id: 'most-runs', name: 'Most Runs', stat: 'sessions', unit: 'runs', desc: 'Most run sessions finished.' },
+  { id: 'most-catches', name: 'Most Catches', stat: 'findsFound', unit: 'catches', desc: 'Most catches made.' },
+  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: 'cash', desc: 'Most cash earned.' },
+  { id: 'best-yield', name: 'Best Yield', stat: 'bestSessionYield', unit: 'cash', desc: 'Best single run yield.' },
+  { id: 'best-streak', name: 'Best Streak', stat: 'bestStreak', unit: 'streak', desc: 'Longest good streak.' },
 ];
 
 export const KAYAK_MARKET = [
-  { id: 'trout-boom', name: 'Trout Boom', finds: ['river-trout'], mult: 1.4,
-    desc: 'Restaurants are bidding up trout.' },
-  { id: 'pearl-rush', name: 'Pearl Rush', finds: ['river-pearl'], mult: 1.6,
-    desc: 'A jeweller wants river pearls.' },
-  { id: 'feather-week', name: 'Feather Week', finds: ['kingfisher-feather', 'heron-feather'], mult: 1.35,
-    desc: 'Fly-tiers are buying feathers.' },
-  { id: 'mint-season', name: 'Mint Season', finds: ['wild-mint'], mult: 1.3,
-    desc: 'Tea houses want wild mint.' },
-  { id: 'carving-fair', name: 'Carving Fair', finds: ['driftwood-carving'], mult: 1.4,
-    desc: 'A gallery is buying driftwood.' },
-  { id: 'minnow-day', name: 'Minnow Day', finds: ['silver-minnow'], mult: 1.3,
-    desc: 'Aquariums want silver minnows.' },
-  { id: 'pebble-glut', name: 'Pebble Glut', finds: ['smooth-pebble'], mult: 0.6,
-    desc: 'Everyone has pebbles this week.' },
-  { id: 'lure-dip', name: 'Lure Dip', finds: ['old-lure'], mult: 0.75,
-    desc: 'Old lures are out of fashion.' },
+  { id: 'fish-stall', name: 'Fish Stall', finds: ['minnow', 'perch', 'trout'], mult: 1.1, desc: 'Buys common river fish.' },
+  { id: 'smokehouse', name: 'Smokehouse', finds: ['salmon', 'trout'], mult: 1.25, desc: 'Pays well for salmon.' },
+  { id: 'restaurant', name: 'Riverside Restaurant', finds: ['bass', 'catfish'], mult: 1.4, desc: 'Top price for bass and catfish.' },
+  { id: 'pearl-jeweller', name: 'Pearl Jeweller', finds: ['river-pearl'], mult: 1.6, desc: 'Best buyer for river pearls.' },
+  { id: 'tackle-shop', name: 'Tackle Shop', finds: ['crayfish', 'eel'], mult: 1.3, desc: 'Buys crayfish and eels.' },
+  { id: 'golden-buyer', name: 'Golden Buyer', finds: ['golden-trout'], mult: 1.5, desc: 'Pays a premium for golden trout.' },
+  { id: 'market-stall', name: 'Market Stall', finds: ['perch', 'trout', 'bass'], mult: 1.05, desc: 'Quick sales at the market.' },
+  { id: 'rare-buyer', name: 'Rare Buyer', finds: ['river-pearl', 'golden-trout', 'salmon'], mult: 1.45, desc: 'Buys only the rarest catches.' },
 ];
 
 export const KAYAK_SEASONS = [
-  { id: 'spring', name: 'Spring', mult: 1.1,
-    desc: 'Fresh water and full bookings.' },
-  { id: 'summer', name: 'Summer', mult: 1.2,
-    desc: 'Peak season, everyone is paddling.' },
-  { id: 'autumn', name: 'Autumn', mult: 1.0,
-    desc: 'Steady work, thinner crowds.' },
-  { id: 'winter', name: 'Winter', mult: 0.85,
-    desc: 'Cold water, quiet days.' },
+  { id: 'spring', name: 'Spring', mult: 1.15, desc: 'High water, best prices.' },
+  { id: 'summer', name: 'Summer', mult: 1.0, desc: 'Warm water, steady prices.' },
+  { id: 'autumn', name: 'Autumn', mult: 0.95, desc: 'Cooling water, softer prices.' },
+  { id: 'winter', name: 'Winter', mult: 0.8, desc: 'Cold water, lowest prices.' },
 ];
 
 export const KAYAK_SEASONAL = [
-  { season: 'spring', find: 'wild-mint', mult: 1.3 },
-  { season: 'spring', find: 'river-trout', mult: 1.25 },
-  { season: 'summer', find: 'kingfisher-feather', mult: 1.3 },
-  { season: 'summer', find: 'silver-minnow', mult: 1.2 },
-  { season: 'autumn', find: 'driftwood-carving', mult: 1.25 },
-  { season: 'autumn', find: 'river-pearl', mult: 1.35 },
-  { season: 'winter', find: 'heron-feather', mult: 1.3 },
-  { season: 'winter', find: 'lost-paddle', mult: 1.2 },
+  { season: 'spring', find: 'salmon', mult: 1.3 },
+  { season: 'spring', find: 'trout', mult: 1.2 },
+  { season: 'summer', find: 'bass', mult: 1.2 },
+  { season: 'summer', find: 'perch', mult: 1.15 },
+  { season: 'autumn', find: 'river-pearl', mult: 1.25 },
+  { season: 'autumn', find: 'catfish', mult: 1.1 },
+  { season: 'winter', find: 'golden-trout', mult: 1.4 },
+  { season: 'winter', find: 'eel', mult: 1.2 },
 ];
 
 export const KAYAK_QUICK_START = [
-  'Paddle the calm rivers first and learn your stamina burn.',
-  'Sell pebbles and mint early; keep pearls for contracts.',
-  'Buy the helmet before the gorge.',
-  'Scout every rapid you cannot see through.',
-  'Take river contracts for finds on your river.',
-  'Save for the expedition kayak — longer runs, more finds.',
+  'Paddle the Gentle Creek run.',
+  'Catch finds until stamina runs low.',
+  'Sell catches at the Fish Stall.',
+  'Buy the Deck Net upgrade early.',
+  'Take a perch order contract.',
+  'Save up for the Expedition Kayak.',
 ];
 
 export const KAYAK_HELPERS = [
-  { id: 'spotter', name: 'Lena the Spotter', wage: 30, skill: 'collect', bonus: 0.15,
-    desc: 'Sharp eyes on the bank: +15% find yield.' },
-  { id: 'guide', name: 'Sana the Guide', wage: 45, skill: 'find', bonus: 0.25,
-    desc: 'Knows every eddy: +25% rare finds.' },
-  { id: 'shuttle', name: 'Tomas the Shuttle', wage: 55, skill: 'carry', bonus: 0.4,
-    desc: 'Drives the shuttle: +40% carry capacity.' },
-  { id: 'trader', name: 'Quiet Ana', wage: 75, skill: 'sell', bonus: 0.12,
-    desc: 'Knows the traders: +12% find prices.' },
+  { id: 'paddle-buddy', name: 'Paddle Buddy', wage: 20, skill: 'paddling', bonus: 0.1, desc: 'A steady partner on the river.' },
+  { id: 'fishing-guide', name: 'Fishing Guide', wage: 35, skill: 'fishing', bonus: 0.2, desc: 'Knows where the fish hide.' },
+  { id: 'river-navigator', name: 'River Navigator', wage: 30, skill: 'navigation', bonus: 0.15, desc: 'Reads rapids by heart.' },
+  { id: 'safety-kayaker', name: 'Safety Kayaker', wage: 40, skill: 'safety', bonus: 0.25, desc: 'Keeps every run safe.' },
 ];
 
+export const KAYAK_META = { system: 'kayaking', version: '7c-B2', author: 'builder-2', dataCount: 10, findCount: 10, upgradeCount: 8, rankCount: 5 };
+
+const RIVER_BY_ID = {};
+KAYAK_RIVERS.forEach((r) => { RIVER_BY_ID[r.id] = r; });
+const CATCH_BY_ID = {};
+KAYAK_CATCHES.forEach((f) => { CATCH_BY_ID[f.id] = f; });
+const UP_BY_ID = {};
+KAYAK_UPGRADES.forEach((u) => { UP_BY_ID[u.id] = u; });
+
+const listOf = (v) => (Array.isArray(v) ? v : (v && Array.isArray(v.upgrades) ? v.upgrades : []));
+const rankOf = (v) => (typeof v === 'number' ? v : (v && typeof v.rank === 'number' ? v.rank : 0));
+
 export function kayakRankFor(xp) {
-  let rank = 0;
-  for (let i = 0; i < KAYAK_RANKS.length; i++) {
-    if (xp >= KAYAK_RANKS[i].xp) rank = i;
-  }
-  return rank;
-}
-
-export function kayakPriceFor(catchId, dayDrift, rank, upgrades) {
-  const f = KAYAK_CATCHES.find((x) => x.id === catchId);
-  if (!f) return 0;
-  let price = f.value;
-  price *= 1 + (dayDrift[catchId] || 0);
-  price *= 1 + rank * 0.1;
-  if (upgrades.includes('drybag')) price *= 1.2;
-  return Math.max(1, Math.round(price * 10) / 10);
-}
-
-export function kayakCarryCap(upgrades) {
-  let cap = 18;
-  if (upgrades.includes('drybag')) cap += 6;
-  if (upgrades.includes('kayak')) cap += 12;
-  return cap;
+  let lvl = 0;
+  KAYAK_RANKS.forEach((r) => { if (xp >= r.xp) lvl = r.level; });
+  return lvl;
 }
 
 export function kayakStaminaMax(upgrades) {
-  let max = 100;
-  if (upgrades.includes('kayak')) max += 40;
-  return max;
+  return listOf(upgrades).includes('expedition-kayak') ? 140 : 100;
+}
+
+export function kayakPriceFor(catchId, drift, rank, upgrades) {
+  const item = CATCH_BY_ID[catchId];
+  if (!item) return 0;
+  const d = typeof drift === 'number' ? drift : 0;
+  const owned = Array.isArray(upgrades) ? upgrades : listOf(rank);
+  let p = item.value * (1 + d) * (1 + rankOf(rank) * 0.1);
+  if (owned.includes('price-plus')) p *= 1.2;
+  return Math.round(Math.max(1, p) * 10) / 10;
+}
+
+export function kayakCarryCap(rank, upgrades) {
+  const owned = Array.isArray(upgrades) ? upgrades : listOf(rank);
+  return 18 + rankOf(rank) * 2 + (owned.includes('carry-plus') ? 10 : 0);
+}
+
+export function kayakScore(sessions, yld, hazards) {
+  const v = sessions * 10 + Math.round(yld) - hazards * 5;
+  return v < 0 ? 0 : v;
+}
+
+const GRADE_STEPS = [[400, 'S'], [250, 'A'], [140, 'B'], [60, 'C']];
+export function kayakGrade(score) {
+  for (const [line, g] of GRADE_STEPS) if (score >= line) return g;
+  return 'D';
+}
+
+export function kayakWeeklyGoal(state) {
+  const s = state || {};
+  const sessions = { have: s.sessions || 0, goal: 5, done: (s.sessions || 0) >= 5 };
+  const sold = { have: s.findsSold || 0, goal: 40, done: (s.findsSold || 0) >= 40 };
+  const earned = { have: s.earned || 0, goal: 600, done: (s.earned || 0) >= 600 };
+  return { sessions, sold, earned, allDone: sessions.done && sold.done && earned.done };
+}
+
+export function kayakEfficiency(state) {
+  const s = state || {};
+  if (!s.sessions) return 100;
+  return Math.round((Math.max(0, s.sessions - (s.contractsFailed || 0)) / s.sessions) * 100);
+}
+
+export function kayakProfitPerRun(state) {
+  const s = state || {};
+  if (!s.sessions) return 0;
+  return Math.round(((s.earned || 0) / s.sessions) * 10) / 10;
+}
+
+export function kayakInventoryValue(state) {
+  const s = state || {};
+  let total = 0;
+  for (const id of Object.keys(s.inventory || {})) {
+    total += (s.inventory[id] || 0) * kayakPriceFor(id, s.dayDrift || 0, s.rank || 0, s.upgrades || []);
+  }
+  return Math.round(total * 10) / 10;
+}
+
+export function kayakSummary(state) {
+  const s = state || {};
+  const rn = (KAYAK_RANKS[s.rank || 0] || {}).name || 'Paddler';
+  return 'Kayaking: ' + rn + ' with ' + (s.sessions || 0) + ' runs, ' + (s.findsFound || 0) + ' catches and ' + (s.earned || 0) + ' cash earned.';
+}
+
+export function kayakNextGoal(state) {
+  const s = state || {};
+  if (!(s.sessions || 0)) return 'Finish your first run.';
+  if ((s.sessions || 0) < 5) return 'Finish 5 runs.';
+  if ((s.earned || 0) < 500) return 'Earn 500 cash in total.';
+  if ((s.rank || 0) < 4) return 'Reach rank ' + KAYAK_RANKS[(s.rank || 0) + 1].name + '.';
+  return 'Become a legend of Kayaking.';
+}
+
+export function kayakRecordFor(id, state) {
+  const rec = KAYAK_RECORDS.find((r) => r.id === id);
+  if (!rec) return null;
+  return { id: rec.id, name: rec.name, stat: rec.stat, unit: rec.unit, desc: rec.desc, value: (state && state[rec.stat]) || 0 };
+}
+
+export function kayakAllRecords(state) {
+  return KAYAK_RECORDS.map((r) => kayakRecordFor(r.id, state));
+}
+
+export function kayakLeaderboardWith(playerScore) {
+  const board = KAYAK_LEADERBOARD.map((e) => ({ name: e.name, value: e.name === 'You' ? playerScore : e.value, desc: e.desc }));
+  board.sort((a, b) => b.value - a.value);
+  return board.map((e, i) => ({ rank: i + 1, name: e.name, value: e.value, desc: e.desc }));
+}
+
+export function kayakEventFor(day) {
+  return KAYAK_MARKET[((day || 0) % KAYAK_MARKET.length + KAYAK_MARKET.length) % KAYAK_MARKET.length];
 }
 
 export function kayakEventMult(eventId, catchId) {
-  const ev = KAYAK_MARKET.find((x) => x.id === eventId);
-  if (!ev) return 1;
-  return ev.finds.includes(catchId) ? ev.mult : 1;
+  const ev = KAYAK_MARKET.find((m) => m.id === eventId);
+  return ev && ev.finds.includes(catchId) ? ev.mult : 1;
 }
 
 export function kayakSeasonMult(seasonId) {
@@ -322,826 +281,539 @@ export function kayakSeasonMult(seasonId) {
   return s ? s.mult : 1;
 }
 
-export function kayakEventFor(day) {
-  return KAYAK_MARKET[day % KAYAK_MARKET.length];
-}
-
 export function kayakSeasonalPriceMult(seasonId, catchId) {
   const row = KAYAK_SEASONAL.find((x) => x.season === seasonId && x.find === catchId);
   return row ? row.mult : 1;
 }
 
-export function kayakBestSeason(catchId) {
-  let best = null;
-  let bestMult = 0;
-  for (const row of KAYAK_SEASONAL) {
-    if (row.find === catchId && row.mult > bestMult) { bestMult = row.mult; best = row.season; }
-  }
-  return best ? { season: best, mult: bestMult } : null;
+export function kayakBestBuyer() {
+  let best = KAYAK_MARKET[0];
+  KAYAK_MARKET.forEach((m) => { if (m.mult > best.mult) best = m; });
+  return best;
 }
 
-export function kayakBestBuyer(catchId, dayDrift, rank, upgrades) {
-  const base = kayakPriceFor(catchId, dayDrift, rank, upgrades);
-  return { price: base, note: 'River traders pay best for rare, dry river finds.' };
-}
-
-export function kayakScore(sessions, yieldTotal, hazards) {
-  const base = sessions * 10 + Math.round(yieldTotal);
-  const penalty = hazards * 5;
-  return Math.max(0, base - penalty);
-}
-
-export function kayakGrade(sessions, yieldTotal, hazards) {
-  const score = kayakScore(sessions, yieldTotal, hazards);
-  if (score >= 400) return 'S';
-  if (score >= 250) return 'A';
-  if (score >= 140) return 'B';
-  if (score >= 60) return 'C';
-  return 'D';
-}
-
-export function kayakWeeklyGoal(sessions, sold, earned) {
-  const goal = { sessions: 5, sold: 40, earned: 600 };
-  return {
-    sessions: { have: sessions, goal: goal.sessions, done: sessions >= goal.sessions },
-    sold: { have: sold, goal: goal.sold, done: sold >= goal.sold },
-    earned: { have: Math.round(earned), goal: goal.earned, done: earned >= goal.earned },
-    allDone: sessions >= goal.sessions && sold >= goal.sold && earned >= goal.earned,
-  };
+export function kayakBestSeason() {
+  let best = KAYAK_SEASONS[0];
+  KAYAK_SEASONS.forEach((s) => { if (s.mult > best.mult) best = s; });
+  return best;
 }
 
 export function kayakTipFor(day) {
-  return KAYAK_TIPS[day % KAYAK_TIPS.length];
+  return KAYAK_TIPS[((day || 0) % KAYAK_TIPS.length + KAYAK_TIPS.length) % KAYAK_TIPS.length];
 }
 
-export function kayakLeaderboardWith(playerValue) {
-  const board = KAYAK_LEADERBOARD.map((e) => ({
-    name: e.name, value: e.name === 'Rio' ? playerValue : e.value, desc: e.desc,
-  }));
-  board.sort((a, b) => b.value - a.value);
-  return board.map((e, i) => ({ rank: i + 1, ...e }));
-}
-
-export function kayakRecordFor(recordId, state) {
-  const r = KAYAK_RECORDS.find((x) => x.id === recordId);
-  if (!r) return null;
-  return { id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit };
-}
-
-export function kayakAllRecords(state) {
-  return KAYAK_RECORDS.map((r) => ({
-    id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit, desc: r.desc,
-  }));
-}
-
-export function kayakEfficiency(actions, hazards) {
-  const total = actions + hazards;
-  if (total === 0) return 100;
-  return Math.round((actions / total) * 100);
-}
-
-export function kayakProfitPerRun(earned, sessions) {
-  if (sessions === 0) return 0;
-  return Math.round((earned / sessions) * 10) / 10;
-}
-
-export function kayakInventoryValue(inventory) {
-  let total = 0;
-  for (const [id, qty] of Object.entries(inventory)) {
-    const f = KAYAK_CATCHES.find((x) => x.id === id);
-    if (f) total += f.value * qty;
-  }
-  return Math.round(total * 10) / 10;
-}
-
-export function kayakTotalValue(state) {
-  return kayakInventoryValue(state.inventory);
-}
-
-export function kayakProgressPercent(state) {
-  const total = state.actions + state.findsSold;
-  if (total === 0) return 0;
-  return Math.round((state.actions / total) * 100);
-}
-
-export function kayakQuickStart(step) {
-  return KAYAK_QUICK_START[step] || null;
-}
-
-export function kayakSummary(state) {
-  return `Kayaking ${KAYAK_RANKS[state.rank].name}: ${state.sessions} runs, ${state.actions} strokes, $${Math.round(state.earned)} earned, ${state.findsFound} finds.`;
-}
-
-export function kayakNextGoal(state) {
-  if (state.sessions < 3) return 'Paddle 3 rivers.';
-  if (state.actions < 50) return 'Collect 50 river finds.';
-  if (state.rank < 2) return 'Reach rank Rapid Runner.';
-  return 'Become the River Master.';
+export function kayakQuickStart() {
+  return KAYAK_QUICK_START.slice();
 }
 
 export function kayakChallengeProgress(challenge, state) {
-  const v = state[challenge.target] || 0;
-  return { id: challenge.id, name: challenge.name, have: Math.floor(v), goal: challenge.goal, done: v >= challenge.goal };
+  const have = (state && state[challenge.target]) || 0;
+  return { id: challenge.id, name: challenge.name, have, goal: challenge.goal, done: have >= challenge.goal, xp: challenge.xp };
 }
 
-export function kayakHelperBonus(helpers, skill) {
-  let bonus = 0;
-  for (const h of KAYAK_HELPERS) {
-    if (helpers.includes(h.id) && h.skill === skill) bonus += h.bonus;
-  }
-  return bonus;
+export function kayakProgressPercent(state) {
+  const s = state || {};
+  if (!s.sessions) return 0;
+  return Math.round((Math.max(0, s.sessions - (s.contractsFailed || 0)) / s.sessions) * 100);
 }
 
-export function kayakRiverByLength(length) {
-  let best = null;
-  for (const s of KAYAK_RIVERS) {
-    if (s.length <= length && (!best || s.length > best.length)) best = s;
-  }
-  return best;
+export function kayakTotalValue(state) {
+  const s = state || {};
+  return Math.round((kayakInventoryValue(s) + (s.earned || 0)) * 10) / 10;
+}
+
+export function kayakHelperBonus(helperIds, skill) {
+  let sum = 0;
+  (helperIds || []).forEach((id) => {
+    const h = KAYAK_HELPERS.find((x) => x.id === id);
+    if (h && h.skill === skill) sum += h.bonus;
+  });
+  return sum;
 }
 
 export function kayakCatchesByRarity(maxRarity) {
   return KAYAK_CATCHES.filter((f) => f.rarity <= maxRarity).map((f) => f.id);
 }
 
+export function kayakRiverByLength(length) {
+  let pick = KAYAK_RIVERS[KAYAK_RIVERS.length - 1];
+  for (const r of KAYAK_RIVERS) {
+    if (r.length >= length) { pick = r; break; }
+  }
+  return pick;
+}
+
+function kayakBlank() {
+  const base = {
+    xp: 0, rank: 0, sessions: 0, actions: 0, stepsDone: 0, earned: 0, spent: 0,
+    findsFound: 0, findsSold: 0, contractsDone: 0, contractsFailed: 0, hazardsTaken: 0,
+    heatGained: 0, inventory: {}, upgrades: [], activeContract: null, contractProgress: 0,
+    contractDeadline: null, session: null, sessionStepsLeft: 0, sessionTimeLeft: 0,
+    resource: 0, dayDrift: 0, lastDay: 1, bestSession: null, bestSessionYield: 0,
+    dailyEarned: 0, dailySessions: 0, totalYield: 0, bestStreak: 0, streak: 0,
+    specialsUsed: 0, weatherStops: 0, sessionYield: 0, sessionFinds: [], season: 'spring',
+    event: null, wagesPaid: 0, challengesClaimed: [],
+  };
+  return base;
+}
+
 export function createKayakingSystem(ctx) {
   const c = ctx || {};
-  const rng = typeof c.rng === 'function' ? c.rng : Math.random;
-  const getCash = typeof c.getCash === 'function' ? c.getCash : () => 0;
-  const addCash = typeof c.addCash === 'function' ? c.addCash : () => {};
-  const addHeat = typeof c.addHeat === 'function' ? c.addHeat : () => {};
-  const log = typeof c.log === 'function' ? c.log : () => {};
-  const getDay = typeof c.getDay === 'function' ? c.getDay : () => 1;
-  const getHour = typeof c.getHour === 'function' ? c.getHour : () => 12;
-  const getPos = typeof c.getPlayerPos === 'function' ? c.getPlayerPos : () => ({ x: 0, z: 0 });
-  const getWeather = typeof c.getWeather === 'function' ? c.getWeather : () => ({ condition: 'clear' });
+  const rng = c.rng || Math.random;
+  const getDay = c.getDay || (() => 1);
+  const getHour = c.getHour || (() => 12);
+  const getCash = c.getCash || (() => 0);
+  const addCash = c.addCash || (() => {});
+  const addHeat = c.addHeat || (() => {});
+  const log = c.log || (() => {});
+  const getPlayerPos = c.getPlayerPos || (() => ({ x: 0, z: 0 }));
+  const getWeather = c.getWeather || (() => ({ condition: 'clear' }));
+  const state = kayakBlank();
 
-  const state = {
-    xp: 0,
-    rank: 0,
-    sessions: 0,
-    actions: 0,
-    stepsDone: 0,
-    earned: 0,
-    spent: 0,
-    findsFound: 0,
-    findsSold: 0,
-    contractsDone: 0,
-    contractsFailed: 0,
-    hazardsTaken: 0,
-    heatGained: 0,
-    inventory: {},
-    upgrades: [],
-    activeContract: null,
-    contractProgress: 0,
-    session: null,
-    sessionStepsLeft: 0,
-    sessionTimeLeft: 0,
-    resource: 100,
-    dayDrift: {},
-    lastDay: 1,
-    bestSession: null,
-    bestSessionYield: 0,
-    dailyEarned: 0,
-    dailySessions: 0,
-    totalYield: 0,
-    bestStreak: 0,
-    streak: 0,
-    specialsUsed: 0,
-    weatherStops: 0,
-    sessionYield: 0,
-    sessionFinds: 0,
-    season: 'spring',
-    event: null,
+  const levelUp = () => {
+    const lvl = kayakRankFor(state.xp);
+    if (lvl > state.rank) log('Rank up: ' + KAYAK_RANKS[lvl].name);
+    state.rank = lvl;
   };
-  for (const f of KAYAK_CATCHES) { state.inventory[f.id] = 0; state.dayDrift[f.id] = 0; }
 
-  function refreshRank() {
-    const r = kayakRankFor(state.xp);
-    if (r > state.rank) {
-      state.rank = r;
-      log(`Kayaking rank up: ${KAYAK_RANKS[r].name} — ${KAYAK_RANKS[r].perk}`);
-    }
-  }
-
-  function gainXp(n) {
-    state.xp += n;
-    refreshRank();
-  }
-
-  function driftPrices() {
-    for (const f of KAYAK_CATCHES) {
-      const roll = rng();
-      if (roll < 0.3) state.dayDrift[f.id] = Math.round((rng() * 0.5 - 0.2) * 100) / 100;
-      else if (roll < 0.4) state.dayDrift[f.id] = 0;
-    }
-  }
-
-  function weather() {
-    try {
-      const w = getWeather();
-      if (w && typeof w.condition === 'string') return w.condition;
-    } catch (e) { /* ignore */ }
-    return 'clear';
-  }
-
-  function weatherBlocks() {
-    const cond = weather();
-    return cond === 'storm' || cond === 'hurricane';
-  }
-
-  function pickCatch(river) {
-    const bag = [];
-    for (const f of KAYAK_CATCHES) {
-      let w = f.rarity;
-      if (state.rank >= 3 && f.rarity < 0.08) w *= 1.6;
-      if (state.upgrades.includes('gps')) w *= 1.25;
-      bag.push({ f, w });
-    }
-    let total = 0;
-    for (const b of bag) total += b.w;
-    let roll = rng() * total;
-    for (const b of bag) {
-      roll -= b.w;
-      if (roll <= 0) return b.f;
-    }
-    return KAYAK_CATCHES[0];
-  }
-
-  function finishSession(reason) {
-    const done = state.session;
+  const endRun = () => {
+    const yld = state.sessionYield;
+    const rid = state.session;
+    state.totalYield += yld;
+    if (yld > state.bestSessionYield) { state.bestSessionYield = yld; state.bestSession = rid; }
+    if (yld > 0) {
+      state.streak += 1;
+      if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+    } else state.streak = 0;
     state.session = null;
     state.sessionStepsLeft = 0;
     state.sessionTimeLeft = 0;
-    state.sessions += 1;
-    state.dailySessions += 1;
-    if (state.sessionYield > state.bestSessionYield) {
-      state.bestSessionYield = state.sessionYield;
-      state.bestSession = done;
-    }
-    log(`Kayaking ${done} ${reason} — yield $${Math.round(state.sessionYield)}, ${state.sessionFinds} finds.`);
-    state.sessionYield = 0;
-    state.sessionFinds = 0;
-  }
+  };
 
-  function paddle(riverId) {
-    const river = KAYAK_RIVERS.find((s) => s.id === riverId);
-    if (!river) return { ok: false, reason: 'no-such-site' };
-    if (state.session) return { ok: false, reason: 'session-active' };
-    if (weatherBlocks()) {
-      state.weatherStops += 1;
-      return { ok: false, reason: 'bad-weather', condition: weather() };
-    }
-    const hour = getHour();
-    if (hour < 6 || hour >= 20) return { ok: false, reason: 'too-late', hour };
-    if (getCash() < river.fee) return { ok: false, reason: 'not-enough-cash', cost: river.fee };
-    if (river.fee > 0) { addCash(-river.fee); state.spent += river.fee; }
-    state.session = riverId;
-    state.sessionStepsLeft = river.steps;
-    state.sessionTimeLeft = river.duration * 60;
-    state.resource = kayakStaminaMax(state.upgrades);
-    log(`Kayaking started: ${river.name} — ${river.steps} strokes, ${river.duration} min, class ${river.rapids} rapids.`);
-    return { ok: true, site: riverId, steps: river.steps, duration: river.duration };
-  }
-
-  function paddleStroke() {
-    if (!state.session) return { ok: false, reason: 'no-session' };
-    if (state.sessionStepsLeft <= 0) return { ok: false, reason: 'session-done' };
-    const river = KAYAK_RIVERS.find((s) => s.id === state.session);
-    state.resource -= 9;
-    if (state.resource < 0) state.resource = 0;
-    const cap = kayakCarryCap(state.upgrades);
-    const held = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-    if (held >= cap) return { ok: false, reason: 'carry-full', cap };
-    const f = pickCatch(river);
-    const qty = 1 + Math.floor(rng() * 3);
-    const add = Math.min(qty, Math.max(0, cap - held));
-    if (add <= 0) return { ok: false, reason: 'carry-full', cap };
-    state.inventory[f.id] += add;
-    state.findsFound += add;
-    state.totalYield += f.value * add;
-    state.sessionYield += f.value * add;
-    state.sessionFinds += add;
-    state.actions += 1;
-    state.stepsDone += 1;
-    state.sessionStepsLeft -= 1;
-    state.streak += 1;
-    state.bestStreak = Math.max(state.bestStreak, state.streak);
-    gainXp(4 + add);
-    const got = [{ id: f.id, name: f.name, qty: add, value: f.value }];
-    if (rng() < 0.04 + (state.rank >= 4 ? 0.05 : 0)) {
-      const rare = KAYAK_CATCHES.filter((x) => x.rarity < 0.06);
-      const pick = rare[Math.floor(rng() * rare.length)];
-      state.inventory[pick.id] += 1;
-      state.findsFound += 1;
-      state.sessionYield += pick.value;
-      state.totalYield += pick.value;
-      got.push({ id: pick.id, name: pick.name, qty: 1, value: pick.value, rare: true });
-      log(`Kayaking rare find! ${pick.name} worth $${pick.value}.`);
-    }
-    if (rng() < river.risk * 0.04) {
-      state.hazardsTaken += 1;
-      state.streak = 0;
-      state.resource -= 18;
-      if (rng() < 0.3) { addCash(-20); state.spent += 20; }
-      log(`Kayaking hazard at ${river.name}: a rock flipped the boat and soaked your kit.`);
-    }
-    if (state.resource <= 0) {
-      finishSession('cut short — stamina ran out');
-      return { ok: true, got, stepsLeft: 0, ended: 'resource-empty' };
-    }
-    if (state.sessionStepsLeft <= 0) {
-      finishSession('finished');
-      return { ok: true, got, stepsLeft: 0, ended: 'done' };
-    }
-    return { ok: true, got, stepsLeft: state.sessionStepsLeft, resource: state.resource };
-  }
-
-  function portageOut() {
-    if (!state.session) return { ok: false, reason: 'no-session' };
-    finishSession('ended early');
-    return { ok: true, ended: 'early' };
-  }
-
-  function scoutRapid() {
-    if (!state.session) return { ok: false, reason: 'no-session' };
-    const cost = 10;
-    if (state.resource < cost) return { ok: false, reason: 'not-enough-resource', need: cost };
-    state.resource -= cost;
-    state.specialsUsed += 1;
-    if (rng() < 0.55) {
-      const f = pickCatch(KAYAK_RIVERS[0]);
-      state.inventory[f.id] += 1;
-      state.findsFound += 1;
-      state.sessionYield += f.value;
-      gainXp(10);
-      log(`Kayaking scout rapid: scouted the rapid and found ${f.name}.`);
-      return { ok: true, success: true, find: f.id, name: f.name };
-    }
-    log('Kayaking scout rapid: the eddy spun you in circles.');
-    return { ok: true, success: false };
-  }
-
-  function sellFind(catchId, qty) {
-    const f = KAYAK_CATCHES.find((x) => x.id === catchId);
-    if (!f) return { ok: false, reason: 'no-such-find' };
-    if (qty <= 0) return { ok: false, reason: 'bad-qty' };
-    const have = state.inventory[catchId] || 0;
-    if (have < qty) return { ok: false, reason: 'not-enough', have };
-    const unit = kayakPriceFor(catchId, state.dayDrift, state.rank, state.upgrades);
-    const total = Math.round(unit * qty * 10) / 10;
-    state.inventory[catchId] -= qty;
-    state.findsSold += qty;
-    state.earned += total;
-    state.dailyEarned += total;
-    addCash(total);
-    gainXp(qty);
-    log(`Sold ${qty}x ${f.name} for $${total}.`);
-    return { ok: true, total, unit, qty };
-  }
-
-  function sellAllFinds() {
-    let total = 0;
-    let units = 0;
-    const lines = [];
-    for (const f of KAYAK_CATCHES) {
-      const have = state.inventory[f.id] || 0;
-      if (have <= 0) continue;
-      const unit = kayakPriceFor(f.id, state.dayDrift, state.rank, state.upgrades);
-      const line = Math.round(unit * have * 10) / 10;
-      total += line;
-      units += have;
-      lines.push({ id: f.id, qty: have, total: line });
-      state.inventory[f.id] = 0;
-    }
-    if (units === 0) return { ok: false, reason: 'nothing-to-sell' };
-    total = Math.round(total * 10) / 10;
-    state.findsSold += units;
-    state.earned += total;
-    state.dailyEarned += total;
-    addCash(total);
-    gainXp(units);
-    log(`Sold everything (${units} finds) for $${total}.`);
-    return { ok: true, total, units, lines };
-  }
-
-  function buyUpgrade(id) {
-    const u = KAYAK_UPGRADES.find((x) => x.id === id);
-    if (!u) return { ok: false, reason: 'no-such-upgrade' };
-    if (state.upgrades.includes(id)) return { ok: false, reason: 'already-owned' };
-    if (getCash() < u.cost) return { ok: false, reason: 'not-enough-cash', cost: u.cost };
-    addCash(-u.cost);
-    state.spent += u.cost;
-    state.upgrades.push(id);
-    gainXp(20);
-    log(`Bought ${u.name} for $${u.cost}.`);
-    return { ok: true, id };
-  }
-
-  function takeContract(id) {
-    const ct = KAYAK_CONTRACTS.find((x) => x.id === id);
-    if (!ct) return { ok: false, reason: 'no-such-contract' };
-    if (state.activeContract) return { ok: false, reason: 'contract-active' };
-    state.activeContract = { ...ct, dayTaken: getDay(), deadlineDay: getDay() + ct.days };
-    state.contractProgress = 0;
-    log(`Contract taken: ${ct.name} — deliver ${ct.qty}x ${ct.material} by day ${state.activeContract.deadlineDay}.`);
-    return { ok: true, contract: state.activeContract };
-  }
-
-  function deliverContract() {
-    const ct = state.activeContract;
-    if (!ct) return { ok: false, reason: 'no-contract' };
-    if (ct.material === 'mixed') {
-      const total = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-      if (total < ct.qty) return { ok: false, reason: 'not-enough', have: total, need: ct.qty };
-      let left = ct.qty;
-      for (const f of KAYAK_CATCHES) {
-        if (left <= 0) break;
-        const take = Math.min(state.inventory[f.id], left);
-        state.inventory[f.id] -= take;
-        left -= take;
-      }
-    } else {
-      const have = state.inventory[ct.material] || 0;
-      if (have < ct.qty) return { ok: false, reason: 'not-enough', have, need: ct.qty };
-      state.inventory[ct.material] -= ct.qty;
-      state.contractProgress = ct.qty;
-    }
-    const bonus = ct.pay + state.rank * 40;
-    state.activeContract = null;
-    state.contractProgress = 0;
-    state.contractsDone += 1;
-    state.earned += bonus;
-    addCash(bonus);
-    gainXp(60);
-    log(`Contract delivered: ${ct.name} paid $${bonus}.`);
-    return { ok: true, pay: bonus };
-  }
-
-  function abandonContract() {
-    if (!state.activeContract) return { ok: false, reason: 'no-contract' };
-    state.activeContract = null;
-    state.contractProgress = 0;
-    state.contractsFailed += 1;
-    log('Contract abandoned — the client will remember that.');
-    return { ok: true };
-  }
-
-  function priceBoard() {
-    return KAYAK_CATCHES.map((f) => ({
-      id: f.id,
-      name: f.name,
-      price: kayakPriceFor(f.id, state.dayDrift, state.rank, state.upgrades),
-      drift: state.dayDrift[f.id],
-      held: state.inventory[f.id],
-    }));
-  }
-
-  function siteReport() {
-    return KAYAK_RIVERS.map((s) => ({
-      id: s.id, name: s.name, fee: s.fee, difficulty: s.difficulty, steps: s.steps, risk: s.risk,
-    }));
-  }
-
-  function dailyEvent() {
+  const dayEvent = () => {
     const roll = rng();
     if (roll < 0.16) {
-      const f = KAYAK_CATCHES[Math.floor(rng() * KAYAK_CATCHES.length)];
-      state.dayDrift[f.id] = Math.round((state.dayDrift[f.id] + 0.3) * 100) / 100;
-      log(`Kayaking news: ${f.name} is in demand — prices up today!`);
-      return { event: 'demand-spike', find: f.id };
+      state.dayDrift = Math.round((state.dayDrift + 0.3) * 100) / 100;
+      state.event = 'demand-spike';
+      return { ok: true, event: 'demand-spike', name: 'Demand Spike', kind: 'demand' };
     }
     if (roll < 0.28) {
-      const f = KAYAK_CATCHES[Math.floor(rng() * KAYAK_CATCHES.length)];
-      state.dayDrift[f.id] = Math.round((state.dayDrift[f.id] - 0.15) * 100) / 100;
-      log(`Kayaking news: too much ${f.name} around — prices dip.`);
-      return { event: 'price-dip', find: f.id };
+      state.dayDrift = Math.round((state.dayDrift - 0.15) * 100) / 100;
+      state.event = 'price-dip';
+      return { ok: true, event: 'price-dip', name: 'Price Dip', kind: 'dip' };
     }
     if (roll < 0.38) {
-      const f = KAYAK_CATCHES[Math.floor(rng() * KAYAK_CATCHES.length)];
-      state.inventory[f.id] += 3;
+      const pick = KAYAK_CATCHES[Math.floor(rng() * KAYAK_CATCHES.length)];
+      state.inventory[pick.id] = (state.inventory[pick.id] || 0) + 3;
       state.findsFound += 3;
-      log(`Kayaking gift: a fellow paddler hands you 3x ${f.name}.`);
-      return { event: 'gift', find: f.id };
+      state.event = 'gift';
+      return { ok: true, event: 'gift', name: 'Gift', kind: 'gift', find: pick.id, qty: 3 };
     }
     if (roll < 0.46) {
       const ev = KAYAK_EVENTS[Math.floor(rng() * KAYAK_EVENTS.length)];
-      log(`Kayaking event: ${ev.name} — ${ev.desc}`);
-      return { event: ev.id, name: ev.name };
+      state.event = ev.id;
+      return { ok: true, event: ev.id, name: ev.name, kind: 'named' };
     }
-    return { event: 'none' };
-  }
+    state.event = null;
+    return { ok: true, event: null, name: 'none', kind: 'none' };
+  };
 
-  function tick(dt) {
-    if (state.session) {
-      state.sessionTimeLeft -= dt;
-      state.resource -= dt * 0.05;
-      if (state.sessionTimeLeft <= 0) {
-        finishSession('timed out — the shift ended');
-      } else if (state.resource <= 0) {
-        state.resource = 0;
-        finishSession('cut short — stamina ran out');
-      }
-    }
-  }
-
-  function tickDay(day) {
-    if (day === state.lastDay) return;
-    state.lastDay = day;
-    driftPrices();
-    state.dailyEarned = 0;
-    state.dailySessions = 0;
-    if (state.activeContract && day >= state.activeContract.deadlineDay && state.contractProgress < state.activeContract.qty) {
-      log(`Contract ${state.activeContract.name} expired — the client walked away.`);
-      state.activeContract = null;
-      state.contractProgress = 0;
-      state.contractsFailed += 1;
-    }
-    dailyEvent();
-  }
-
-  function serialize() {
-    return JSON.parse(JSON.stringify({
-      xp: state.xp, rank: state.rank, sessions: state.sessions,
-      actions: state.actions, stepsDone: state.stepsDone,
-      earned: state.earned, spent: state.spent,
-      findsFound: state.findsFound, findsSold: state.findsSold,
-      contractsDone: state.contractsDone, contractsFailed: state.contractsFailed,
-      hazardsTaken: state.hazardsTaken, heatGained: state.heatGained,
-      inventory: state.inventory, upgrades: state.upgrades,
-      activeContract: state.activeContract,
-      contractProgress: state.contractProgress, session: state.session,
-      sessionStepsLeft: state.sessionStepsLeft,
-      sessionTimeLeft: state.sessionTimeLeft, resource: state.resource,
-      dayDrift: state.dayDrift, lastDay: state.lastDay,
-      bestSession: state.bestSession,
-      bestSessionYield: state.bestSessionYield,
-      dailyEarned: state.dailyEarned, dailySessions: state.dailySessions,
-      totalYield: state.totalYield, bestStreak: state.bestStreak,
-      streak: state.streak, specialsUsed: state.specialsUsed,
-      weatherStops: state.weatherStops, sessionYield: state.sessionYield,
-      sessionFinds: state.sessionFinds, season: state.season,
-      event: state.event,
-    }));
-  }
-
-  function deserialize(d) {
-    if (!d || typeof d !== 'object') return;
-    for (const k of Object.keys(state)) {
-      if (d[k] !== undefined) state[k] = d[k];
-    }
-    for (const f of KAYAK_CATCHES) {
-      if (state.inventory[f.id] === undefined) state.inventory[f.id] = 0;
-      if (state.dayDrift[f.id] === undefined) state.dayDrift[f.id] = 0;
-    }
-    refreshRank();
-  }
-
-  function stats() {
-    return {
-      rank: KAYAK_RANKS[state.rank].name,
-      xp: state.xp,
-      sessions: state.sessions,
-      actions: state.actions,
-      stepsDone: state.stepsDone,
-      earned: Math.round(state.earned),
-      spent: state.spent,
-      findsFound: state.findsFound,
-      findsSold: state.findsSold,
-      contractsDone: state.contractsDone,
-      contractsFailed: state.contractsFailed,
-      hazardsTaken: state.hazardsTaken,
-      heatGained: state.heatGained,
-      upgrades: state.upgrades.length,
-      activeContract: state.activeContract ? state.activeContract.id : null,
-      contractProgress: state.contractProgress,
-      session: state.session,
-      stepsLeft: state.sessionStepsLeft,
-      resource: Math.round(state.resource * 10) / 10,
-      resourceMax: kayakStaminaMax(state.upgrades),
-      dailyEarned: Math.round(state.dailyEarned),
-      totalYield: Math.round(state.totalYield),
-      bestStreak: state.bestStreak,
-      bestSession: state.bestSession,
-      bestSessionYield: Math.round(state.bestSessionYield),
-      specialsUsed: state.specialsUsed,
-      weatherStops: state.weatherStops,
-      season: state.season,
-      event: state.event,
-    };
-  }
-
-  function hudLine() {
-    if (state.session) return `Kayaking: ${state.session} — ${state.sessionStepsLeft} strokes left, stamina ${Math.round(state.resource)}`;
-    if (state.activeContract) return `Kayaking: ${state.activeContract.name} ${state.contractProgress}/${state.activeContract.qty}`;
-    const held = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-    if (held > 0) return `Kayaking: ${held} finds held`;
-    return '';
-  }
-
-  function interact() {
-    const pos = getPos();
-    const near = Math.hypot(pos.x - 420, pos.z - (-60)) < 30;
-    if (!near) return false;
-    if (state.session) { paddleStroke(); return true; }
-    const held = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-    if (held > 0) { sellAllFinds(); return true; }
-    paddle(KAYAK_RIVERS[0].id);
-    return true;
-  }
-
-  return {
+  const sys = {
     name: 'Kayaking',
     state,
-    paddle, paddleStroke, portageOut, scoutRapid,
-    sellFind, sellAllFinds, buyUpgrade, takeContract,
-    deliverContract, abandonContract, priceBoard, siteReport,
-    dailyEvent, tick, tickDay, serialize, deserialize,
-    stats, hudLine, interact,
+    paddle(riverId) {
+      const river = RIVER_BY_ID[riverId] || null;
+      if (!river) return { ok: false, reason: 'no-such-site' };
+      if (state.session) return { ok: false, reason: 'already-in-session' };
+      const cond = (getWeather() || {}).condition || 'clear';
+      if (cond === 'storm' || cond === 'hurricane') {
+        state.weatherStops += 1;
+        return { ok: false, reason: 'bad-weather', condition: cond };
+      }
+      const hour = getHour();
+      if (hour < 6 || hour >= 20) return { ok: false, reason: 'closed', hour };
+      if (getCash() < river.fee) return { ok: false, reason: 'not-enough-cash', cost: river.fee };
+      addCash(-river.fee);
+      state.spent += river.fee;
+      state.session = river.id;
+      state.sessionStepsLeft = river.steps;
+      state.sessionTimeLeft = river.duration;
+      state.resource = kayakStaminaMax(state.upgrades);
+      state.sessionYield = 0;
+      state.sessionFinds = [];
+      state.sessions += 1;
+      state.dailySessions += 1;
+      log('Paddling ' + river.name);
+      return { ok: true, id: river.id, name: river.name, fee: river.fee, steps: river.steps, duration: river.duration };
+    },
+    paddleStroke() {
+      if (!state.session) return { ok: false, reason: 'no-session' };
+      const river = RIVER_BY_ID[state.session] || null;
+      state.resource -= 9;
+      state.sessionStepsLeft -= 1;
+      state.stepsDone += 1;
+      state.actions += 1;
+      let held = 0;
+      Object.keys(state.inventory).forEach((k) => { held += state.inventory[k]; });
+      const cap = kayakCarryCap(state.rank, state.upgrades);
+      let qty = 1 + Math.floor(rng() * 3);
+      if (held + qty > cap) qty = cap - held;
+      let caught = null;
+      let bonus = false;
+      let hazard = false;
+      if (qty > 0) {
+        let totalW = 0;
+        const ws = KAYAK_CATCHES.map((f) => {
+          let w = 1 / f.rarity;
+          if (f.rarity < 0.08 && state.rank >= 3) w *= 1.6;
+          if (f.rarity < 0.08 && state.upgrades.includes('find-plus')) w *= 1.25;
+          totalW += w;
+          return w;
+        });
+        let roll = rng() * totalW;
+        let idx = 0;
+        for (let i = 0; i < ws.length; i++) {
+          roll -= ws[i];
+          if (roll <= 0) { idx = i; break; }
+          idx = i;
+        }
+        caught = KAYAK_CATCHES[idx];
+        if (rng() < 0.04) { qty += 1; bonus = true; }
+        state.inventory[caught.id] = (state.inventory[caught.id] || 0) + qty;
+        state.findsFound += qty;
+        state.sessionFinds.push(caught.id);
+        state.sessionYield += qty * caught.value;
+      }
+      if (river && rng() < river.risk * 0.04) {
+        hazard = true;
+        state.hazardsTaken += 1;
+        if (rng() < 0.3) addCash(-20);
+      }
+      let ended = false;
+      if (state.resource <= 0 || state.sessionStepsLeft <= 0) {
+        state.resource = Math.max(0, state.resource);
+        endRun();
+        ended = true;
+      }
+      return { ok: true, find: caught ? { id: caught.id, name: caught.name, qty } : null, qty, bonus, hazard, stepsLeft: state.sessionStepsLeft, resource: state.resource, ended };
+    },
+    portageOut() {
+      if (!state.session) return { ok: false, reason: 'no-session' };
+      const id = state.session;
+      endRun();
+      log('Portaged out from ' + id);
+      return { ok: true, id, yield: state.totalYield };
+    },
+    scoutRapid() {
+      const river = state.session ? (RIVER_BY_ID[state.session] || null) : null;
+      return { ok: true, site: river ? river.id : null, siteName: river ? river.name : null, weather: (getWeather() || {}).condition || 'clear', hour: getHour(), resource: state.resource, resourceMax: kayakStaminaMax(state.upgrades), stepsLeft: state.sessionStepsLeft };
+    },
+    sellFind(catchId) {
+      const item = CATCH_BY_ID[catchId];
+      if (!item) return { ok: false, reason: 'no-such-find' };
+      const held = state.inventory[catchId] || 0;
+      if (held <= 0) return { ok: false, reason: 'not-held', id: catchId };
+      const price = kayakPriceFor(catchId, state.dayDrift, state.rank, state.upgrades);
+      state.inventory[catchId] = held - 1;
+      if (state.inventory[catchId] <= 0) delete state.inventory[catchId];
+      state.findsSold += 1;
+      state.earned += price;
+      state.dailyEarned += price;
+      addCash(price);
+      return { ok: true, id: catchId, name: item.name, qty: 1, price, total: price };
+    },
+    sellAllFinds() {
+      const ids = Object.keys(state.inventory);
+      if (ids.length === 0) return { ok: false, reason: 'nothing-held' };
+      let total = 0;
+      let count = 0;
+      ids.forEach((id) => {
+        total += kayakPriceFor(id, state.dayDrift, state.rank, state.upgrades) * state.inventory[id];
+        count += state.inventory[id];
+      });
+      total = Math.round(total * 10) / 10;
+      state.inventory = {};
+      state.findsSold += count;
+      state.earned += total;
+      state.dailyEarned += total;
+      addCash(total);
+      return { ok: true, total, sold: count, count };
+    },
+    buyUpgrade(upId) {
+      const up = UP_BY_ID[upId];
+      if (!up) return { ok: false, reason: 'no-such-upgrade' };
+      if (state.upgrades.includes(upId)) return { ok: false, reason: 'already-owned', id: upId };
+      if (getCash() < up.cost) return { ok: false, reason: 'not-enough-cash', cost: up.cost };
+      addCash(-up.cost);
+      state.spent += up.cost;
+      state.upgrades.push(upId);
+      log('Bought upgrade ' + up.name);
+      return { ok: true, id: up.id, name: up.name, cost: up.cost };
+    },
+    takeContract(contractId) {
+      const ct = KAYAK_CONTRACTS.find((x) => x.id === contractId);
+      if (!ct) return { ok: false, reason: 'no-such-contract' };
+      if (state.activeContract) return { ok: false, reason: 'already-active', id: state.activeContract };
+      state.activeContract = ct.id;
+      state.contractProgress = 0;
+      state.contractDeadline = getDay() + ct.days;
+      log('Took contract ' + ct.name);
+      return { ok: true, id: ct.id, name: ct.name, qty: ct.qty, pay: ct.pay };
+    },
+    deliverContract() {
+      if (!state.activeContract) return { ok: false, reason: 'no-active-contract' };
+      const ct = KAYAK_CONTRACTS.find((x) => x.id === state.activeContract);
+      const have = state.inventory[ct.material] || 0;
+      if (have < ct.qty) return { ok: false, reason: 'not-enough', have, need: ct.qty, material: ct.material };
+      state.inventory[ct.material] = have - ct.qty;
+      if (state.inventory[ct.material] <= 0) delete state.inventory[ct.material];
+      state.contractsDone += 1;
+      state.earned += ct.pay;
+      state.dailyEarned += ct.pay;
+      addCash(ct.pay);
+      state.xp += ct.rep;
+      levelUp();
+      state.activeContract = null;
+      state.contractProgress = 0;
+      state.contractDeadline = null;
+      return { ok: true, id: ct.id, name: ct.name, pay: ct.pay, rep: ct.rep };
+    },
+    abandonContract() {
+      if (!state.activeContract) return { ok: false, reason: 'no-active-contract' };
+      const id = state.activeContract;
+      state.activeContract = null;
+      state.contractProgress = 0;
+      state.contractDeadline = null;
+      state.contractsFailed += 1;
+      return { ok: true, id };
+    },
+    priceBoard() {
+      return KAYAK_CATCHES.map((f) => ({ id: f.id, name: f.name, price: kayakPriceFor(f.id, state.dayDrift, state.rank, state.upgrades), base: f.value, drift: state.dayDrift, held: state.inventory[f.id] || 0 }));
+    },
+    siteReport(riverId) {
+      const river = RIVER_BY_ID[riverId] || null;
+      if (!river) return { ok: false, reason: 'no-such-site' };
+      return { ok: true, id: river.id, name: river.name, fee: river.fee, difficulty: river.difficulty, steps: river.steps, duration: river.duration, risk: river.risk, rapids: river.rapids, length: river.length, desc: river.desc };
+    },
+    dailyEvent() {
+      return dayEvent();
+    },
+    tick(dt) {
+      if (!state.session) return;
+      state.sessionTimeLeft -= dt;
+      state.resource -= dt * 0.05;
+      if (state.sessionTimeLeft <= 0 || state.resource <= 0) {
+        state.resource = Math.max(0, state.resource);
+        state.sessionTimeLeft = Math.max(0, state.sessionTimeLeft);
+        endRun();
+      }
+    },
+    tickDay(day) {
+      if (day === state.lastDay) return null;
+      state.lastDay = day;
+      state.dayDrift = Math.round((state.dayDrift + (rng() * 0.24 - 0.12)) * 100) / 100;
+      state.dailyEarned = 0;
+      state.dailySessions = 0;
+      if (state.activeContract && state.contractDeadline !== null && day >= state.contractDeadline) {
+        state.activeContract = null;
+        state.contractProgress = 0;
+        state.contractDeadline = null;
+        state.contractsFailed += 1;
+        log('Contract expired.');
+      }
+      return dayEvent();
+    },
+    serialize() {
+      return JSON.parse(JSON.stringify(state));
+    },
+    deserialize(saved) {
+      if (!saved || typeof saved !== 'object') return;
+      Object.keys(saved).forEach((k) => { state[k] = saved[k]; });
+      if (!state.inventory || typeof state.inventory !== 'object') state.inventory = {};
+      if (!Array.isArray(state.upgrades)) state.upgrades = [];
+      if (!Array.isArray(state.sessionFinds)) state.sessionFinds = [];
+      if (!Array.isArray(state.challengesClaimed)) state.challengesClaimed = [];
+      if (typeof state.wagesPaid !== 'number') state.wagesPaid = 0;
+      levelUp();
+    },
+    stats() {
+      return { rank: (KAYAK_RANKS[state.rank] || {}).name || 'Paddler', xp: state.xp, sessions: state.sessions, actions: state.actions, stepsDone: state.stepsDone, earned: state.earned, spent: state.spent, findsFound: state.findsFound, findsSold: state.findsSold, contractsDone: state.contractsDone, contractsFailed: state.contractsFailed, hazardsTaken: state.hazardsTaken, heatGained: state.heatGained, upgrades: state.upgrades.length, activeContract: state.activeContract, contractProgress: state.contractProgress, session: state.session, stepsLeft: state.sessionStepsLeft, resource: state.resource, resourceMax: kayakStaminaMax(state.upgrades), dailyEarned: state.dailyEarned, totalYield: state.totalYield, bestStreak: state.bestStreak, bestSession: state.bestSession, bestSessionYield: state.bestSessionYield, specialsUsed: state.specialsUsed, weatherStops: state.weatherStops, season: state.season, event: state.event };
+    },
+    hudLine() {
+      if (!state.session) return '';
+      return 'Kayaking: ' + state.session + ' — ' + state.sessionStepsLeft + ' steps left, stamina ' + state.resource;
+    },
+    interact() {
+      const pos = getPlayerPos() || { x: 0, z: 0 };
+      const dx = pos.x - 420;
+      const dz = pos.z - (-60);
+      if (Math.sqrt(dx * dx + dz * dz) > 30) return false;
+      if (state.session) { sys.paddleStroke(); return true; }
+      let held = 0;
+      Object.keys(state.inventory).forEach((k) => { held += state.inventory[k]; });
+      if (held > 0) { sys.sellAllFinds(); return true; }
+      sys.paddle(KAYAK_RIVERS[0].id);
+      return true;
+    },
   };
+  return sys;
 }
 
 export function createKayakingExtras(system) {
-  const helpers = [];
-  const claimed = [];
-  let helperWagesPaid = 0;
-
-  function hireHelper(id) {
-    const h = KAYAK_HELPERS.find((x) => x.id === id);
-    if (!h) return { ok: false, reason: 'no-such-helper' };
-    if (helpers.includes(id)) return { ok: false, reason: 'already-hired' };
-    helpers.push(id);
-    return { ok: true, id, name: h.name, wage: h.wage };
-  }
-
-  function fireHelper(id) {
-    const i = helpers.indexOf(id);
-    if (i < 0) return { ok: false, reason: 'not-hired' };
-    helpers.splice(i, 1);
-    return { ok: true, id };
-  }
-
-  function payWages() {
-    let due = 0;
-    for (const id of helpers) {
-      const h = KAYAK_HELPERS.find((x) => x.id === id);
-      due += h.wage;
-    }
-    helperWagesPaid += due;
-    return { due, helpers: [...helpers], totalPaid: helperWagesPaid };
-  }
-
-  function helperBonus(skill) {
-    return kayakHelperBonus(helpers, skill);
-  }
-
-  function challenges() {
-    return KAYAK_CHALLENGES.map((ch) => kayakChallengeProgress(ch, system.state));
-  }
-
-  function claimChallenge(id) {
-    const ch = KAYAK_CHALLENGES.find((x) => x.id === id);
-    if (!ch) return { ok: false, reason: 'no-such-challenge' };
-    if (claimed.includes(id)) return { ok: false, reason: 'already-claimed' };
-    const p = kayakChallengeProgress(ch, system.state);
-    if (!p.done) return { ok: false, reason: 'not-done', have: p.have, goal: p.goal };
-    claimed.push(id);
-    return { ok: true, id, xp: ch.xp };
-  }
-
-  function achievements() {
-    return KAYAK_ACHIEVEMENTS.map((a) => ({
-      id: a.id, name: a.name, desc: a.desc, done: !!a.check(system.state),
-    }));
-  }
-
-  function donateFinds(catchId, qty) {
-    const have = system.state.inventory[catchId] || 0;
-    if (have < qty || qty <= 0) return { ok: false, reason: 'not-enough', have };
-    system.state.inventory[catchId] -= qty;
-    const rep = Math.floor(qty / 5);
-    return { ok: true, qty, rep, note: 'The river keepers thank you. The current remembers.' };
-  }
-
-  function bundleSale(catchId, qty) {
-    const have = system.state.inventory[catchId] || 0;
-    if (have < qty || qty < 10) return { ok: false, reason: 'need-10-plus', have };
-    const unit = kayakPriceFor(catchId, system.state.dayDrift, system.state.rank, system.state.upgrades);
-    const total = Math.round(unit * qty * 1.1 * 10) / 10;
-    system.state.inventory[catchId] -= qty;
-    system.state.findsSold += qty;
-    system.state.earned += total;
-    return { ok: true, total, qty, bonus: 'bundle +10%' };
-  }
-
-  function checkStamina() {
-    const max = kayakStaminaMax(system.state.upgrades);
-    return {
-      resource: Math.round(system.state.resource * 10) / 10,
-      max,
-      pct: Math.round((system.state.resource / max) * 100),
-    };
-  }
-
-  function restUp() {
-    system.state.resource = kayakStaminaMax(system.state.upgrades);
-    return { ok: true, resource: system.state.resource };
-  }
-
-  function weighCatch() {
-    let kg = 0;
-    for (const [id, qty] of Object.entries(system.state.inventory)) {
-      const f = KAYAK_CATCHES.find((x) => x.id === id);
-      if (f) kg += f.weight * qty;
-    }
-    return { kg: Math.round(kg * 10) / 10, cap: kayakCarryCap(system.state.upgrades) };
-  }
+  const st = system.state;
+  let hired = [];
+  let claimed = [];
+  let wages = 0;
 
   return {
-    hireHelper, fireHelper, payWages, helperBonus, challenges,
-    claimChallenge, achievements, donateFinds, bundleSale,
-    checkStamina, restUp, weighCatch,
-    get helpers() { return [...helpers]; },
-    get claimed() { return [...claimed]; },
-    get wagesPaid() { return helperWagesPaid; },
+    hireHelper(id) {
+      const h = KAYAK_HELPERS.find((x) => x.id === id);
+      if (!h) return { ok: false, reason: 'no-such-helper' };
+      if (hired.includes(id)) return { ok: false, reason: 'already-hired', id };
+      hired.push(id);
+      return { ok: true, id: h.id, name: h.name, wage: h.wage };
+    },
+    fireHelper(id) {
+      if (!hired.includes(id)) return { ok: false, reason: 'not-hired', id };
+      hired = hired.filter((x) => x !== id);
+      return { ok: true, id };
+    },
+    payWages() {
+      let due = 0;
+      hired.forEach((id) => {
+        const h = KAYAK_HELPERS.find((x) => x.id === id);
+        if (h) due += h.wage;
+      });
+      wages += due;
+      st.wagesPaid = (st.wagesPaid || 0) + due;
+      return { ok: true, due, helpers: hired.length, totalPaid: due };
+    },
+    helperBonus(skill) {
+      let sum = 0;
+      hired.forEach((id) => {
+        const h = KAYAK_HELPERS.find((x) => x.id === id);
+        if (h && h.skill === skill) sum += h.bonus;
+      });
+      return sum;
+    },
+    challenges() {
+      return KAYAK_CHALLENGES.map((ch) => kayakChallengeProgress(ch, st));
+    },
+    claimChallenge(id) {
+      const ch = KAYAK_CHALLENGES.find((x) => x.id === id);
+      if (!ch) return { ok: false, reason: 'no-such-challenge' };
+      if (claimed.includes(id)) return { ok: false, reason: 'already-claimed', id };
+      const prog = kayakChallengeProgress(ch, st);
+      if (!prog.done) return { ok: false, reason: 'not-done', have: prog.have, goal: prog.goal };
+      claimed.push(id);
+      st.challengesClaimed.push(id);
+      st.xp += ch.xp;
+      st.rank = kayakRankFor(st.xp);
+      return { ok: true, id: ch.id, xp: ch.xp };
+    },
+    achievements() {
+      return KAYAK_ACHIEVEMENTS.map((a) => ({ id: a.id, name: a.name, desc: a.desc, done: !!a.check(st) }));
+    },
+    donateFinds() {
+      const ids = Object.keys(st.inventory);
+      let donated = 0;
+      ids.forEach((id) => { donated += st.inventory[id]; });
+      st.inventory = {};
+      return { ok: true, donated, finds: ids };
+    },
+    bundleSale() {
+      let count = 0;
+      Object.keys(st.inventory).forEach((k) => { count += st.inventory[k]; });
+      if (count < 10) return { ok: false, reason: 'not-enough', have: count, need: 10 };
+      let total = 0;
+      Object.keys(st.inventory).forEach((id) => {
+        total += kayakPriceFor(id, st.dayDrift, st.rank, st.upgrades) * st.inventory[id];
+      });
+      total = Math.round(total * 1.1 * 10) / 10;
+      st.inventory = {};
+      st.findsSold += count;
+      st.earned += total;
+      st.dailyEarned += total;
+      return { ok: true, total, count, bonus: 'bundle +10%' };
+    },
+    checkStamina() {
+      const max = kayakStaminaMax(st.upgrades);
+      return { ok: true, resource: st.resource, max, name: 'stamina', percent: max ? Math.round((st.resource / max) * 100) : 0 };
+    },
+    restUp() {
+      st.resource = kayakStaminaMax(st.upgrades);
+      return { ok: true, resource: st.resource, max: st.resource };
+    },
+    weighCatch() {
+      let count = 0;
+      let weight = 0;
+      Object.keys(st.inventory).forEach((id) => {
+        const f = CATCH_BY_ID[id];
+        count += st.inventory[id];
+        if (f) weight += st.inventory[id] * f.weight;
+      });
+      return { ok: true, count, weight: Math.round(weight * 10) / 10, total: count };
+    },
+    get helpers() { return hired.slice(); },
+    get claimed() { return claimed.slice(); },
+    get wagesPaid() { return wages; },
   };
 }
 
 export function createKayakingMarket(system) {
+  const st = system.state;
   let currentEvent = null;
-  let currentSeason = 'spring';
+  let currentSeason = st.season || 'spring';
   let dealsClaimed = 0;
-  let bulkSold = 0;
+  let bulkTraded = 0;
 
-  function setEvent(eventId) {
-    const ev = KAYAK_MARKET.find((x) => x.id === eventId);
-    if (!ev) return { ok: false, reason: 'no-such-event' };
-    currentEvent = eventId;
-    return { ok: true, event: eventId, name: ev.name };
-  }
-
-  function setSeason(seasonId) {
-    const s = KAYAK_SEASONS.find((x) => x.id === seasonId);
-    if (!s) return { ok: false, reason: 'no-such-season' };
-    currentSeason = seasonId;
-    system.state.season = seasonId;
-    return { ok: true, season: seasonId };
-  }
-
-  function eventPrice(catchId, basePrice) {
-    let price = basePrice;
-    price *= kayakEventMult(currentEvent, catchId);
-    price *= kayakSeasonMult(currentSeason);
-    return Math.round(price * 10) / 10;
-  }
-
-  function bulkDeal(catchId, qty) {
-    const have = system.state.inventory[catchId] || 0;
-    if (have < qty || qty < 20) return { ok: false, reason: 'need-20-plus', have };
-    const unit = kayakPriceFor(catchId, system.state.dayDrift, system.state.rank, system.state.upgrades);
-    const total = Math.round(eventPrice(catchId, unit) * qty * 1.1 * 10) / 10;
-    system.state.inventory[catchId] -= qty;
-    system.state.findsSold += qty;
-    system.state.earned += total;
-    bulkSold += qty;
-    dealsClaimed += 1;
-    return { ok: true, total, qty, bonus: 'bulk +10%' };
-  }
-
-  function dailyDeals() {
-    const deals = [];
-    for (const f of KAYAK_CATCHES) {
-      const mult = kayakEventMult(currentEvent, f.id);
-      if (mult !== 1) {
-        deals.push({ find: f.id, name: f.name, mult, event: currentEvent });
-      }
-    }
-    return deals;
-  }
-
-  function marketSummary() {
-    return {
-      event: currentEvent,
-      season: currentSeason,
-      dealsClaimed,
-      bulkSold,
-      deals: dailyDeals(),
-    };
-  }
+  const calc = (itemId, basePrice) => {
+    const em = currentEvent ? kayakEventMult(currentEvent, itemId) : 1;
+    return Math.round(basePrice * em * kayakSeasonMult(currentSeason) * 10) / 10;
+  };
 
   return {
-    setEvent, setSeason, eventPrice, bulkDeal, dailyDeals, marketSummary,
+    setEvent(id) {
+      const ev = KAYAK_MARKET.find((m) => m.id === id);
+      if (!ev) return { ok: false, reason: 'no-such-event' };
+      currentEvent = id;
+      st.event = id;
+      return { ok: true, event: id };
+    },
+    setSeason(id) {
+      const s = KAYAK_SEASONS.find((x) => x.id === id);
+      if (!s) return { ok: false, reason: 'no-such-season' };
+      currentSeason = id;
+      st.season = id;
+      return { ok: true, season: id };
+    },
+    eventPrice(itemId, basePrice) {
+      return calc(itemId, basePrice);
+    },
+    bulkDeal(catchId, qty) {
+      if (!qty || qty < 20) return { ok: false, reason: 'not-enough', qty: qty || 0, need: 20 };
+      const held = st.inventory[catchId] || 0;
+      if (held < qty) return { ok: false, reason: 'not-enough-held', have: held, need: qty };
+      const item = CATCH_BY_ID[catchId];
+      if (!item) return { ok: false, reason: 'no-such-find' };
+      const unit = calc(catchId, item.value);
+      const total = Math.round(unit * qty * 1.1 * 10) / 10;
+      st.inventory[catchId] = held - qty;
+      if (st.inventory[catchId] <= 0) delete st.inventory[catchId];
+      st.findsSold += qty;
+      st.earned += total;
+      st.dailyEarned += total;
+      bulkTraded += qty;
+      dealsClaimed += 1;
+      return { ok: true, total, qty, unit, bonus: 'bulk +10%' };
+    },
+    dailyDeals() {
+      return KAYAK_MARKET.map((m) => ({ id: m.id, name: m.name, finds: m.finds.slice(), mult: m.mult, desc: m.desc }));
+    },
+    marketSummary() {
+      return { event: currentEvent, season: currentSeason, dealsClaimed, bulkTraded, deals: this.dailyDeals() };
+    },
     get event() { return currentEvent; },
     get season() { return currentSeason; },
   };
 }
-
-export const KAYAK_META = {
-  system: 'kayaking',
-  version: '7c-B2',
-  author: 'builder-2',
-  dataCount: KAYAK_RIVERS.length,
-  findCount: KAYAK_CATCHES.length,
-  upgradeCount: KAYAK_UPGRADES.length,
-  rankCount: KAYAK_RANKS.length,
-};

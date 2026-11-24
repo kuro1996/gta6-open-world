@@ -1,99 +1,51 @@
-// Solara Nights — Night Shift: stealth contracts that only exist after
-// dark. When the sun is down, Ria can take quiet work from a burner
-// phone: slip a package through a guarded block, photograph a drop
-// point, or tail a courier without ever being seen. The whole system
-// runs on two meters the player can feel — NOISE and EYES. Noise rises
-// when Ria runs, drives fast, or fires a shot, and falls when she walks
-// slow or crouches in shadow; eyes rise when a watcher has line of
-// sight. Fill either meter and the contract burns: the mark bolts, the
-// cops get a tip, and the night's pay is gone. Fog and rain are a
-// friend here — they shrink every watcher's sight range.
-import * as THREE from 'three';
-import { clamp, clamp01, distance2D } from './random.js';
+import * as THREE from '../vendor/three/three.module.min.js';
 
-// The three contract types. Each one is a different verb, so a night
-// never plays the same way twice: deliver, photograph, tail.
 const CONTRACT_TYPES = {
-  drop: {
-    label: 'Silent Drop',
-    brief: 'Leave the package at the mark. No running, no witnesses.',
-    pay: 320,
-    rep: 12,
-  },
-  photo: {
-    label: 'Cold Photo',
-    brief: 'Photograph the drop point and get out. Stay out of the light.',
-    pay: 260,
-    rep: 10,
-  },
-  tail: {
-    label: 'Long Tail',
-    brief: 'Follow the courier. Close enough to see, far enough to vanish.',
-    pay: 400,
-    rep: 16,
-  },
+  drop: { label: 'Package Drop', brief: 'Leave the package at the mark. Quietly.', pay: 320, rep: 5 },
+  photo: { label: 'Photo the Drop', brief: 'Photograph the drop point and hold still.', pay: 260, rep: 4 },
+  tail: { label: 'Tail the Courier', brief: 'Follow the courier without being seen.', pay: 400, rep: 8 },
 };
 
-// Where contracts send the player, by district name. The coordinates
-// are city blocks, not story waypoints — Night Shift owns its own map.
 const CONTRACT_SPOTS = [
-  { name: 'Docks Crane 4', x: -198, z: 168 },
-  { name: 'Marina Slip 9', x: 205, z: -175 },
-  { name: 'Plaza North Steps', x: 30, z: -120 },
-  { name: 'Hospital Alley', x: -140, z: -60 },
-  { name: 'Beach Boardwalk', x: 190, z: 210 },
-  { name: 'Garage Back Lot', x: -60, z: 140 },
-  { name: 'Old Market Arch', x: 90, z: 60 },
-  { name: 'Rooftop Stairwell', x: -180, z: -150 },
+  { name: 'Docks Crane 4', x: -185, z: 195 },
+  { name: 'Marina Slip 9', x: 40, z: 190 },
+  { name: 'Plaza North Steps', x: 0, z: -20 },
+  { name: 'Hospital Alley', x: 110, z: -30 },
+  { name: 'Beach Boardwalk', x: 180, z: 150 },
+  { name: 'Garage Back Lot', x: -150, z: 160 },
+  { name: 'Old Market Arch', x: 120, z: 120 },
+  { name: 'Rooftop Stairwell', x: 60, z: 100 },
 ];
 
-// A watcher: a guard who stands a post and sweeps a cone of sight.
-// The cone is drawn as a translucent wedge on the ground, so the
-// player always knows exactly where "seen" begins.
-function makeWatcherMesh(scene, colorHex) {
-  const group = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.45, 0.55, 1.8, 8),
-    new THREE.MeshStandardMaterial({ color: 0x1c1c22, roughness: 0.8 }),
+function clampN(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+function clamp01N(v) {
+  return clampN(v, 0, 1);
+}
+
+function distN(x1, z1, x2, z2) {
+  return Math.hypot(x2 - x1, z2 - z1);
+}
+
+function meshObj(kind, color) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.5 }),
   );
-  body.position.y = 0.9;
-  group.add(body);
-  const visor = new THREE.Mesh(
-    new THREE.BoxGeometry(0.5, 0.12, 0.2),
-    new THREE.MeshBasicMaterial({ color: colorHex }),
-  );
-  visor.position.set(0, 1.55, 0.4);
-  group.add(visor);
-  // Sight cone: a flat wedge lying on the ground, pointing where the
-  // watcher looks. It fades with distance so the far edge reads soft.
-  const coneGeo = new THREE.CircleGeometry(1, 24, -Math.PI / 6, Math.PI / 3);
-  const coneMat = new THREE.MeshBasicMaterial({
-    color: colorHex,
-    transparent: true,
-    opacity: 0.16,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-  });
-  const cone = new THREE.Mesh(coneGeo, coneMat);
-  cone.rotation.x = -Math.PI / 2;
-  cone.rotation.z = Math.PI / 2;
-  cone.position.y = 0.08;
-  group.add(cone);
-  scene.add(group);
-  return { group, cone, coneMat };
+  mesh.userData.kind = kind;
+  mesh.kind = kind;
+  return mesh;
 }
 
 export class NightOps {
-  constructor(scene, rng, audio, effects, hooks) {
-    this.scene = scene;
-    this.rng = rng;
-    this.audio = audio;
-    this.effects = effects;
-    // Hooks the main loop wires up: announce(text), reward(money, rep),
-    // fail(reason), onSpotted(). All optional — NightOps never crashes
-    // for a missing hook.
+  constructor(scene, rng, audio, effects, hooks = {}) {
+    this.scene = scene || null;
+    this.rng = rng || null;
+    this.audio = audio || null;
+    this.effects = effects || null;
     this.hooks = hooks || {};
-
     this.active = false;
     this.contract = null;
     this.contractIndex = 0;
@@ -101,20 +53,20 @@ export class NightOps {
     this.eyes = 0;
     this.watchers = [];
     this.marker = null;
-    this.markerRing = null;
     this.tailTarget = null;
     this.tailSeen = 0;
     this.tailLost = 0;
     this.photoTimer = 0;
     this.photoHeld = 0;
-    this.contractsDone = 0;
-    this.contractsBurned = 0;
+    this.done = 0;
+    this.burned = 0;
     this.bestNightPay = 0;
     this.nightMinutes = 0;
     this.offerTimer = 8;
     this.offer = null;
-    this._lastAnnounce = '';
-    this._spottedCooldown = 0;
+    this.lastAnnounce = '';
+    this.spottedCooldown = 0;
+    this.flashCycle = 0;
   }
 
   get hasOffer() {
@@ -125,35 +77,41 @@ export class NightOps {
     return this.active;
   }
 
-  // Night Shift only opens after dark. The main loop passes nightF
-  // (0 = noon, 1 = midnight); below 0.55 the burner phone stays quiet.
   nightOpen(nightF) {
-    return nightF > 0.55;
+    return (nightF || 0) > 0.55;
   }
 
-  _announce(text) {
-    if (text === this._lastAnnounce) return;
-    this._lastAnnounce = text;
-    if (this.hooks.announce) this.hooks.announce(text);
+  roll(a, b) {
+    const r = this.rng;
+    if (r && typeof r.range === 'function') return r.range(a, b);
+    if (typeof r === 'function') return a + r() * (b - a);
+    return a + Math.random() * (b - a);
   }
 
-  _rollOffer() {
-    const typeKeys = Object.keys(CONTRACT_TYPES);
-    const type = typeKeys[Math.floor(this.rng.range(0, typeKeys.length))];
-    const spot = CONTRACT_SPOTS[Math.floor(this.rng.range(0, CONTRACT_SPOTS.length))];
+  announce(text) {
+    if (text === this.lastAnnounce) return;
+    this.lastAnnounce = text;
+    if (typeof this.hooks.announce === 'function') this.hooks.announce(text);
+  }
+
+  rollOffer() {
+    const types = Object.keys(CONTRACT_TYPES);
+    const type = types[Math.floor(this.roll(0, types.length))];
+    const spot = CONTRACT_SPOTS[Math.floor(this.roll(0, CONTRACT_SPOTS.length))];
     const base = CONTRACT_TYPES[type];
-    // Pay scales with how many nights the player has already worked:
-    // the burner phone trusts a proven runner with better money.
-    const trust = 1 + Math.min(this.contractsDone * 0.06, 0.6);
+    const trust = Math.min(0.6, this.done * 0.06);
+    const pay = Math.round(base.pay * (1 + trust));
     this.offer = {
-      id: `night-${this.contractsDone + this.contractsBurned + 1}`,
+      id: `night-${this.done + this.burned + 1}`,
       type,
       label: base.label,
       brief: base.brief,
-      pay: Math.round(base.pay * trust),
+      pay,
       rep: base.rep,
+      reputation: base.rep,
       spot: { ...spot },
     };
+    return this.offer;
   }
 
   acceptOffer() {
@@ -163,311 +121,259 @@ export class NightOps {
     this.active = true;
     this.noise = 0;
     this.eyes = 0;
+    this.photoTimer = 0;
     this.photoHeld = 0;
     this.tailSeen = 0;
     this.tailLost = 0;
-    this._spawnWatchers();
-    this._spawnMarker();
-    this._announce(`${this.contract.label} — ${this.contract.spot.name}. ${this.contract.brief}`);
-    if (this.audio && this.audio.radioBlip) this.audio.radioBlip();
+    this.flashCycle = 0;
+    this.spawnWatchers();
+    this.spawnMarker();
+    this.announce(`${this.contract.label}: ${this.contract.brief}`);
+    if (this.audio && typeof this.audio.radioBlip === 'function') this.audio.radioBlip();
     return true;
   }
 
   declineOffer() {
     this.offer = null;
-    this.offerTimer = this.rng.range(25, 60);
+    this.offerTimer = this.roll(25, 60);
   }
 
-  _spawnWatchers() {
-    this._clearWatchers();
-    const spot = this.contract.spot;
-    const count = this.contract.type === 'tail' ? 1 : 2 + Math.floor(this.rng.range(0, 2));
-    for (let i = 0; i < count; i += 1) {
-      const angle = this.rng.range(0, Math.PI * 2);
-      const dist = this.rng.range(14, 30);
-      const x = spot.x + Math.sin(angle) * dist;
-      const z = spot.z + Math.cos(angle) * dist;
-      const mesh = makeWatcherMesh(this.scene, 0xff5346);
-      mesh.group.position.set(x, 0, z);
-      const range = this.rng.range(22, 30);
-      mesh.cone.scale.set(range, range, 1);
+  spawnWatchers() {
+    this.clearWatchers();
+    const spot = this.contract ? this.contract.spot : CONTRACT_SPOTS[0];
+    const count = this.contract && this.contract.type === 'tail' ? 1 : 2 + Math.floor(this.roll(0, 2));
+    for (let i = 0; i < count; i++) {
+      const ang = this.roll(0, Math.PI * 2);
+      const d = this.roll(14, 30);
+      const mesh = meshObj('watcher', 0xff4444);
+      mesh.position.x = spot.x + Math.sin(ang) * d;
+      mesh.position.z = spot.z + Math.cos(ang) * d;
+      const cone = meshObj('cone', 0xff6666);
+      mesh.add(cone);
+      if (this.scene && typeof this.scene.add === 'function') this.scene.add(mesh);
       this.watchers.push({
-        x,
-        z,
-        range,
-        heading: this.rng.range(0, Math.PI * 2),
-        sweep: this.rng.range(0.25, 0.6),
-        sweepPhase: this.rng.range(0, Math.PI * 2),
-        mesh,
-        alert: 0,
+        mesh, cone,
+        x: mesh.position.x, z: mesh.position.z,
+        sight: this.roll(22, 30),
+        heading: this.roll(0, Math.PI * 2),
+        sweepSpeed: this.roll(0.3, 0.8),
+        sweepPhase: this.roll(0, Math.PI * 2),
       });
     }
-    // A tail contract also needs the courier being followed: a pale
-    // figure who walks a slow loop near the spot.
-    if (this.contract.type === 'tail') {
-      const courier = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.4, 0.5, 1.7, 8),
-        new THREE.MeshStandardMaterial({ color: 0xd8c98a, roughness: 0.7 }),
-      );
-      courier.position.set(spot.x + 8, 0.85, spot.z + 8);
-      this.scene.add(courier);
-      this.tailTarget = {
-        mesh: courier,
-        x: spot.x + 8,
-        z: spot.z + 8,
-        angle: this.rng.range(0, Math.PI * 2),
-        radius: this.rng.range(10, 18),
-        speed: this.rng.range(0.35, 0.55),
-      };
+    if (this.contract && this.contract.type === 'tail') {
+      const courier = meshObj('courier', 0xe8e8e8);
+      courier.position.x = spot.x + 10;
+      courier.position.z = spot.z + 10;
+      if (this.scene && typeof this.scene.add === 'function') this.scene.add(courier);
+      this.tailTarget = { mesh: courier, x: courier.position.x, z: courier.position.z, angle: 0, loopR: 12, cx: spot.x, cz: spot.z };
     }
   }
 
-  _spawnMarker() {
-    const spot = this.contract.spot;
-    const geo = new THREE.RingGeometry(2.4, 3, 32);
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0x7df9ff,
-      transparent: true,
-      opacity: 0.8,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    });
-    this.markerRing = new THREE.Mesh(geo, mat);
-    this.markerRing.rotation.x = -Math.PI / 2;
-    this.markerRing.position.set(spot.x, 0.12, spot.z);
-    this.scene.add(this.markerRing);
-    const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.5, 1.6, 26, 10, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: 0x7df9ff, transparent: true, opacity: 0.14,
-        side: THREE.DoubleSide, depthWrite: false,
-      }),
-    );
-    beam.position.set(spot.x, 13, spot.z);
-    this.scene.add(beam);
-    this.marker = beam;
+  spawnMarker() {
+    this.clearMarker();
+    const spot = this.contract ? this.contract.spot : CONTRACT_SPOTS[0];
+    const ring = meshObj('ring', 0x2ee6e6);
+    ring.position.x = spot.x;
+    ring.position.z = spot.z;
+    ring.scale.x = 3;
+    ring.scale.z = 3;
+    const beam = meshObj('beam', 0x2ee6e6);
+    beam.position.x = spot.x;
+    beam.position.y = 6;
+    beam.position.z = spot.z;
+    if (this.scene && typeof this.scene.add === 'function') {
+      this.scene.add(ring);
+      this.scene.add(beam);
+    }
+    this.marker = { ring, beam };
   }
 
-  _clearWatchers() {
+  clearWatchers() {
     for (const w of this.watchers) {
-      this.scene.remove(w.mesh.group);
-      w.mesh.cone.geometry.dispose();
-      w.mesh.coneMat.dispose();
+      if (w.cone && w.cone.geometry) w.cone.geometry.dispose();
+      if (w.mesh && this.scene && typeof this.scene.remove === 'function') this.scene.remove(w.mesh);
     }
     this.watchers = [];
     if (this.tailTarget) {
-      this.scene.remove(this.tailTarget.mesh);
+      if (this.scene && typeof this.scene.remove === 'function') this.scene.remove(this.tailTarget.mesh);
       this.tailTarget = null;
     }
   }
 
-  _clearMarker() {
-    if (this.markerRing) {
-      this.scene.remove(this.markerRing);
-      this.markerRing.geometry.dispose();
-      this.markerRing.material.dispose();
-      this.markerRing = null;
+  clearMarker() {
+    if (!this.marker) return;
+    for (const part of [this.marker.ring, this.marker.beam]) {
+      if (part && part.geometry) part.geometry.dispose();
+      if (part && this.scene && typeof this.scene.remove === 'function') this.scene.remove(part);
     }
-    if (this.marker) {
-      this.scene.remove(this.marker);
-      this.marker.geometry.dispose();
-      this.marker.material.dispose();
-      this.marker = null;
-    }
+    this.marker = null;
   }
 
-  _burn(reason) {
-    this.contractsBurned += 1;
+  burn(reason) {
+    this.burned += 1;
     this.active = false;
-    this._clearWatchers();
-    this._clearMarker();
+    this.contract = null;
+    this.clearWatchers();
+    this.clearMarker();
     this.noise = 0;
     this.eyes = 0;
-    this.offerTimer = this.rng.range(30, 75);
-    if (this.audio && this.audio.fail) this.audio.fail();
-    if (this.hooks.fail) this.hooks.fail(reason);
-    this._announce(`Contract burned — ${reason}`);
+    this.offerTimer = this.roll(30, 75);
+    if (this.audio && typeof this.audio.fail === 'function') this.audio.fail();
+    if (typeof this.hooks.fail === 'function') this.hooks.fail(reason);
+    this.announce(`Contract burned: ${reason}`);
+    return { event: 'burned', detail: reason };
   }
 
-  _complete() {
-    const pay = this.contract.pay;
-    const rep = this.contract.rep;
-    this.contractsDone += 1;
-    this.bestNightPay = Math.max(this.bestNightPay, pay);
+  complete() {
+    const pay = this.contract ? this.contract.pay : 0;
+    const rep = this.contract ? this.contract.rep : 0;
+    const label = this.contract ? this.contract.label : '';
+    const spot = this.contract ? this.contract.spot : null;
+    this.done += 1;
+    if (pay > this.bestNightPay) this.bestNightPay = pay;
     this.active = false;
-    this._clearWatchers();
-    this._clearMarker();
+    this.contract = null;
+    this.clearWatchers();
+    this.clearMarker();
     this.noise = 0;
     this.eyes = 0;
-    this.offerTimer = this.rng.range(20, 50);
-    if (this.audio && this.audio.jingle) this.audio.jingle();
-    if (this.effects) this.effects.burst(this.contract.spot.x, 2, this.contract.spot.z, 0x7df9ff, 14, 5);
-    if (this.hooks.reward) this.hooks.reward(pay, rep, this.contract.label);
-    this._announce(`${this.contract.label} done — $${pay} + ${rep} rep.`);
+    this.offerTimer = this.roll(20, 50);
+    if (this.audio && typeof this.audio.jingle === 'function') this.audio.jingle();
+    if (spot && this.effects && typeof this.effects.burst === 'function') this.effects.burst(spot.x, 1, spot.z);
+    if (typeof this.hooks.reward === 'function') this.hooks.reward(pay, rep, label);
+    this.announce(`Contract complete: ${label} paid $${pay}.`);
+    return { event: 'complete', detail: label, pay, rep };
   }
 
-  // Noise: how loud Ria is being right now. The main loop feeds in
-  // what she just did; NightOps turns it into a meter that decays
-  // when she goes quiet. Crouching (sneak) halves every gain.
   addNoise(amount, sneaking) {
     if (!this.active) return;
-    this.noise = clamp01(this.noise + amount * (sneaking ? 0.5 : 1));
+    const amt = sneaking ? (amount || 0) * 0.5 : (amount || 0);
+    this.noise = clamp01N(this.noise + amt);
   }
 
-  // The one update the loop calls. ctx carries everything NightOps
-  // needs and nothing it owns: player position/speed/sneak, night
-  // factor, weather visibility, and whether a shot was just fired.
-  update(dt, ctx) {
-    this._spottedCooldown = Math.max(0, this._spottedCooldown - dt);
+  update(dt, u) {
+    const step = Number(dt) || 0;
+    const ctx = u || {};
+    this.spottedCooldown = Math.max(0, this.spottedCooldown - step);
     if (!this.active) {
-      // No contract running: roll fresh offers while it is night, and
-      // let the burner phone go quiet again by dawn.
-      if (ctx.nightF > 0.55 && !this.offer) {
-        this.offerTimer -= dt;
-        if (this.offerTimer <= 0) this._rollOffer();
+      if (this.nightOpen(ctx.nightF) && !this.offer) {
+        this.offerTimer -= step;
+        if (this.offerTimer <= 0) {
+          this.rollOffer();
+          this.announce(`Night work: ${this.offer.label} — $${this.offer.pay} at ${this.offer.spot.name}.`);
+        }
       }
       return null;
     }
-    this.nightMinutes += dt / 60;
-    const px = ctx.playerX;
-    const pz = ctx.playerZ;
-
-    // Decay: standing still in the dark bleeds both meters away.
-    this.noise = clamp01(this.noise - dt * 0.05);
-    this.eyes = clamp01(this.eyes - dt * 0.04);
-    if (ctx.shotFired) this.addNoise(0.34, ctx.sneaking);
-    if (ctx.speed > 9) this.addNoise(dt * 0.06, ctx.sneaking);
-    else if (ctx.speed > 4) this.addNoise(dt * 0.025, ctx.sneaking);
-    if (ctx.inCar) this.addNoise(dt * 0.02, false);
-
-    // Watchers sweep their cones. Being inside a cone with line of
-    // sight fills EYES; fog and rain shrink the range, darkness helps
-    // a crouched player most of all.
-    const visibility = ctx.visibility || 320;
+    this.nightMinutes += step / 60;
+    this.noise = clamp01N(this.noise - step * 0.02);
+    this.eyes = clamp01N(this.eyes - step * 0.03);
+    if (ctx.shotFired) this.addNoise(0.4, ctx.sneaking);
+    if ((ctx.speed || 0) > 12) this.addNoise(step * 0.08, ctx.sneaking);
+    if (ctx.inCar) this.addNoise(step * 0.05, ctx.sneaking);
+    const px = ctx.playerX ?? 0;
+    const pz = ctx.playerZ ?? 0;
+    const vis = ctx.visibility ?? 200;
+    const time = (this.nightMinutes * 60 + step);
     for (const w of this.watchers) {
-      w.sweepPhase += dt * w.sweep;
-      w.heading = w.heading + Math.sin(w.sweepPhase) * dt * 0.7;
-      w.mesh.group.rotation.y = w.heading;
-      w.mesh.cone.rotation.z = Math.PI / 2 - w.heading;
-      const dist = distance2D(px, pz, w.x, w.z);
-      const range = Math.min(w.range, visibility * 0.11);
-      if (dist < range) {
-        const ang = Math.atan2(px - w.x, pz - w.z);
-        let diff = Math.abs(ang - w.heading);
-        if (diff > Math.PI) diff = Math.PI * 2 - diff;
-        if (diff < Math.PI / 5) {
-          const closeness = 1 - dist / range;
-          const sneakFactor = ctx.sneaking ? 0.35 : 1;
-          this.eyes = clamp01(this.eyes + dt * 0.55 * closeness * sneakFactor);
-          w.alert = clamp01(w.alert + dt * 0.8);
-          w.mesh.coneMat.opacity = 0.16 + w.alert * 0.4;
+      w.sweepPhase += w.sweepSpeed * step;
+      w.heading = w.sweepPhase;
+      const sight = Math.min(w.sight, vis * 0.11);
+      const d = distN(px, pz, w.x, w.z);
+      if (d < sight) {
+        const toPlayer = Math.atan2(px - w.x, pz - w.z);
+        let diff = Math.abs(((toPlayer - w.heading + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+        if (diff < 0.9) {
+          const closeness = 1 - d / sight;
+          let fill = step * 0.5 * closeness;
+          if (ctx.sneaking) fill *= 0.4;
+          this.eyes = clamp01N(this.eyes + fill);
         }
       }
-      w.alert = clamp01(w.alert - dt * 0.25);
-      if (w.alert < 0.2) w.mesh.coneMat.opacity = 0.16;
     }
-
-    // The marker pulses so the player can find the spot at night.
-    if (this.markerRing) {
-      const pulse = 1 + Math.sin(Date.now() / 280) * 0.12;
-      this.markerRing.scale.set(pulse, pulse, 1);
+    if (this.marker) {
+      const pulse = 0.5 + Math.sin(time * 3) * 0.3;
+      this.marker.ring.material.opacity = pulse;
     }
-
-    // Burn conditions: seen for too long, or too loud for too long.
     if (this.eyes >= 1) {
-      if (this._spottedCooldown <= 0) {
-        this._spottedCooldown = 3;
-        if (this.hooks.onSpotted) this.hooks.onSpotted();
+      if (this.spottedCooldown <= 0) {
+        this.spottedCooldown = 3;
+        if (typeof this.hooks.onSpotted === 'function') this.hooks.onSpotted();
       }
-      this._burn('a watcher made you — the mark bolted.');
-      return { event: 'burned', reason: 'spotted' };
+      return this.burn('spotted');
     }
-    if (this.noise >= 1) {
-      this._burn('too loud — someone tipped the cops.');
-      return { event: 'burned', reason: 'noise' };
-    }
-
+    if (this.noise >= 1) return this.burn('too loud');
     const spot = this.contract.spot;
-    const dist = distance2D(px, pz, spot.x, spot.z);
+    const dSpot = distN(px, pz, spot.x, spot.z);
     if (this.contract.type === 'drop') {
-      if (dist < 6) {
-        this._complete();
-        return { event: 'done', label: this.contract ? this.contract.label : 'Silent Drop' };
-      }
-    } else if (this.contract.type === 'photo') {
-      if (dist < 16) {
-        this.photoHeld += dt;
-        if (this.photoHeld > 0.4 && this.effects) {
-          this.effects.flash(spot.x, 3, spot.z, 0xffffff, 0.6);
-          this.photoHeld = -2.5;
-        }
-        if (this.photoHeld <= -2.4) {
-          this._complete();
-          return { event: 'done', label: 'Cold Photo' };
-        }
-      } else {
-        this.photoHeld = Math.max(0, this.photoHeld - dt);
-      }
-    } else if (this.contract.type === 'tail' && this.tailTarget) {
-      const t = this.tailTarget;
-      t.angle += (t.speed / t.radius) * dt;
-      t.x = spot.x + Math.sin(t.angle) * t.radius;
-      t.z = spot.z + Math.cos(t.angle) * t.radius;
-      t.mesh.position.set(t.x, 0.85, t.z);
-      const d = distance2D(px, pz, t.x, t.z);
-      if (d < 26 && d > 6) {
-        this.tailSeen += dt;
-        this.tailLost = 0;
-      } else if (d <= 6) {
-        // Too close: the courier feels the breath on his neck.
-        this.eyes = clamp01(this.eyes + dt * 0.5);
-        this.tailLost = 0;
-      } else {
-        this.tailLost += dt;
-        this.tailSeen = Math.max(0, this.tailSeen - dt * 0.5);
-      }
-      if (this.tailLost > 9) {
-        this._burn('lost the courier in the dark.');
-        return { event: 'burned', reason: 'lost' };
-      }
-      if (this.tailSeen > 20) {
-        this._complete();
-        return { event: 'done', label: 'Long Tail' };
-      }
+      if (dSpot <= 6) return this.complete();
+      return { event: 'progress', detail: 'reach the mark' };
     }
-    return { event: 'active', noise: this.noise, eyes: this.eyes, dist };
+    if (this.contract.type === 'photo') {
+      if (dSpot <= 16 && (ctx.speed || 0) < 1) {
+        this.photoHeld += step;
+        this.flashCycle -= step;
+        if (this.flashCycle <= -3) {
+          this.flashCycle = 2;
+          this.photoTimer += 1;
+        }
+        if (this.photoHeld >= 6) return this.complete();
+        return { event: 'progress', detail: `photo ${Math.round(this.photoHeld)}/6s` };
+      }
+      this.photoHeld = Math.max(0, this.photoHeld - step);
+      return { event: 'progress', detail: 'get close and hold still' };
+    }
+    if (this.contract.type === 'tail' && this.tailTarget) {
+      const t = this.tailTarget;
+      t.angle += step * 0.08;
+      t.x = t.cx + Math.sin(t.angle) * t.loopR;
+      t.z = t.cz + Math.cos(t.angle) * t.loopR;
+      t.mesh.position.x = t.x;
+      t.mesh.position.z = t.z;
+      const dTail = distN(px, pz, t.x, t.z);
+      if (dTail < 6) {
+        this.eyes = clamp01N(this.eyes + step * 0.6);
+      } else if (dTail >= 6 && dTail <= 26) {
+        this.tailSeen += step;
+        this.tailLost = 0;
+        if (this.tailSeen >= 20) return this.complete();
+      } else {
+        this.tailLost += step;
+        if (this.tailLost >= 9) return this.burn('lost the courier');
+      }
+      return { event: 'progress', detail: `tail ${Math.round(this.tailSeen)}/20s` };
+    }
+    return null;
   }
 
-  // HUD line: what the night looks like right now.
   statusLine() {
     if (this.active && this.contract) {
-      const type = this.contract.type === 'tail'
-        ? `TAIL ${Math.max(0, Math.ceil(20 - this.tailSeen))}s`
-        : this.contract.type === 'photo'
-          ? (this.photoHeld > 0 ? `PHOTO ${Math.min(99, Math.round((this.photoHeld / 0.4) * 100))}% — HOLD STILL` : 'HOLD STILL · PHOTO')
-          : 'REACH THE MARK';
-      return `🌙 ${this.contract.label} · ${type} · NOISE ${Math.round(this.noise * 100)}% · EYES ${Math.round(this.eyes * 100)}%`;
+      const spot = this.contract.spot;
+      let middle = `Reach ${spot.name}`;
+      if (this.contract.type === 'tail') middle = `Tail the courier — ${Math.max(0, Math.round(20 - this.tailSeen))}s left`;
+      else if (this.contract.type === 'photo') middle = `Photo progress ${Math.round(this.photoHeld)}/6s`;
+      return `${this.contract.label} · ${middle} · Noise ${Math.round(this.noise * 100)}% · Eyes ${Math.round(this.eyes * 100)}%`;
     }
     if (this.offer) {
-      return `📱 BURNER: ${this.offer.label} — $${this.offer.pay} · ${this.offer.spot.name} (N to take)`;
+      return `Night work: ${this.offer.label} — $${this.offer.pay} at ${this.offer.spot.name} [Take]`;
     }
     return '';
   }
 
   serialize() {
     return {
-      contractsDone: this.contractsDone,
-      contractsBurned: this.contractsBurned,
+      done: this.done,
+      burned: this.burned,
       bestNightPay: this.bestNightPay,
       nightMinutes: Math.round(this.nightMinutes),
     };
   }
 
-  restore(data) {
-    if (!data) return;
-    this.contractsDone = data.contractsDone || 0;
-    this.contractsBurned = data.contractsBurned || 0;
-    this.bestNightPay = data.bestNightPay || 0;
-    this.nightMinutes = data.nightMinutes || 0;
+  restore(input) {
+    if (!input || typeof input !== 'object') return;
+    this.done = typeof input.done === 'number' ? input.done : 0;
+    this.burned = typeof input.burned === 'number' ? input.burned : 0;
+    this.bestNightPay = typeof input.bestNightPay === 'number' ? input.bestNightPay : 0;
+    this.nightMinutes = typeof input.nightMinutes === 'number' ? input.nightMinutes : 0;
   }
 }

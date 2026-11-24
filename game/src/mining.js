@@ -1,158 +1,407 @@
-// Solara Nights — Mining / Deep Shaft (Round 7, written fresh).
-// Ria works the old Crown Quarry and the deep shafts under the north
-// hills: pick, drill, blast and haul ore to the surface, then smelt it
-// into bars or sell raw to the foundry. Rich veins hide behind hard
-// rock; a careless blast can cave a tunnel, and gas pockets punish
-// miners who skip the canary. Upgrades buy better picks, drills, carts
-// and a smelter of your own; the foundry pays a premium for pure bars,
-// and the gem cutter in Old Town pays wild money for cut stones.
-// Pure logic: no rendering, no imports. The game wires it through the
-// standard ctx { rng, getDay, getHour, getCash, addCash, addHeat, log,
-// getPlayerPos, getWeather } and drives tick/tickDay from the main loop.
-
 export const MINING_ORES = [
-  { id: 'coal', name: 'Coal', value: 4, hardness: 1, rarity: 0.3, depth: 1, smelt: 'coke', barValue: 7, desc: 'Black, dusty, and always in demand.' },
-  { id: 'iron', name: 'Iron Ore', value: 9, hardness: 2, rarity: 0.24, depth: 1, smelt: 'iron-bar', barValue: 22, desc: 'Rust-red lumps that feed the foundry.' },
-  { id: 'copper', name: 'Copper Ore', value: 14, hardness: 2, rarity: 0.18, depth: 1, smelt: 'copper-bar', barValue: 34, desc: 'Green-streaked stone with a warm glint.' },
-  { id: 'tin', name: 'Tin Ore', value: 12, hardness: 2, rarity: 0.15, depth: 2, smelt: 'tin-bar', barValue: 28, desc: 'Soft grey ore, easy to work.' },
-  { id: 'silver', name: 'Silver Ore', value: 38, hardness: 3, rarity: 0.09, depth: 2, smelt: 'silver-bar', barValue: 95, desc: 'Bright veins that shine in lamplight.' },
-  { id: 'gold', name: 'Gold Ore', value: 72, hardness: 3, rarity: 0.06, depth: 3, smelt: 'gold-bar', barValue: 190, desc: 'Heavy yellow flecks — the old dream.' },
-  { id: 'quartz', name: 'Quartz Crystal', value: 26, hardness: 3, rarity: 0.1, depth: 2, smelt: 'cut-quartz', barValue: 60, desc: 'Clear points that catch the light.' },
-  { id: 'emerald', name: 'Emerald', value: 140, hardness: 4, rarity: 0.03, depth: 3, smelt: 'cut-emerald', barValue: 380, desc: 'Green fire locked in hard rock.' },
-  { id: 'ruby', name: 'Ruby', value: 160, hardness: 4, rarity: 0.025, depth: 3, smelt: 'cut-ruby', barValue: 430, desc: 'Red as a warning, worth a fortune.' },
-  { id: 'sapphire', name: 'Sapphire', value: 150, hardness: 4, rarity: 0.028, depth: 3, smelt: 'cut-sapphire', barValue: 400, desc: 'Deep blue, cold as the deep shaft.' },
-  { id: 'diamond', name: 'Diamond', value: 320, hardness: 5, rarity: 0.012, depth: 4, smelt: 'cut-diamond', barValue: 900, desc: 'The hardest stone, the brightest prize.' },
-  { id: 'mithril', name: 'Mithril Vein', value: 240, hardness: 5, rarity: 0.015, depth: 4, smelt: 'mithril-bar', barValue: 640, desc: 'A pale metal the old miners whispered about.' },
+  { id: 'coal', name: 'Coal', value: 4, hardness: 1, rarity: 0.3, depth: 1, smelt: 'coal', barValue: 7, desc: 'Black, dusty, and everywhere near the surface.' },
+  { id: 'iron', name: 'Iron', value: 10, hardness: 2, rarity: 0.25, depth: 1, smelt: 'iron', barValue: 18, desc: 'The backbone of every forge in town.' },
+  { id: 'copper', name: 'Copper', value: 12, hardness: 2, rarity: 0.22, depth: 1, smelt: 'copper', barValue: 20, desc: 'Warm red metal, easy to work.' },
+  { id: 'tin', name: 'Tin', value: 9, hardness: 2, rarity: 0.2, depth: 2, smelt: 'tin', barValue: 16, desc: 'Soft grey seams in the second level.' },
+  { id: 'silver', name: 'Silver', value: 35, hardness: 3, rarity: 0.12, depth: 2, smelt: 'silver', barValue: 60, desc: 'Bright veins that catch the lamplight.' },
+  { id: 'gold', name: 'Gold', value: 80, hardness: 3, rarity: 0.08, depth: 3, smelt: 'gold', barValue: 150, desc: 'Heavy yellow nuggets deep down.' },
+  { id: 'quartz', name: 'Quartz', value: 25, hardness: 2, rarity: 0.15, depth: 2, smelt: 'quartz', barValue: 45, desc: 'Clear crystals that cut into fine gems.' },
+  { id: 'emerald', name: 'Emerald', value: 120, hardness: 4, rarity: 0.05, depth: 3, smelt: 'emerald', barValue: 260, desc: 'Green fire locked in hard rock.' },
+  { id: 'ruby', name: 'Ruby', value: 150, hardness: 4, rarity: 0.04, depth: 3, smelt: 'ruby', barValue: 320, desc: 'Blood-red stones, worth a fortune cut.' },
+  { id: 'sapphire', name: 'Sapphire', value: 140, hardness: 4, rarity: 0.04, depth: 4, smelt: 'sapphire', barValue: 300, desc: 'Deep blue, found only in the abyss.' },
+  { id: 'diamond', name: 'Diamond', value: 320, hardness: 5, rarity: 0.02, depth: 4, smelt: 'diamond', barValue: 900, desc: 'The hardest stone, and the richest.' },
+  { id: 'mithril', name: 'Mithril', value: 200, hardness: 5, rarity: 0.03, depth: 4, smelt: 'mithril', barValue: 600, desc: 'A strange light metal the old miners feared.' },
 ];
 
 export const MINING_SHAFTS = [
-  { id: 'quarry', name: 'Crown Quarry', district: 'North Hills', depth: 1, ore: 0.8, danger: 0, mult: 1.0, timeMin: 4, desc: 'Open sky, easy rock, honest coal and iron.' },
-  { id: 'shaft1', name: 'Shaft One', district: 'North Hills', depth: 2, ore: 0.9, danger: 1, mult: 1.15, timeMin: 6, desc: 'The first deep cut — silver starts here.' },
-  { id: 'shaft2', name: 'Shaft Two', district: 'North Hills', depth: 3, ore: 1.0, danger: 2, mult: 1.3, timeMin: 7, desc: 'Hot, dark, and full of gold.' },
-  { id: 'abyss', name: 'The Abyss', district: 'North Hills', depth: 4, ore: 1.1, danger: 3, mult: 1.5, timeMin: 9, desc: 'The deepest cut. Diamonds and mithril — and gas.' },
+  { id: 'quarry', name: 'Crown Quarry', district: 'Surface', depth: 1, ore: 0.9, danger: 1, mult: 1.0, timeMin: 60, desc: 'Open sky, easy rock, honest pay.' },
+  { id: 'shaft1', name: 'Shaft One', district: 'Deep', depth: 2, ore: 0.7, danger: 2, mult: 1.2, timeMin: 90, desc: 'Timbered tunnels under the hill.' },
+  { id: 'shaft2', name: 'Shaft Two', district: 'Deeper', depth: 3, ore: 0.5, danger: 3, mult: 1.5, timeMin: 120, desc: 'Hot, damp, and rich.' },
+  { id: 'abyss', name: 'The Abyss', district: 'Bottom', depth: 4, ore: 0.3, danger: 4, mult: 2.0, timeMin: 150, desc: 'The bottom of the world. Few come back rich.' },
 ];
 
 export const MINING_BUYERS = [
-  { id: 'foundry', name: 'Crown Foundry', mult: 1.0, likes: ['ore'], dislikes: ['gem'], mood: 'steady', minRank: 0, desc: 'Buys raw ore by the cartload.' },
-  { id: 'smelter', name: 'Smelter Guild', mult: 1.25, likes: ['bar'], dislikes: ['ore'], mood: 'steady', minRank: 1, desc: 'Pays a premium for clean bars.' },
-  { id: 'jeweler', name: 'Jeweler Anselm', mult: 1.5, likes: ['gem'], dislikes: ['ore'], mood: 'fancy', minRank: 2, desc: 'Cut stones only, and he pays for them.' },
-  { id: 'collector', name: 'Collector Vane', mult: 1.6, likes: ['rare'], dislikes: [], mood: 'odd', minRank: 3, desc: 'Wants the rarest stones, whatever the price.' },
-  { id: 'market', name: 'Night Market Stall', mult: 0.9, likes: [], dislikes: [], mood: 'quick', minRank: 0, desc: 'Fast cash for anything, slightly less money.' },
+  { id: 'foundry', name: 'The Foundry', mult: 1.0, likes: ['iron', 'coal'], dislikes: ['quartz'], mood: 'steady', minRank: 0, desc: 'Buys raw ore by the cartload.' },
+  { id: 'smelter', name: 'Smelter Guild', mult: 1.1, likes: ['copper', 'tin', 'iron'], dislikes: ['coal'], mood: 'busy', minRank: 1, desc: 'Pays more for clean smelting ore.' },
+  { id: 'jeweler', name: 'The Jeweler', mult: 1.3, likes: ['emerald', 'ruby', 'sapphire', 'diamond'], dislikes: ['coal', 'iron'], mood: 'picky', minRank: 2, desc: 'Wants cut stones and bright gems.' },
+  { id: 'collector', name: 'The Collector', mult: 1.5, likes: ['mithril', 'diamond', 'gold'], dislikes: ['tin'], mood: 'eager', minRank: 3, desc: 'Pays silly money for rare stone.' },
+  { id: 'market', name: 'Town Market', mult: 0.9, likes: [], dislikes: [], mood: 'flat', minRank: 0, desc: 'Buys anything, cheaply.' },
 ];
 
 export const MINING_UPGRADES = [
-  { id: 'pick', name: 'Steel Pick', cost: 100, desc: 'Hard rock breaks faster: +1 pick tier.', effect: 'pick' },
-  { id: 'lamp', name: 'Brass Lamp', cost: 140, desc: 'See the veins: +20% rich-vein chance.', effect: 'lamp' },
-  { id: 'canary', name: 'Canary Cage', cost: 180, desc: 'Gas warnings: cave-ins and gas halved.', effect: 'canary' },
-  { id: 'drill', name: 'Hand Drill', cost: 300, desc: 'Drill the hard seams: +30% yield.', effect: 'drill' },
-  { id: 'cart', name: 'Ore Cart', cost: 420, desc: 'Haul +50 kg per trip.', effect: 'cart' },
-  { id: 'dynamite', name: 'Dynamite Kit', cost: 550, desc: 'Blast rich veins open — risky but fast.', effect: 'blast' },
-  { id: 'smelter', name: 'Home Smelter', cost: 800, desc: 'Smelt your own bars, keep the margin.', effect: 'smelt' },
-  { id: 'elevator', name: 'Shaft Elevator', cost: 1200, desc: 'Deep trips take half the time.', effect: 'elevator' },
+  { id: 'pick', name: 'Steel Pick', cost: 100, desc: 'A proper steel pick that bites deeper.', effect: 'dig' },
+  { id: 'lamp', name: 'Bright Lamp', cost: 140, desc: 'A lamp that shows the good seams.', effect: 'find' },
+  { id: 'canary', name: 'Canary Cage', cost: 180, desc: 'A canary that warns of bad air.', effect: 'safety' },
+  { id: 'drill', name: 'Rock Drill', cost: 300, desc: 'A hand drill that cracks hard ore.', effect: 'dig' },
+  { id: 'cart', name: 'Ore Cart', cost: 420, desc: 'A cart that doubles what you can haul.', effect: 'carry' },
+  { id: 'dynamite', name: 'Dynamite', cost: 550, desc: 'Sticks of dynamite for big blasts.', effect: 'blast' },
+  { id: 'smelter', name: 'Home Smelter', cost: 800, desc: 'Your own smelter for bars and gems.', effect: 'smelt' },
+  { id: 'elevator', name: 'Cage Elevator', cost: 1200, desc: 'A cage lift that halves the trip down.', effect: 'carry' },
 ];
 
 export const MINING_RANKS = [
-  { level: 0, name: 'Surface Picker', xp: 0, perk: 'Base prices, base yield.' },
-  { level: 1, name: 'Pit Miner', xp: 120, perk: '+10% sale prices.' },
-  { level: 2, name: 'Shaft Hand', xp: 300, perk: '+10% yield.' },
-  { level: 3, name: 'Deep Miner', xp: 620, perk: '+20% sale prices, the Abyss opens.' },
-  { level: 4, name: 'Master of the Deep', xp: 1100, perk: '+30% sale prices, gems doubled.' },
+  { level: 0, name: 'Surface Picker', xp: 0, perk: 'Learning the seams.' },
+  { level: 1, name: 'Pit Miner', xp: 120, perk: 'A steady swing.' },
+  { level: 2, name: 'Shaft Hand', xp: 300, perk: 'Trusted below ground.' },
+  { level: 3, name: 'Deep Miner', xp: 620, perk: 'The abyss knows your name.' },
+  { level: 4, name: 'Master of the Deep', xp: 1100, perk: 'No rock resists you.' },
 ];
 
 export const MINING_GEMS = [
-  { id: 'quartz-cut', name: 'Cut Quartz', ore: 'quartz', value: 60, desc: 'A clear point, polished bright.' },
-  { id: 'emerald-cut', name: 'Cut Emerald', ore: 'emerald', value: 380, desc: 'Green fire, perfectly faceted.' },
-  { id: 'ruby-cut', name: 'Cut Ruby', ore: 'ruby', value: 430, desc: 'Red as a warning, cut to sparkle.' },
-  { id: 'sapphire-cut', name: 'Cut Sapphire', ore: 'sapphire', value: 400, desc: 'Deep blue, cold and flawless.' },
-  { id: 'diamond-cut', name: 'Cut Diamond', ore: 'diamond', value: 900, desc: 'The brightest stone in Solara.' },
-  { id: 'mithril-ingot', name: 'Mithril Ingot', ore: 'mithril', value: 640, desc: 'Pale, light, and worth a king’s ransom.' },
+  { id: 'quartz-cut', name: 'Cut Quartz', ore: 'quartz', value: 60, desc: 'A clear, bright cut stone.' },
+  { id: 'emerald-cut', name: 'Cut Emerald', ore: 'emerald', value: 260, desc: 'Green fire, neatly faceted.' },
+  { id: 'ruby-cut', name: 'Cut Ruby', ore: 'ruby', value: 320, desc: 'A blood-red cut stone.' },
+  { id: 'sapphire-cut', name: 'Cut Sapphire', ore: 'sapphire', value: 300, desc: 'Deep blue, cold as a winter night.' },
+  { id: 'diamond-cut', name: 'Cut Diamond', ore: 'diamond', value: 900, desc: 'A stone that outshines the sun.' },
+  { id: 'mithril-ingot', name: 'Mithril Ingot', ore: 'mithril', value: 600, desc: 'A light ingot that hums faintly.' },
 ];
 
 export const MINING_EVENTS = [
-  { id: 'rich-vein', name: 'Rich Vein', mult: 1.6, ores: ['gold', 'silver'], desc: 'A fat vein opens — dig while it lasts.' },
-  { id: 'gem-rush', name: 'Gem Rush', mult: 1.5, ores: ['emerald', 'ruby', 'sapphire', 'diamond'], desc: 'The jeweler’s agents are in town, paying double.' },
-  { id: 'gas-pocket', name: 'Gas Pocket', mult: 0.7, ores: [], desc: 'Bad air in the deep shafts today.' },
-  { id: 'cave-in', name: 'Cave-In Warning', mult: 0.8, ores: [], desc: 'The timbers groan — work careful or not at all.' },
-  { id: 'foundry-boom', name: 'Foundry Boom', mult: 1.3, ores: ['iron', 'copper', 'tin'], desc: 'The foundry orders double iron this week.' },
-  { id: 'coal-shortage', name: 'Coal Shortage', mult: 1.4, ores: ['coal'], desc: 'Winter bites early — coal pays like gold.' },
+  { id: 'rich-vein', name: 'Rich Vein', mult: 1.3, ores: ['gold', 'diamond'], desc: 'A fat vein of precious metal.' },
+  { id: 'gem-rush', name: 'Gem Rush', mult: 1.4, ores: ['emerald', 'ruby', 'sapphire'], desc: 'Everyone is talking about gems today.' },
+  { id: 'gas-pocket', name: 'Gas Pocket', mult: 0.8, ores: ['coal'], desc: 'Bad air seeps from the coal seams.' },
+  { id: 'cave-in', name: 'Cave-In Scare', mult: 0.7, ores: [], desc: 'A tunnel collapsed somewhere below.' },
+  { id: 'foundry-boom', name: 'Foundry Boom', mult: 1.2, ores: ['iron', 'copper'], desc: 'The foundry is buying everything.' },
+  { id: 'coal-shortage', name: 'Coal Shortage', mult: 1.3, ores: ['coal'], desc: 'Coal prices jump as winter bites.' },
 ];
 
 export const MINING_CONTRACTS = [
-  { id: 'iron-20', name: 'Iron Order', ore: 'iron', qty: 20, pay: 300, days: 2, rep: 0, desc: 'The foundry needs twenty iron lots.' },
-  { id: 'coal-40', name: 'Coal Run', ore: 'coal', qty: 40, pay: 260, days: 1, rep: 0, desc: 'The bathhouse burns through coal.' },
-  { id: 'silver-8', name: 'Silver Call', ore: 'silver', qty: 8, pay: 480, days: 2, rep: 1, desc: 'The mint needs silver for the new coin.' },
-  { id: 'gold-4', name: 'Gold Fever', ore: 'gold', qty: 4, pay: 560, days: 3, rep: 2, desc: 'A jeweler orders four gold lots.' },
-  { id: 'gems-3', name: 'Gem Order', ore: 'emerald', qty: 3, pay: 700, days: 3, rep: 3, desc: 'Three emeralds for a duchess’s necklace.' },
-  { id: 'mithril-2', name: 'Mithril Whisper', ore: 'mithril', qty: 2, pay: 900, days: 3, rep: 3, desc: 'Someone very quiet wants mithril. No questions.' },
+  { id: 'iron-20', name: 'Iron Twenty', ore: 'iron', qty: 20, pay: 300, days: 2, rep: 0, desc: 'Twenty iron for the foundry.' },
+  { id: 'coal-40', name: 'Coal Forty', ore: 'coal', qty: 40, pay: 260, days: 1, rep: 0, desc: 'Forty coal before the cold sets in.' },
+  { id: 'silver-8', name: 'Silver Eight', ore: 'silver', qty: 8, pay: 480, days: 2, rep: 1, desc: 'Eight silver for the mint.' },
+  { id: 'gold-4', name: 'Gold Four', ore: 'gold', qty: 4, pay: 560, days: 3, rep: 2, desc: 'Four gold nuggets, no less.' },
+  { id: 'gems-3', name: 'Three Emeralds', ore: 'emerald', qty: 3, pay: 700, days: 3, rep: 3, desc: 'Three emeralds for the jeweler.' },
+  { id: 'mithril-2', name: 'Two Mithril', ore: 'mithril', qty: 2, pay: 900, days: 3, rep: 3, desc: 'Two pieces of mithril for the collector.' },
 ];
 
 export const MINING_HAZARDS = [
-  { id: 'gas', name: 'Gas Pocket', chance: 0.06, damage: 1, desc: 'Bad air — the canary sings its warning.' },
-  { id: 'cave-in', name: 'Cave-In', chance: 0.04, damage: 2, desc: 'The roof comes down in a roar of stone.' },
-  { id: 'flood', name: 'Flood Water', chance: 0.03, damage: 1, desc: 'Black water rises in the lower drift.' },
-  { id: 'rockfall', name: 'Rockfall', chance: 0.08, damage: 1, desc: 'Loose stone from the roof — helmets on.' },
-  { id: 'dust', name: 'Stone Dust', chance: 0.1, damage: 0, desc: 'Dust thick enough to chew.' },
+  { id: 'gas', name: 'Bad Gas', chance: 0.1, damage: 2, desc: 'A pocket of foul air.' },
+  { id: 'cave-in', name: 'Cave-In', chance: 0.08, damage: 4, desc: 'The roof comes down.' },
+  { id: 'flood', name: 'Flood Water', chance: 0.05, damage: 3, desc: 'Water bursts through the wall.' },
+  { id: 'rockfall', name: 'Rockfall', chance: 0.12, damage: 3, desc: 'Loose rock rains from above.' },
+  { id: 'dust', name: 'Choking Dust', chance: 0.15, damage: 1, desc: 'Dust thick enough to chew.' },
+];
+
+export const MINING_HELPERS = [
+  { id: 'timberman', name: 'Timberman', wage: 35, skill: 'safety', bonus: 0.3, desc: 'Shores up tunnels so they stay up.' },
+  { id: 'assayer', name: 'Assayer Nell', wage: 50, skill: 'value', bonus: 0.2, desc: 'Knows good ore at a glance.' },
+  { id: 'hauler', name: 'Hauler', wage: 45, skill: 'carry', bonus: 0.4, desc: 'Hauls twice what you can.' },
+  { id: 'smelter-hand', name: 'Smelter Hand', wage: 60, skill: 'smelt', bonus: 0.25, desc: 'Works the furnace like an artist.' },
+];
+
+export const MINING_CHALLENGES = [
+  { id: 'ore-100', name: 'A Hundred Ore', target: 'oreMined', goal: 100, xp: 80, desc: 'Mine a hundred pieces of ore.' },
+  { id: 'bars-50', name: 'Fifty Bars', target: 'barsSmelted', goal: 50, xp: 100, desc: 'Smelt fifty bars.' },
+  { id: 'earn-1000', name: 'A Thousand Earned', target: 'earned', goal: 1000, xp: 120, desc: 'Earn a thousand from mining.' },
+  { id: 'gems-5', name: 'Five Gems Cut', target: 'gemsCut', goal: 5, xp: 110, desc: 'Cut five gems.' },
+  { id: 'trips-10', name: 'Ten Trips', target: 'trips', goal: 10, xp: 90, desc: 'Finish ten shaft trips.' },
+  { id: 'contracts-5', name: 'Five Contracts', target: 'contractsDone', goal: 5, xp: 140, desc: 'Finish five mining contracts.' },
+  { id: 'diamond-1', name: 'One Diamond', target: 'bestValue', goal: 320, xp: 200, desc: 'Pull out a stone worth at least 320.' },
+  { id: 'deep-4', name: 'Down to Four', target: 'deepest', goal: 4, xp: 150, desc: 'Reach depth four, the abyss.' },
+];
+
+export const MINING_ACHIEVEMENTS = [
+  { id: 'first-ore', name: 'First Ore', check: (s) => s.oreMined >= 1, desc: 'Your first piece of ore.' },
+  { id: 'first-bar', name: 'First Bar', check: (s) => s.barsSmelted >= 1, desc: 'Your first smelted bar.' },
+  { id: 'first-gem', name: 'First Gem', check: (s) => s.gemsCut >= 1, desc: 'Your first cut gem.' },
+  { id: 'rank-3', name: 'Deep Miner', check: (s) => s.rank >= 3, desc: 'Reach rank three.' },
+  { id: 'rich-miner', name: 'Rich Miner', check: (s) => s.earned >= 1000, desc: 'Earn a thousand from mining.' },
+  { id: 'full-kit', name: 'Full Kit', check: (s) => s.upgrades.length >= 8, desc: 'Own every mining upgrade.' },
+  { id: 'no-cavein', name: 'No Cave-In', check: (s) => s.trips >= 5 && s.caveIns === 0, desc: 'Five trips without a single cave-in.' },
+  { id: 'mithril', name: 'Mithril!', check: (s) => s.bestOre === 'mithril', desc: 'You mined mithril.' },
+];
+
+export const MINING_TIPS = [
+  { id: 'lamp-first', name: 'Lamp First', text: 'A bright lamp shows the rich seams before you swing.' },
+  { id: 'canary', name: 'Trust the Canary', text: 'If the canary goes quiet, get out of the tunnel.' },
+  { id: 'smelt', name: 'Smelt It', text: 'Bars sell for far more than raw ore.' },
+  { id: 'deep-slow', name: 'Deep and Slow', text: 'The deep shafts pay best but punish haste.' },
+  { id: 'blast-care', name: 'Blast with Care', text: 'Dynamite frees a lot of ore, and sometimes the roof too.' },
+  { id: 'gem-jeweler', name: 'Gems to the Jeweler', text: 'Cut gems belong with the jeweler, nowhere else.' },
+  { id: 'coal-winter', name: 'Coal in Winter', text: 'Coal prices jump when the cold comes.' },
+  { id: 'timber', name: 'Timber the Roof', text: 'A timbered tunnel is a tunnel that stays open.' },
+];
+
+export const MINING_LEADERBOARD = [
+  { name: 'Old Bram', kg: 9800, desc: 'Forty years below ground.' },
+  { name: 'Assayer Nell', kg: 6400, desc: 'Finds ore where others find rock.' },
+  { name: 'Ria', kg: 0, desc: 'The new miner in town.' },
+  { name: 'Smelter Gus', kg: 5200, desc: 'Smelts what he digs.' },
+  { name: 'Big Dee', kg: 4100, desc: 'Swings the biggest pick.' },
+];
+
+export const MINING_RECORDS = [
+  { id: 'most-ore', name: 'Most Ore', stat: 'oreMined', unit: 'kg', desc: 'Ore mined in total.' },
+  { id: 'most-bars', name: 'Most Bars', stat: 'barsSmelted', unit: 'bars', desc: 'Bars smelted in total.' },
+  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$', desc: 'Coin earned from mining.' },
+  { id: 'gems', name: 'Gems Cut', stat: 'gemsCut', unit: 'gems', desc: 'Gems cut from hard ore.' },
+  { id: 'deepest', name: 'Deepest Dig', stat: 'deepest', unit: 'level', desc: 'Deepest shaft reached.' },
+];
+
+export const MINING_QUICK_START = [
+  'Start in the Crown Quarry with a steel pick and a bright lamp.',
+  'Swing at the seams the lamp shows you; ignore bare rock.',
+  'Haul your ore out before the cart gets too heavy to move.',
+  'Smelt iron and copper into bars for double the coin.',
+  'Save your emeralds and rubies until you can cut gems.',
+  'Cut gems go to the jeweler, never the market.',
+];
+
+export const MINING_META = {
+  system: 'mining',
+  version: '7-B1',
+  author: 'builder-1',
+  ores: 12,
+  shafts: 4,
+  note: 'Pick, blast, smelt, sell.',
+};
+
+export const MINING_VEINS = [
+  { id: 'surface-seam', name: 'Surface Seam', depth: 1, richness: 1.0, desc: 'Thin seams near the daylight.' },
+  { id: 'rich-pocket', name: 'Rich Pocket', depth: 2, richness: 1.5, desc: 'A fat pocket of good ore.' },
+  { id: 'mother-lode', name: 'Mother Lode', depth: 3, richness: 2.0, desc: 'The main vein, thick and rich.' },
+  { id: 'gem-nest', name: 'Gem Nest', depth: 4, richness: 2.5, desc: 'A nest of crystals in the deep dark.' },
+];
+
+export const MINING_SAFETY_RULES = [
+  { id: 'timber', name: 'Timber the Roof', text: 'Never work under untimbered rock.' },
+  { id: 'canary', name: 'Mind the Canary', text: 'A quiet canary means bad air; leave at once.' },
+  { id: 'lamp', name: 'Keep the Lamp Lit', text: 'A dead lamp in a deep shaft is a death sentence.' },
+  { id: 'blast', name: 'Shout Before Blasting', text: 'Warn the whole level before you light a fuse.' },
+  { id: 'water', name: 'Watch for Water', text: 'Seeping walls mean a flood is coming.' },
+  { id: 'buddy', name: 'Never Mine Alone', text: 'Always tell someone which shaft you went down.' },
 ];
 
 export function miningRankFor(xp) {
-  let rank = 0;
-  for (let i = 0; i < MINING_RANKS.length; i++) {
-    if (xp >= MINING_RANKS[i].xp) rank = i;
+  let idx = 0;
+  let i = 0;
+  while (i < MINING_RANKS.length) {
+    if (xp >= MINING_RANKS[i].xp) idx = i;
+    i += 1;
   }
-  return rank;
+  return idx;
 }
 
 export function miningPriceFor(ore, rank, upgrades) {
-  let price = ore.value;
-  price *= 1 + rank * 0.1;
-  if (upgrades.includes('smelter')) price *= 1.05;
+  if (!ore) return 1;
+  const owned = upgrades || [];
+  let price = ore.value * (1 + 0.1 * rank);
+  if (owned.includes('smelter')) price *= 1.1;
   return Math.max(1, Math.round(price));
 }
 
 export function miningBarValue(ore, rank, upgrades) {
-  let price = ore.barValue;
-  price *= 1 + rank * 0.1;
-  if (upgrades.includes('smelter')) price *= 1.15;
+  if (!ore) return 1;
+  const owned = upgrades || [];
+  let price = ore.barValue * (1 + 0.1 * rank);
+  if (owned.includes('smelter')) price *= 1.25;
   return Math.max(1, Math.round(price));
 }
 
 export function miningBuyerPrice(ore, buyerId, rank, upgrades) {
   const buyer = MINING_BUYERS.find((b) => b.id === buyerId);
-  if (!buyer) return 0;
-  let mult = buyer.mult;
-  if (ore.hardness >= 4 && buyer.likes.includes('gem')) mult += 0.2;
-  if (ore.hardness >= 4 && buyer.likes.includes('rare')) mult += 0.25;
-  if (ore.hardness <= 2 && buyer.likes.includes('ore')) mult += 0.1;
-  return Math.max(1, Math.round(miningPriceFor(ore, rank, upgrades) * mult));
+  if (!buyer || !ore) return 0;
+  let price = miningPriceFor(ore, rank, upgrades) * buyer.mult;
+  if (buyer.likes.includes(ore.id)) price *= 1.1;
+  if (buyer.dislikes.includes(ore.id)) price *= 0.9;
+  if (ore.hardness >= 4 && buyer.id === 'jeweler') price *= 1.2;
+  if (ore.rarity <= 0.05 && buyer.id === 'collector') price *= 1.25;
+  if (ore.hardness <= 2 && buyer.id === 'foundry') price *= 1.05;
+  return Math.max(1, Math.round(price));
 }
 
 export function miningCarryCap(upgrades) {
+  const owned = upgrades || [];
   let cap = 50;
-  if (upgrades.includes('cart')) cap += 50;
-  if (upgrades.includes('elevator')) cap += 40;
+  if (owned.includes('cart')) cap += 50;
+  if (owned.includes('elevator')) cap += 40;
   return cap;
 }
 
 export function miningPickTier(upgrades) {
+  const owned = upgrades || [];
   let tier = 1;
-  if (upgrades.includes('pick')) tier += 1;
-  if (upgrades.includes('drill')) tier += 1;
+  if (owned.includes('pick')) tier += 1;
+  if (owned.includes('drill')) tier += 1;
   return tier;
 }
 
-export function createMiningSystem(ctx) {
-  const c = ctx || {};
-  const rng = typeof c.rng === 'function' ? c.rng : Math.random;
-  const getCash = typeof c.getCash === 'function' ? c.getCash : () => 0;
-  const addCash = typeof c.addCash === 'function' ? c.addCash : () => {};
-  const addHeat = typeof c.addHeat === 'function' ? c.addHeat : () => {};
-  const log = typeof c.log === 'function' ? c.log : () => {};
-  const getDay = typeof c.getDay === 'function' ? c.getDay : () => 1;
-  const getHour = typeof c.getHour === 'function' ? c.getHour : () => 12;
-  const getPos = typeof c.getPlayerPos === 'function' ? c.getPlayerPos : () => ({ x: 0, z: 0 });
-  const getWeather = typeof c.getWeather === 'function' ? c.getWeather : () => ({ condition: 'clear' });
+export function miningVeinFor(veinId) {
+  return MINING_VEINS.find((v) => v.id === veinId) || null;
+}
 
-  const state = {
+export function miningVeinRichness(depth) {
+  let best = null;
+  for (const vein of MINING_VEINS) {
+    if (vein.depth <= depth && (!best || vein.depth > best.depth)) best = vein;
+  }
+  return best ? best.richness : 1;
+}
+
+export function miningYieldEstimate(ore, depth, upgrades) {
+  const owned = upgrades || [];
+  let yieldCount = 1 + Math.floor(miningVeinRichness(depth));
+  if (owned.includes('drill')) yieldCount += 1;
+  if (owned.includes('lamp')) yieldCount += 1;
+  return { ore: ore.id, name: ore.name, yield: yieldCount, depth };
+}
+
+export function miningSafetyFor(ruleId) {
+  return MINING_SAFETY_RULES.find((r) => r.id === ruleId) || null;
+}
+
+export function miningSafetyCheck(state) {
+  const issues = [];
+  if (state.shaft && state.shaft !== 'quarry' && !(state.upgrades || []).includes('canary')) {
+    issues.push('No canary in a deep shaft.');
+  }
+  if (state.fatigue > 30) issues.push('Fatigue is over thirty; rest soon.');
+  if (state.shaft === 'abyss' && !(state.upgrades || []).includes('elevator')) {
+    issues.push('The abyss needs an elevator.');
+  }
+  if (state.truckHealth !== undefined && state.truckHealth < 30) {
+    issues.push('Truck health is low.');
+  }
+  return { safe: issues.length === 0, issues };
+}
+
+const MINING_STATE_KEYS = [
+  'xp', 'rank', 'trips', 'swings', 'oreMined', 'barsSmelted', 'gemsCut', 'earned',
+  'spent', 'hazards', 'caveIns', 'gasHits', 'blasts', 'richVeins', 'ore', 'bars',
+  'gems', 'gemsSold', 'upgrades', 'shaft', 'shaftTimeLeft', 'vein', 'veinLeft',
+  'lastDay', 'activeContract', 'contractProgress', 'contractsDone', 'contractsFailed',
+  'bestOre', 'bestValue', 'dailyMined', 'dailyEarned', 'carryKg', 'totalKg',
+  'currentEvent', 'deepest', 'fatigue',
+];
+
+function miningChallengeAmount(target, st) {
+  if (target === 'oreMined') return st.oreMined;
+  if (target === 'barsSmelted') return st.barsSmelted;
+  if (target === 'earned') return st.earned;
+  if (target === 'gemsCut') return st.gemsCut;
+  if (target === 'trips') return st.trips;
+  if (target === 'contractsDone') return st.contractsDone;
+  if (target === 'bestValue') return st.bestValue;
+  if (target === 'deepest') return st.deepest;
+  return 0;
+}
+
+export function miningHelperBonus(ids, skill) {
+  let total = 0;
+  const list = ids || [];
+  for (let i = 0; i < list.length; i++) {
+    const helper = MINING_HELPERS.find((h) => h.id === list[i]);
+    if (helper && helper.skill === skill) total += helper.bonus;
+  }
+  return total;
+}
+
+export function miningChallengeProgress(challenge, state) {
+  const amount = Math.floor(miningChallengeAmount(challenge.target, state));
+  return { id: challenge.id, name: challenge.name, amount, goal: challenge.goal, done: amount >= challenge.goal };
+}
+
+export function miningTipFor(day) {
+  const idx = ((day || 0) % MINING_TIPS.length + MINING_TIPS.length) % MINING_TIPS.length;
+  return MINING_TIPS[idx];
+}
+
+export function miningLeaderboardWith(kg) {
+  const rows = MINING_LEADERBOARD.map((row) => ({
+    name: row.name,
+    kg: row.name === 'Ria' ? kg : row.kg,
+    desc: row.desc,
+  }));
+  rows.sort((a, b) => b.kg - a.kg);
+  return rows.map((row, i) => ({ rank: i + 1, name: row.name, kg: row.kg, desc: row.desc }));
+}
+
+export function miningEfficiency(oreMined, swings) {
+  if (!swings) return 0;
+  return Math.round((oreMined / swings) * 100) / 100;
+}
+
+export function miningProfitPerTrip(earned, trips) {
+  if (!trips) return 0;
+  return Math.round((earned / trips) * 10) / 10;
+}
+
+export function miningGrade(oreMined, hazards, gemsCut) {
+  if (!oreMined) return 'D';
+  const score = oreMined - hazards * 10 + gemsCut * 20;
+  if (score >= 150) return 'S';
+  if (score >= 80) return 'A';
+  if (score >= 40) return 'B';
+  if (score >= 10) return 'C';
+  return 'D';
+}
+
+function miningRecordValue(stat, state) {
+  if (stat === 'oreMined') return state.oreMined;
+  if (stat === 'barsSmelted') return state.barsSmelted;
+  if (stat === 'earned') return Math.round(state.earned);
+  if (stat === 'gemsCut') return state.gemsCut;
+  if (stat === 'deepest') return state.deepest;
+  return 0;
+}
+
+export function miningRecordFor(id, state) {
+  const rec = MINING_RECORDS.find((r) => r.id === id);
+  if (!rec) return null;
+  return { id: rec.id, name: rec.name, value: miningRecordValue(rec.stat, state), unit: rec.unit };
+}
+
+export function miningAllRecords(state) {
+  return MINING_RECORDS.map((rec) => ({
+    id: rec.id,
+    name: rec.name,
+    value: miningRecordValue(rec.stat, state),
+    unit: rec.unit,
+    desc: rec.desc,
+  }));
+}
+
+export function miningSummary(state) {
+  const rankName = MINING_RANKS[state.rank] ? MINING_RANKS[state.rank].name : 'Surface Picker';
+  return `${rankName} — ${state.oreMined} ore, ${state.barsSmelted} bars, ${state.gemsCut} gems, $${Math.round(state.earned)} earned, deepest ${state.deepest}.`;
+}
+
+export function miningNextGoal(state) {
+  if (state.oreMined < 50) return 'Mine fifty pieces of ore.';
+  if (state.barsSmelted < 20) return 'Smelt twenty bars.';
+  if (state.rank < 2) return 'Reach rank 2 and become a Shaft Hand.';
+  return 'Reach the abyss, depth four.';
+}
+
+export function miningQuickStart(step) {
+  if (step < 0 || step >= MINING_QUICK_START.length) return null;
+  return MINING_QUICK_START[step];
+}
+
+export function createMiningSystem(ctx = {}) {
+  const rng = ctx.rng || Math.random;
+  const getDay = ctx.getDay || (() => 1);
+  const getHour = ctx.getHour || (() => 12);
+  const getCash = ctx.getCash || (() => 0);
+  const addCash = ctx.addCash || (() => {});
+  const addHeat = ctx.addHeat || (() => {});
+  const log = ctx.log || (() => {});
+  const getPlayerPos = ctx.getPlayerPos || (() => ({ x: 0, z: 0 }));
+  const getWeather = ctx.getWeather || (() => ({ condition: 'clear' }));
+
+  const blankMaps = () => {
+    const ore = {};
+    const bars = {};
+    for (const o of MINING_ORES) {
+      ore[o.id] = 0;
+      bars[o.id] = 0;
+    }
+    return { ore, bars };
+  };
+
+  const maps = blankMaps();
+
+  const sys = {
     xp: 0,
     rank: 0,
     trips: 0,
@@ -167,8 +416,8 @@ export function createMiningSystem(ctx) {
     gasHits: 0,
     blasts: 0,
     richVeins: 0,
-    ore: {},
-    bars: {},
+    ore: maps.ore,
+    bars: maps.bars,
     gems: [],
     gemsSold: 0,
     upgrades: [],
@@ -191,744 +440,579 @@ export function createMiningSystem(ctx) {
     deepest: 1,
     fatigue: 0,
   };
-  for (const o of MINING_ORES) { state.ore[o.id] = 0; state.bars[o.id] = 0; }
 
-  function refreshRank() {
-    const r = miningRankFor(state.xp);
-    if (r > state.rank) {
-      state.rank = r;
-      log(`Mining rank up: ${MINING_RANKS[r].name} — ${MINING_RANKS[r].perk}`);
+  function addXp(amount) {
+    sys.xp += amount;
+    const next = miningRankFor(sys.xp);
+    if (next > sys.rank) {
+      sys.rank = next;
+      log(`Rank up! You are now ${MINING_RANKS[next].name}.`);
     }
   }
 
-  function gainXp(n) {
-    state.xp += n;
-    refreshRank();
+  function bad(reason) {
+    return { ok: false, reason };
   }
 
-  function pickOre(shaft) {
-    const bag = [];
-    for (const o of MINING_ORES) {
-      if (o.depth > shaft.depth) continue;
-      let w = o.rarity;
-      if (state.upgrades.includes('lamp')) w *= 1.2;
-      if (state.currentEvent) {
-        const ev = MINING_EVENTS.find((e) => e.id === state.currentEvent);
-        if (ev && ev.ores.includes(o.id)) w *= ev.mult;
-      }
-      bag.push({ o, w });
-    }
-    if (bag.length === 0) return MINING_ORES[0];
+  function good(extra) {
+    return { ok: true, ...extra };
+  }
+
+  function activeEvent() {
+    if (!sys.currentEvent) return null;
+    return MINING_EVENTS.find((e) => e.id === sys.currentEvent) || null;
+  }
+
+  function pickOre(depth) {
+    const pool = MINING_ORES.filter((o) => o.depth <= depth);
+    if (!pool.length) return null;
+    const ev = activeEvent();
     let total = 0;
-    for (const b of bag) total += b.w;
+    const weights = [];
+    for (const ore of pool) {
+      let w = ore.rarity;
+      if (sys.upgrades.includes('lamp')) w *= 1.3;
+      if (ev && ev.ores.includes(ore.id)) w *= ev.mult;
+      weights.push(w);
+      total += w;
+    }
     let roll = rng() * total;
-    for (const b of bag) {
-      roll -= b.w;
-      if (roll <= 0) return b.o;
+    let idx = 0;
+    while (idx < pool.length - 1 && roll > weights[idx]) {
+      roll -= weights[idx];
+      idx += 1;
     }
-    return bag[0].o;
+    return pool[idx];
   }
 
-  function enterShaft(shaftId) {
-    const s = MINING_SHAFTS.find((x) => x.id === shaftId);
-    if (!s) return { ok: false, reason: 'no-such-shaft' };
-    if (state.shaft) return { ok: false, reason: 'shaft-active' };
-    if (s.depth >= 4 && state.rank < 3) return { ok: false, reason: 'rank-too-low', need: 3 };
-    if (s.depth >= 3 && state.rank < 2) return { ok: false, reason: 'rank-too-low', need: 2 };
+  function settleContract(oreId, qty) {
+    if (!sys.activeContract) return;
+    if (sys.activeContract.ore !== oreId) return;
+    sys.contractProgress += qty;
+    if (sys.contractProgress < sys.activeContract.qty) return;
+    const pay = sys.activeContract.pay + 50 * sys.rank;
+    sys.earned += pay;
+    sys.dailyEarned += pay;
+    addCash(pay);
+    sys.contractsDone += 1;
+    log(`Contract done: ${sys.activeContract.name} paid $${pay}.`);
+    sys.activeContract = null;
+    sys.contractProgress = 0;
+    addXp(60);
+  }
+
+  sys.enterShaft = function enterShaft(shaftId) {
+    const shaft = MINING_SHAFTS.find((s) => s.id === shaftId);
+    if (!shaft) return bad('unknown-shaft');
+    if (sys.shaft) return bad('already-mining');
+    if (shaft.depth === 4 && sys.rank < 3) return bad('rank-too-low');
+    if (shaft.depth === 3 && sys.rank < 2) return bad('rank-too-low');
     const hour = getHour();
-    if (hour >= 23 || hour < 5) return { ok: false, reason: 'too-late' };
-    state.shaft = shaftId;
-    state.shaftTimeLeft = s.timeMin * 60 * (state.upgrades.includes('elevator') ? 0.5 : 1);
-    state.deepest = Math.max(state.deepest, s.depth);
-    log(`Down into ${s.name} — lamp lit, pick ready.`);
-    return { ok: true, shaft: shaftId, depth: s.depth };
-  }
+    if (hour >= 23 || hour <= 4) return bad('night');
+    sys.shaft = shaftId;
+    let seconds = shaft.timeMin * 60;
+    if (sys.upgrades.includes('elevator')) seconds = Math.floor(seconds / 2);
+    sys.shaftTimeLeft = seconds;
+    if (shaft.depth > sys.deepest) sys.deepest = shaft.depth;
+    log(`Down into ${shaft.name}.`);
+    return good({ shaft: shaftId, depth: shaft.depth });
+  };
 
-  function swing() {
-    if (!state.shaft) return { ok: false, reason: 'no-shaft' };
-    const shaft = MINING_SHAFTS.find((x) => x.id === state.shaft);
-    const cap = miningCarryCap(state.upgrades);
-    if (state.carryKg >= cap) return { ok: false, reason: 'carry-full', cap };
-    const tier = miningPickTier(state.upgrades);
-    const ore = pickOre(shaft);
-    if (ore.hardness > tier + 1) {
-      log(`The ${ore.name} is too hard for your pick — upgrade first.`);
-      return { ok: false, reason: 'too-hard', ore: ore.id };
+  sys.swing = function swing() {
+    if (!sys.shaft) return bad('no-shaft');
+    const cap = miningCarryCap(sys.upgrades);
+    if (sys.carryKg >= cap) return bad('carry-full');
+    const shaft = MINING_SHAFTS.find((s) => s.id === sys.shaft);
+    const ore = pickOre(shaft.depth);
+    if (!ore) return bad('no-ore');
+    const tier = miningPickTier(sys.upgrades);
+    if (ore.hardness > tier + 1) return bad('too-hard');
+    let qty = 1 + Math.floor(rng() * 3);
+    if (sys.upgrades.includes('drill')) qty += 1;
+    const room = Math.max(0, Math.floor(cap - sys.carryKg));
+    if (qty > room) qty = room;
+    if (qty <= 0) return bad('carry-full');
+    sys.ore[ore.id] += qty;
+    sys.oreMined += qty;
+    sys.dailyMined += qty;
+    sys.swings += 1;
+    sys.carryKg += qty * ore.hardness;
+    sys.totalKg += qty * ore.hardness;
+    sys.fatigue += 1;
+    addXp(ore.hardness);
+    if (ore.value > sys.bestValue) {
+      sys.bestValue = ore.value;
+      sys.bestOre = ore.id;
     }
-    const qty = 1 + Math.floor(rng() * 3) + (state.upgrades.includes('drill') ? 1 : 0);
-    const weight = qty * (1 + ore.hardness * 0.5);
-    const add = Math.min(qty, Math.max(0, Math.floor((cap - state.carryKg) / (1 + ore.hardness * 0.5))));
-    if (add <= 0) return { ok: false, reason: 'carry-full', cap };
-    state.ore[ore.id] += add;
-    state.carryKg += add * (1 + ore.hardness * 0.5);
-    state.totalKg += add * (1 + ore.hardness * 0.5);
-    state.oreMined += add;
-    state.dailyMined += add;
-    state.swings += 1;
-    state.fatigue += 1;
-    gainXp(3 + ore.hardness * 2);
-    if (ore.value > state.bestValue) { state.bestValue = ore.value; state.bestOre = ore.id; }
-    if (rng() < 0.08 + (state.upgrades.includes('lamp') ? 0.05 : 0)) {
-      state.richVeins += 1;
-      const bonus = 2 + Math.floor(rng() * 3);
-      state.ore[ore.id] += bonus;
-      state.oreMined += bonus;
-      log(`Rich vein! +${bonus} extra ${ore.name}.`);
+    if (rng() < 0.1) {
+      sys.ore[ore.id] += 1;
+      sys.oreMined += 1;
+      sys.richVeins += 1;
+      log('A rich vein! An extra piece of ore.');
     }
-    const hazardRoll = rng();
-    if (hazardRoll < shaft.danger * 0.05) {
-      const h = MINING_HAZARDS[Math.floor(rng() * MINING_HAZARDS.length)];
-      const reduced = state.upgrades.includes('canary') ? 0.5 : 1;
-      if (rng() < reduced) {
-        state.hazards += 1;
-        if (h.id === 'cave-in') state.caveIns += 1;
-        if (h.id === 'gas') state.gasHits += 1;
-        log(`Hazard: ${h.name} — ${h.desc}`);
-        if (h.damage >= 2) addHeat(1);
-      }
+    let hazardChance = shaft.danger * 0.05;
+    if (sys.upgrades.includes('canary')) hazardChance *= 0.5;
+    if (rng() < hazardChance) {
+      const hazard = MINING_HAZARDS[Math.floor(rng() * MINING_HAZARDS.length)];
+      sys.hazards += 1;
+      if (hazard.id === 'gas') sys.gasHits += 1;
+      if (hazard.damage >= 3) addHeat(1);
+      log(`Hazard: ${hazard.name}!`);
     }
-    if (state.activeContract) checkContract(ore.id, add);
-    return { ok: true, ore: ore.id, qty: add, carryKg: Math.round(state.carryKg * 10) / 10 };
-  }
+    settleContract(ore.id, qty);
+    return good({ ore: ore.id, quantity: qty, carryKg: Math.round(sys.carryKg * 10) / 10 });
+  };
 
-  function blast() {
-    if (!state.shaft) return { ok: false, reason: 'no-shaft' };
-    if (!state.upgrades.includes('dynamite')) return { ok: false, reason: 'need-dynamite' };
-    const shaft = MINING_SHAFTS.find((x) => x.id === state.shaft);
-    const cap = miningCarryCap(state.upgrades);
-    state.blasts += 1;
-    const ore = pickOre(shaft);
-    const qty = 4 + Math.floor(rng() * 5);
-    const add = Math.min(qty, Math.max(0, Math.floor((cap - state.carryKg) / (1 + ore.hardness * 0.5))));
-    state.ore[ore.id] += add;
-    state.carryKg += add * (1 + ore.hardness * 0.5);
-    state.oreMined += add;
-    state.dailyMined += add;
-    gainXp(10 + ore.hardness * 3);
+  sys.blast = function blast() {
+    if (!sys.shaft) return bad('no-shaft');
+    if (!sys.upgrades.includes('dynamite')) return bad('no-dynamite');
+    const cap = miningCarryCap(sys.upgrades);
+    const shaft = MINING_SHAFTS.find((s) => s.id === sys.shaft);
+    const ore = pickOre(shaft.depth);
+    if (!ore) return bad('no-ore');
+    let qty = 4 + Math.floor(rng() * 5);
+    const room = Math.max(0, Math.floor(cap - sys.carryKg));
+    if (qty > room) qty = room;
+    if (qty <= 0) return bad('carry-full');
+    sys.ore[ore.id] += qty;
+    sys.oreMined += qty;
+    sys.dailyMined += qty;
+    sys.blasts += 1;
+    sys.carryKg += qty * ore.hardness;
+    sys.totalKg += qty * ore.hardness;
+    addXp(ore.hardness * 2);
+    let caveIn = false;
     if (rng() < 0.25) {
-      state.caveIns += 1;
-      state.hazards += 1;
+      caveIn = true;
+      sys.caveIns += 1;
       addHeat(2);
-      log('The blast brings the roof down! You scramble clear — heat +2.');
-      return { ok: true, ore: ore.id, qty: add, caveIn: true };
+      log('Cave-in! The blast brought the roof down.');
     }
-    log(`Blast! ${add}x ${ore.name} shaken loose.`);
-    return { ok: true, ore: ore.id, qty: add, caveIn: false };
-  }
+    settleContract(ore.id, qty);
+    return good({ ore: ore.id, quantity: qty, caveIn });
+  };
 
-  function leaveShaft() {
-    if (!state.shaft) return { ok: false, reason: 'no-shaft' };
-    const s = state.shaft;
-    state.shaft = null;
-    state.shaftTimeLeft = 0;
-    state.trips += 1;
-    state.carryKg = 0;
-    state.fatigue = 0;
-    log(`Back up from ${s} with a full cart — smelt it or sell it raw.`);
-    return { ok: true, shaft: s };
-  }
+  sys.leaveShaft = function leaveShaft() {
+    if (!sys.shaft) return bad('no-shaft');
+    const done = sys.shaft;
+    sys.shaft = null;
+    sys.shaftTimeLeft = 0;
+    sys.trips += 1;
+    sys.carryKg = 0;
+    sys.fatigue = 0;
+    return good({ shaft: done });
+  };
 
-  function smelt(oreId, qty) {
-    if (!state.upgrades.includes('smelter')) return { ok: false, reason: 'need-smelter' };
+  sys.smelt = function smelt(oreId, qty) {
+    if (!sys.upgrades.includes('smelter')) return bad('no-smelter');
     const ore = MINING_ORES.find((o) => o.id === oreId);
-    if (!ore) return { ok: false, reason: 'no-such-ore' };
-    const have = state.ore[oreId] || 0;
-    if (qty <= 0 || have < qty) return { ok: false, reason: 'not-enough', have };
+    if (!ore) return bad('unknown-ore');
+    if ((sys.ore[oreId] || 0) < qty) return bad('not-enough');
+    if (qty < 2) return bad('need-two');
     const bars = Math.floor(qty / 2);
-    if (bars <= 0) return { ok: false, reason: 'need-2-ore' };
-    state.ore[oreId] -= bars * 2;
-    state.bars[oreId] += bars;
-    state.barsSmelted += bars;
-    gainXp(bars * 3);
-    const isGem = ore.hardness >= 4;
-    if (isGem) {
+    const used = bars * 2;
+    sys.ore[oreId] -= used;
+    sys.bars[oreId] += bars;
+    sys.barsSmelted += bars;
+    if (ore.hardness >= 4) {
       const gem = MINING_GEMS.find((g) => g.ore === oreId);
       if (gem) {
-        for (let i = 0; i < bars; i++) state.gems.push(gem.id);
-        state.gemsCut += bars;
-        log(`Cut ${bars}x ${gem.name} — they catch the lamplight beautifully.`);
+        for (let i = 0; i < bars; i++) sys.gems.push(gem.id);
+        sys.gemsCut += bars;
       }
     }
-    log(`Smelted ${bars * 2}x ${ore.name} into ${bars} bars.`);
-    return { ok: true, bars, ore: oreId };
-  }
+    addXp(bars * 3);
+    return good({ bars, ore: oreId });
+  };
 
-  function sellOre(buyerId, oreId, qty) {
+  sys.sellOre = function sellOre(buyerId, oreId, qty) {
     const buyer = MINING_BUYERS.find((b) => b.id === buyerId);
-    if (!buyer) return { ok: false, reason: 'no-such-buyer' };
-    if (state.rank < buyer.minRank) return { ok: false, reason: 'rank-too-low', need: buyer.minRank };
+    if (!buyer) return bad('unknown-buyer');
+    if (sys.rank < buyer.minRank) return bad('rank-too-low');
     const ore = MINING_ORES.find((o) => o.id === oreId);
-    if (!ore) return { ok: false, reason: 'no-such-ore' };
-    const have = state.ore[oreId] || 0;
-    if (qty <= 0 || have < qty) return { ok: false, reason: 'not-enough', have };
-    const unit = miningBuyerPrice(ore, buyerId, state.rank, state.upgrades);
-    const total = unit * qty;
-    state.ore[oreId] -= qty;
-    state.earned += total;
-    state.dailyEarned += total;
+    if (!ore) return bad('unknown-ore');
+    if ((sys.ore[oreId] || 0) < qty) return bad('not-enough');
+    const unitPrice = miningBuyerPrice(ore, buyerId, sys.rank, sys.upgrades);
+    const total = unitPrice * qty;
+    sys.ore[oreId] -= qty;
+    sys.earned += total;
+    sys.dailyEarned += total;
     addCash(total);
-    gainXp(qty);
-    log(`Sold ${qty}x ${ore.name} to ${buyer.name} for $${total}.`);
-    return { ok: true, total, unit, qty };
-  }
+    addXp(qty);
+    return good({ total, unitPrice, quantity: qty });
+  };
 
-  function sellBars(buyerId, oreId, qty) {
+  sys.sellBars = function sellBars(buyerId, oreId, qty) {
     const buyer = MINING_BUYERS.find((b) => b.id === buyerId);
-    if (!buyer) return { ok: false, reason: 'no-such-buyer' };
-    if (state.rank < buyer.minRank) return { ok: false, reason: 'rank-too-low', need: buyer.minRank };
+    if (!buyer) return bad('unknown-buyer');
+    if (sys.rank < buyer.minRank) return bad('rank-too-low');
     const ore = MINING_ORES.find((o) => o.id === oreId);
-    if (!ore) return { ok: false, reason: 'no-such-ore' };
-    const have = state.bars[oreId] || 0;
-    if (qty <= 0 || have < qty) return { ok: false, reason: 'not-enough', have };
-    const unit = Math.round(miningBarValue(ore, state.rank, state.upgrades) * buyer.mult);
-    const total = unit * qty;
-    state.bars[oreId] -= qty;
-    state.earned += total;
-    state.dailyEarned += total;
+    if (!ore) return bad('unknown-ore');
+    if ((sys.bars[oreId] || 0) < qty) return bad('not-enough');
+    const unitPrice = Math.max(1, Math.round(miningBarValue(ore, sys.rank, sys.upgrades) * buyer.mult));
+    const total = unitPrice * qty;
+    sys.bars[oreId] -= qty;
+    sys.earned += total;
+    sys.dailyEarned += total;
     addCash(total);
-    gainXp(qty * 2);
-    log(`Sold ${qty}x ${ore.smelt} to ${buyer.name} for $${total}.`);
-    return { ok: true, total, unit, qty };
-  }
+    addXp(qty * 2);
+    return good({ total, unitPrice, quantity: qty });
+  };
 
-  function sellGem(gemId) {
-    const idx = state.gems.indexOf(gemId);
-    if (idx < 0) return { ok: false, reason: 'no-such-gem' };
-    const g = MINING_GEMS.find((x) => x.id === gemId);
-    state.gems.splice(idx, 1);
-    state.gemsSold += 1;
-    const value = g.value + state.rank * 40;
-    state.earned += value;
+  sys.sellGem = function sellGem(gemId) {
+    const idx = sys.gems.indexOf(gemId);
+    if (idx < 0) return bad('not-held');
+    const gem = MINING_GEMS.find((g) => g.id === gemId);
+    if (!gem) return bad('unknown-gem');
+    sys.gems.splice(idx, 1);
+    sys.gemsSold += 1;
+    const value = gem.value + 40 * sys.rank;
+    sys.earned += value;
+    sys.dailyEarned += value;
     addCash(value);
-    gainXp(30);
-    log(`Sold the ${g.name} for $${value}.`);
-    return { ok: true, value };
-  }
+    addXp(30);
+    return good({ value });
+  };
 
-  function sellAll(buyerId) {
+  sys.sellAll = function sellAll(buyerId) {
     const buyer = MINING_BUYERS.find((b) => b.id === buyerId);
-    if (!buyer) return { ok: false, reason: 'no-such-buyer' };
-    let total = 0;
-    let units = 0;
+    if (!buyer) return bad('unknown-buyer');
+    if (sys.rank < buyer.minRank) return bad('rank-too-low');
     const lines = [];
-    for (const o of MINING_ORES) {
-      const q = state.ore[o.id] || 0;
-      if (q > 0) {
-        const unit = miningBuyerPrice(o, buyerId, state.rank, state.upgrades);
-        const line = unit * q;
-        total += line; units += q;
-        lines.push({ kind: 'ore', id: o.id, qty: q, total: line });
-        state.ore[o.id] = 0;
+    let total = 0;
+    let count = 0;
+    for (const ore of MINING_ORES) {
+      const oreQty = sys.ore[ore.id] || 0;
+      if (oreQty > 0) {
+        const unitPrice = miningBuyerPrice(ore, buyerId, sys.rank, sys.upgrades);
+        const lineTotal = unitPrice * oreQty;
+        lines.push({ kind: 'ore', id: ore.id, quantity: oreQty, total: lineTotal });
+        total += lineTotal;
+        count += oreQty;
+        sys.ore[ore.id] = 0;
       }
-      const bq = state.bars[o.id] || 0;
-      if (bq > 0) {
-        const unit = Math.round(miningBarValue(o, state.rank, state.upgrades) * buyer.mult);
-        const line = unit * bq;
-        total += line; units += bq;
-        lines.push({ kind: 'bar', id: o.id, qty: bq, total: line });
-        state.bars[o.id] = 0;
+      const barQty = sys.bars[ore.id] || 0;
+      if (barQty > 0) {
+        const unitPrice = Math.max(1, Math.round(miningBarValue(ore, sys.rank, sys.upgrades) * buyer.mult));
+        const lineTotal = unitPrice * barQty;
+        lines.push({ kind: 'bar', id: ore.id, quantity: barQty, total: lineTotal });
+        total += lineTotal;
+        count += barQty;
+        sys.bars[ore.id] = 0;
       }
     }
-    if (units === 0) return { ok: false, reason: 'nothing-to-sell' };
-    state.earned += total;
-    state.dailyEarned += total;
+    if (!lines.length) return bad('nothing-to-sell');
+    sys.earned += total;
+    sys.dailyEarned += total;
     addCash(total);
-    gainXp(units);
-    log(`Sold the whole load to ${buyer.name} for $${total}.`);
-    return { ok: true, total, units, lines };
-  }
+    addXp(count);
+    return good({ total, count, lines });
+  };
 
-  function buyUpgrade(id) {
-    const u = MINING_UPGRADES.find((x) => x.id === id);
-    if (!u) return { ok: false, reason: 'no-such-upgrade' };
-    if (state.upgrades.includes(id)) return { ok: false, reason: 'already-owned' };
-    if (getCash() < u.cost) return { ok: false, reason: 'not-enough-cash', cost: u.cost };
-    addCash(-u.cost);
-    state.spent += u.cost;
-    state.upgrades.push(id);
-    gainXp(20);
-    log(`Bought ${u.name} for $${u.cost}.`);
-    return { ok: true, id };
-  }
+  sys.buyUpgrade = function buyUpgrade(upgradeId) {
+    const upgrade = MINING_UPGRADES.find((u) => u.id === upgradeId);
+    if (!upgrade) return bad('unknown-upgrade');
+    if (sys.upgrades.includes(upgradeId)) return bad('already-owned');
+    if (getCash() < upgrade.cost) return bad('not-enough-cash');
+    addCash(-upgrade.cost);
+    sys.spent += upgrade.cost;
+    sys.upgrades.push(upgradeId);
+    addXp(20);
+    return good({ id: upgradeId });
+  };
 
-  function takeContract(id) {
-    const ct = MINING_CONTRACTS.find((x) => x.id === id);
-    if (!ct) return { ok: false, reason: 'no-such-contract' };
-    if (state.activeContract) return { ok: false, reason: 'contract-active' };
-    if (state.rank < ct.rep) return { ok: false, reason: 'rep-too-low', need: ct.rep };
-    state.activeContract = { ...ct, dayTaken: getDay(), deadlineDay: getDay() + ct.days };
-    state.contractProgress = 0;
-    log(`Contract taken: ${ct.name} — ${ct.qty}x ${ct.ore} by day ${state.activeContract.deadlineDay}.`);
-    return { ok: true, contract: state.activeContract };
-  }
+  sys.takeContract = function takeContract(contractId) {
+    const contract = MINING_CONTRACTS.find((c) => c.id === contractId);
+    if (!contract) return bad('unknown-contract');
+    if (sys.activeContract) return bad('contract-active');
+    if (sys.rank < contract.rep) return bad('rank-too-low');
+    const day = getDay();
+    sys.activeContract = { ...contract, dayTaken: day, deadline: day + contract.days };
+    sys.contractProgress = 0;
+    return good({ contract: sys.activeContract });
+  };
 
-  function checkContract(oreId, qty) {
-    const ct = state.activeContract;
-    if (!ct || ct.ore !== oreId) return;
-    state.contractProgress += qty;
-    if (state.contractProgress >= ct.qty) {
-      const bonus = ct.pay + state.rank * 50;
-      state.activeContract = null;
-      state.contractProgress = 0;
-      state.contractsDone += 1;
-      state.earned += bonus;
-      addCash(bonus);
-      gainXp(60);
-      log(`Contract complete: ${ct.name} paid $${bonus}.`);
-    }
-  }
+  sys.deliverContract = function deliverContract() {
+    if (!sys.activeContract) return bad('no-contract');
+    if (sys.contractProgress < sys.activeContract.qty) return bad('not-ready');
+    if ((sys.ore[sys.activeContract.ore] || 0) < sys.activeContract.qty) return bad('not-enough');
+    sys.ore[sys.activeContract.ore] -= sys.activeContract.qty;
+    const pay = sys.activeContract.pay + 50 * sys.rank;
+    sys.earned += pay;
+    sys.dailyEarned += pay;
+    addCash(pay);
+    sys.contractsDone += 1;
+    sys.activeContract = null;
+    sys.contractProgress = 0;
+    addXp(60);
+    return good({ pay });
+  };
 
-  function deliverContract() {
-    const ct = state.activeContract;
-    if (!ct) return { ok: false, reason: 'no-contract' };
-    if (state.contractProgress < ct.qty) return { ok: false, reason: 'not-enough', have: state.contractProgress, need: ct.qty };
-    const have = state.ore[ct.ore] || 0;
-    if (have < ct.qty) return { ok: false, reason: 'not-enough-ore', have, need: ct.qty };
-    state.ore[ct.ore] -= ct.qty;
-    const bonus = ct.pay + state.rank * 50;
-    state.activeContract = null;
-    state.contractProgress = 0;
-    state.contractsDone += 1;
-    state.earned += bonus;
-    addCash(bonus);
-    gainXp(60);
-    log(`Contract delivered: ${ct.name} paid $${bonus}.`);
-    return { ok: true, pay: bonus };
-  }
+  sys.abandonContract = function abandonContract() {
+    if (!sys.activeContract) return bad('no-contract');
+    sys.activeContract = null;
+    sys.contractProgress = 0;
+    sys.contractsFailed += 1;
+    return good({});
+  };
 
-  function abandonContract() {
-    if (!state.activeContract) return { ok: false, reason: 'no-contract' };
-    state.activeContract = null;
-    state.contractProgress = 0;
-    state.contractsFailed += 1;
-    log('Contract abandoned — the buyer will remember that.');
-    return { ok: true };
-  }
-
-  function priceBoard() {
+  sys.priceBoard = function priceBoard() {
     return MINING_ORES.map((o) => ({
-      id: o.id, name: o.name,
-      price: miningPriceFor(o, state.rank, state.upgrades),
-      barValue: miningBarValue(o, state.rank, state.upgrades),
-      ore: state.ore[o.id], bars: state.bars[o.id], depth: o.depth,
+      id: o.id,
+      name: o.name,
+      price: miningPriceFor(o, sys.rank, sys.upgrades),
+      barValue: miningBarValue(o, sys.rank, sys.upgrades),
+      ore: sys.ore[o.id] || 0,
+      bars: sys.bars[o.id] || 0,
+      depth: o.depth,
     }));
-  }
+  };
 
-  function shaftReport() {
+  sys.shaftReport = function shaftReport() {
     return MINING_SHAFTS.map((s) => ({
-      id: s.id, name: s.name, depth: s.depth, mult: s.mult, danger: s.danger,
+      id: s.id,
+      name: s.name,
+      depth: s.depth,
+      mult: s.mult,
+      danger: s.danger,
       ores: MINING_ORES.filter((o) => o.depth <= s.depth).map((o) => o.id),
     }));
-  }
+  };
 
-  function dailyEvent() {
+  sys.dailyEvent = function dailyEvent() {
     const roll = rng();
     if (roll < 0.2) {
       const ev = MINING_EVENTS[Math.floor(rng() * MINING_EVENTS.length)];
-      state.currentEvent = ev.id;
-      log(`Mine news: ${ev.name} — ${ev.desc}`);
-      return { event: ev.id, name: ev.name };
+      sys.currentEvent = ev.id;
+      log(`Today's event: ${ev.name}.`);
+      return good({ event: ev.id, name: ev.name });
     }
     if (roll < 0.3) {
-      const free = MINING_ORES[Math.floor(rng() * MINING_ORES.length)];
-      state.ore[free.id] += 3;
-      log(`A retiring miner gifts you 3x ${free.name}.`);
-      return { event: 'gift', ore: free.id };
+      const ore = MINING_ORES[Math.floor(rng() * MINING_ORES.length)];
+      sys.ore[ore.id] += 3;
+      sys.currentEvent = null;
+      return good({ event: 'gift', ore: ore.id, name: 'Gift' });
     }
-    state.currentEvent = null;
-    return { event: 'none' };
-  }
+    sys.currentEvent = null;
+    return good({ event: 'none', name: 'None' });
+  };
 
-  function tick(dt) {
-    if (state.shaft) {
-      state.shaftTimeLeft -= dt;
-      if (state.shaftTimeLeft <= 0) {
-        const s = state.shaft;
-        state.shaft = null;
-        state.shaftTimeLeft = 0;
-        state.trips += 1;
-        state.carryKg = 0;
-        state.fatigue = 0;
-        log(`Shift over in ${s} — the lift hauls you up.`);
+  sys.tick = function tick(dt) {
+    const step = dt || 0;
+    if (sys.shaft) {
+      sys.shaftTimeLeft -= step;
+      if (sys.shaftTimeLeft <= 0) {
+        const done = sys.shaft;
+        sys.shaft = null;
+        sys.shaftTimeLeft = 0;
+        sys.trips += 1;
+        sys.carryKg = 0;
+        sys.fatigue = 0;
+        log(`Shift over in ${done}; the foreman waves you out.`);
       }
     }
-    if (state.fatigue > 40) {
-      state.fatigue = 40;
+    if (sys.fatigue > 40) sys.fatigue = 40;
+  };
+
+  sys.tickDay = function tickDay(day) {
+    if (day === sys.lastDay) return;
+    sys.lastDay = day;
+    sys.dailyMined = 0;
+    sys.dailyEarned = 0;
+    if (sys.activeContract && day > sys.activeContract.deadline && sys.contractProgress < sys.activeContract.qty) {
+      sys.contractsFailed += 1;
+      log(`Contract failed: ${sys.activeContract.name}.`);
+      sys.activeContract = null;
+      sys.contractProgress = 0;
     }
-  }
+    sys.dailyEvent();
+  };
 
-  function tickDay(day) {
-    if (day === state.lastDay) return;
-    state.lastDay = day;
-    state.dailyMined = 0;
-    state.dailyEarned = 0;
-    if (state.activeContract && day >= state.activeContract.deadlineDay && state.contractProgress < state.activeContract.qty) {
-      log(`Contract ${state.activeContract.name} expired — the buyer walked away.`);
-      state.activeContract = null;
-      state.contractProgress = 0;
-      state.contractsFailed += 1;
+  sys.serialize = function serialize() {
+    const out = {};
+    for (const key of MINING_STATE_KEYS) {
+      out[key] = JSON.parse(JSON.stringify(sys[key]));
     }
-    dailyEvent();
-  }
+    return out;
+  };
 
-  function serialize() {
-    return JSON.parse(JSON.stringify({
-      xp: state.xp, rank: state.rank, trips: state.trips, swings: state.swings,
-      oreMined: state.oreMined, barsSmelted: state.barsSmelted, gemsCut: state.gemsCut,
-      earned: state.earned, spent: state.spent, hazards: state.hazards,
-      caveIns: state.caveIns, gasHits: state.gasHits, blasts: state.blasts,
-      richVeins: state.richVeins, ore: state.ore, bars: state.bars, gems: state.gems,
-      gemsSold: state.gemsSold, upgrades: state.upgrades, shaft: state.shaft,
-      shaftTimeLeft: state.shaftTimeLeft, vein: state.vein, veinLeft: state.veinLeft,
-      lastDay: state.lastDay, activeContract: state.activeContract,
-      contractProgress: state.contractProgress, contractsDone: state.contractsDone,
-      contractsFailed: state.contractsFailed, bestOre: state.bestOre,
-      bestValue: state.bestValue, dailyMined: state.dailyMined,
-      dailyEarned: state.dailyEarned, carryKg: state.carryKg, totalKg: state.totalKg,
-      currentEvent: state.currentEvent, deepest: state.deepest, fatigue: state.fatigue,
-    }));
-  }
-
-  function deserialize(d) {
-    if (!d || typeof d !== 'object') return;
-    for (const k of Object.keys(state)) {
-      if (d[k] !== undefined) state[k] = d[k];
+  sys.deserialize = function deserialize(saved) {
+    if (!saved || typeof saved !== 'object') return;
+    for (const key of MINING_STATE_KEYS) {
+      if (key in saved) sys[key] = JSON.parse(JSON.stringify(saved[key]));
     }
     for (const o of MINING_ORES) {
-      if (state.ore[o.id] === undefined) state.ore[o.id] = 0;
-      if (state.bars[o.id] === undefined) state.bars[o.id] = 0;
+      if (sys.ore[o.id] === undefined) sys.ore[o.id] = 0;
+      if (sys.bars[o.id] === undefined) sys.bars[o.id] = 0;
     }
-    refreshRank();
-  }
-
-  function stats() {
-    return {
-      rank: MINING_RANKS[state.rank].name,
-      xp: state.xp,
-      trips: state.trips,
-      swings: state.swings,
-      oreMined: state.oreMined,
-      barsSmelted: state.barsSmelted,
-      gemsCut: state.gemsCut,
-      gemsSold: state.gemsSold,
-      earned: Math.round(state.earned),
-      spent: state.spent,
-      hazards: state.hazards,
-      caveIns: state.caveIns,
-      gasHits: state.gasHits,
-      blasts: state.blasts,
-      richVeins: state.richVeins,
-      upgrades: state.upgrades.length,
-      shaft: state.shaft,
-      deepest: state.deepest,
-      activeContract: state.activeContract ? state.activeContract.id : null,
-      contractsDone: state.contractsDone,
-      contractsFailed: state.contractsFailed,
-      bestOre: state.bestOre,
-      dailyMined: state.dailyMined,
-      dailyEarned: Math.round(state.dailyEarned),
-      carryKg: Math.round(state.carryKg * 10) / 10,
-      carryCap: miningCarryCap(state.upgrades),
-      event: state.currentEvent,
-    };
-  }
-
-  function hudLine() {
-    if (state.shaft) return `Mine: ${state.shaft} — ${Math.round(state.carryKg)}kg in the cart`;
-    if (state.activeContract) return `Mine: ${state.activeContract.name} ${state.contractProgress}/${state.activeContract.qty}`;
-    const oreTotal = Object.values(state.ore).reduce((a, b) => a + b, 0);
-    if (oreTotal > 0) return `Mine: ${oreTotal} ore to smelt or sell`;
-    if (state.gems.length > 0) return `Mine: ${state.gems.length} cut gems to sell`;
-    return '';
-  }
-
-  function interact() {
-    const pos = getPos();
-    const nearQuarry = Math.hypot(pos.x - 350, pos.z - 420) < 40;
-    if (!nearQuarry) return false;
-    if (!state.shaft) { enterShaft('quarry'); return true; }
-    swing();
-    return true;
-  }
-
-  return {
-    state, enterShaft, swing, blast, leaveShaft, smelt,
-    sellOre, sellBars, sellGem, sellAll, buyUpgrade,
-    takeContract, deliverContract, abandonContract,
-    priceBoard, shaftReport, dailyEvent,
-    tick, tickDay, serialize, deserialize, stats, hudLine, interact,
+    const next = miningRankFor(sys.xp);
+    if (next > sys.rank) sys.rank = next;
   };
-}
 
-export const MINING_HELPERS = [
-  { id: 'timberman', name: 'Old Bram', wage: 35, skill: 'safety', bonus: 0.3, desc: 'Shores the timbers: hazards -30%.' },
-  { id: 'assayer', name: 'Assayer Nell', wage: 50, skill: 'value', bonus: 0.2, desc: 'Grades every lot: +20% sale prices.' },
-  { id: 'hauler', name: 'Big Dee', wage: 45, skill: 'carry', bonus: 0.4, desc: 'Hauls the cart: +40% carry capacity.' },
-  { id: 'smelter-hand', name: 'Smelter Gus', wage: 60, skill: 'smelt', bonus: 0.25, desc: 'Works the furnace: +25% bar value.' },
-];
+  sys.stats = function stats() {
+    return {
+      rank: MINING_RANKS[sys.rank].name,
+      xp: sys.xp,
+      trips: sys.trips,
+      swings: sys.swings,
+      oreMined: sys.oreMined,
+      barsSmelted: sys.barsSmelted,
+      gemsCut: sys.gemsCut,
+      gemsSold: sys.gemsSold,
+      earned: Math.round(sys.earned),
+      spent: sys.spent,
+      hazards: sys.hazards,
+      caveIns: sys.caveIns,
+      gasHits: sys.gasHits,
+      blasts: sys.blasts,
+      richVeins: sys.richVeins,
+      upgrades: sys.upgrades.length,
+      shaft: sys.shaft,
+      deepest: sys.deepest,
+      activeContract: sys.activeContract ? sys.activeContract.id : null,
+      contractsDone: sys.contractsDone,
+      contractsFailed: sys.contractsFailed,
+      bestOre: sys.bestOre,
+      dailyMined: sys.dailyMined,
+      dailyEarned: Math.round(sys.dailyEarned),
+      carryKg: Math.round(sys.carryKg * 10) / 10,
+      carryCap: miningCarryCap(sys.upgrades),
+      event: sys.currentEvent,
+    };
+  };
 
-export const MINING_CHALLENGES = [
-  { id: 'ore-100', name: 'First Hundred', target: 'oreMined', goal: 100, xp: 80, desc: 'Mine 100 ore in total.' },
-  { id: 'bars-50', name: 'Bar Maker', target: 'barsSmelted', goal: 50, xp: 100, desc: 'Smelt 50 bars.' },
-  { id: 'earn-1000', name: 'Deep Purse', target: 'earned', goal: 1000, xp: 120, desc: 'Earn $1,000 from mining.' },
-  { id: 'gems-5', name: 'Gem Cutter', target: 'gemsCut', goal: 5, xp: 150, desc: 'Cut 5 gems.' },
-  { id: 'trips-10', name: 'Shift Regular', target: 'trips', goal: 10, xp: 90, desc: 'Finish 10 shaft trips.' },
-  { id: 'contracts-5', name: 'Reliable Supplier', target: 'contractsDone', goal: 5, xp: 140, desc: 'Complete 5 mining contracts.' },
-  { id: 'diamond-1', name: 'Diamond in the Deep', target: 'bestValue', goal: 320, xp: 200, desc: 'Mine ore worth $320 or more.' },
-  { id: 'deep-4', name: 'Abyss Diver', target: 'deepest', goal: 4, xp: 150, desc: 'Reach depth 4, the Abyss.' },
-];
+  sys.hudLine = function hudLine() {
+    if (sys.shaft) {
+      const shaft = MINING_SHAFTS.find((s) => s.id === sys.shaft);
+      return `Mining ${shaft.name} — ${Math.round(sys.carryKg)}kg in the cart`;
+    }
+    if (sys.activeContract) {
+      return `Contract ${sys.activeContract.name} ${sys.contractProgress}/${sys.activeContract.qty}`;
+    }
+    let oreTotal = 0;
+    for (const o of MINING_ORES) oreTotal += sys.ore[o.id] || 0;
+    if (oreTotal > 0) return `${oreTotal} ore to smelt or sell`;
+    if (sys.gems.length > 0) return `${sys.gems.length} cut gems to sell`;
+    return '';
+  };
 
-export const MINING_ACHIEVEMENTS = [
-  { id: 'first-ore', name: 'First Ore', check: (s) => s.oreMined >= 1, desc: 'Mine your first ore.' },
-  { id: 'first-bar', name: 'First Bar', check: (s) => s.barsSmelted >= 1, desc: 'Smelt your first bar.' },
-  { id: 'first-gem', name: 'First Gem', check: (s) => s.gemsCut >= 1, desc: 'Cut your first gem.' },
-  { id: 'rank-3', name: 'Deep Miner', check: (s) => s.rank >= 3, desc: 'Reach rank Deep Miner.' },
-  { id: 'rich-miner', name: 'Rich Miner', check: (s) => s.earned >= 3000, desc: 'Earn $3,000 from mining.' },
-  { id: 'full-kit', name: 'Full Kit', check: (s) => s.upgrades.length >= 8, desc: 'Own every mining upgrade.' },
-  { id: 'no-cavein', name: 'Safe Hands', check: (s) => s.trips >= 10 && s.caveIns === 0, desc: 'Ten trips, no cave-ins.' },
-  { id: 'mithril', name: 'Mithril Whisper', check: (s) => s.bestOre === 'mithril', desc: 'Find a mithril vein.' },
-];
+  sys.interact = function interact() {
+    const pos = getPlayerPos();
+    const dx = (pos.x || 0) - 350;
+    const dz = (pos.z || 0) - 420;
+    if (Math.hypot(dx, dz) > 40) return false;
+    if (!sys.shaft) {
+      sys.enterShaft('quarry');
+      return true;
+    }
+    sys.swing();
+    return true;
+  };
 
-export function miningHelperBonus(helpers, skill) {
-  let bonus = 0;
-  for (const h of MINING_HELPERS) {
-    if (helpers.includes(h.id) && h.skill === skill) bonus += h.bonus;
-  }
-  return bonus;
-}
-
-export function miningChallengeProgress(challenge, state) {
-  const v = state[challenge.target] || 0;
-  return { id: challenge.id, name: challenge.name, have: Math.floor(v), goal: challenge.goal, done: v >= challenge.goal };
+  return sys;
 }
 
 export function createMiningExtras(system) {
-  const helpers = [];
-  const claimed = [];
+  const sys = system;
+  let hired = [];
+  let claimed = [];
   let wagesPaid = 0;
 
-  function hireHelper(id) {
-    const h = MINING_HELPERS.find((x) => x.id === id);
-    if (!h) return { ok: false, reason: 'no-such-helper' };
-    if (helpers.includes(id)) return { ok: false, reason: 'already-hired' };
-    helpers.push(id);
-    return { ok: true, id, name: h.name, wage: h.wage };
+  function bad(reason) {
+    return { ok: false, reason };
   }
 
-  function fireHelper(id) {
-    const i = helpers.indexOf(id);
-    if (i < 0) return { ok: false, reason: 'not-hired' };
-    helpers.splice(i, 1);
-    return { ok: true, id };
+  function good(extra) {
+    return { ok: true, ...extra };
   }
 
-  function payWages() {
-    let due = 0;
-    for (const id of helpers) {
-      const h = MINING_HELPERS.find((x) => x.id === id);
-      due += h.wage;
-    }
-    wagesPaid += due;
-    return { due, helpers: [...helpers], totalPaid: wagesPaid };
-  }
-
-  function helperBonus(skill) {
-    return miningHelperBonus(helpers, skill);
-  }
-
-  function challenges() {
-    return MINING_CHALLENGES.map((ch) => miningChallengeProgress(ch, system.state));
-  }
-
-  function claimChallenge(id) {
-    const ch = MINING_CHALLENGES.find((x) => x.id === id);
-    if (!ch) return { ok: false, reason: 'no-such-challenge' };
-    if (claimed.includes(id)) return { ok: false, reason: 'already-claimed' };
-    const p = miningChallengeProgress(ch, system.state);
-    if (!p.done) return { ok: false, reason: 'not-done', have: p.have, goal: p.goal };
-    claimed.push(id);
-    return { ok: true, id, xp: ch.xp };
-  }
-
-  function achievements() {
-    return MINING_ACHIEVEMENTS.map((a) => ({
-      id: a.id, name: a.name, desc: a.desc, done: !!a.check(system.state),
-    }));
-  }
-
-  function assay(oreId) {
-    const ore = MINING_ORES.find((o) => o.id === oreId);
-    if (!ore) return { ok: false, reason: 'no-such-ore' };
-    return { ok: true, ore: oreId, value: ore.value, barValue: ore.barValue, hardness: ore.hardness, depth: ore.depth };
-  }
-
-  function inventoryValue() {
-    let total = 0;
-    for (const o of MINING_ORES) {
-      total += (system.state.ore[o.id] || 0) * o.value;
-      total += (system.state.bars[o.id] || 0) * o.barValue;
-    }
-    return { ok: true, value: Math.round(total) };
-  }
-
-  function weighIn() {
-    const total = Math.round(system.state.carryKg * 10) / 10;
-    const cap = miningCarryCap(system.state.upgrades);
-    return { carryKg: total, cap, free: Math.round((cap - system.state.carryKg) * 10) / 10 };
-  }
-
-  return {
-    hireHelper, fireHelper, payWages, helperBonus, challenges,
-    claimChallenge, achievements, assay, inventoryValue, weighIn,
-    get helpers() { return [...helpers]; },
-    get claimed() { return [...claimed]; },
-    get wagesPaid() { return wagesPaid; },
+  const extras = {
+    hireHelper(id) {
+      const helper = MINING_HELPERS.find((h) => h.id === id);
+      if (!helper) return bad('unknown-helper');
+      if (hired.includes(id)) return bad('already-hired');
+      hired.push(id);
+      return good({ id, name: helper.name, wage: helper.wage });
+    },
+    fireHelper(id) {
+      if (!hired.includes(id)) return bad('not-hired');
+      hired = hired.filter((h) => h !== id);
+      return good({ id });
+    },
+    payWages() {
+      let due = 0;
+      for (const id of hired) {
+        const helper = MINING_HELPERS.find((h) => h.id === id);
+        if (helper) due += helper.wage;
+      }
+      wagesPaid += due;
+      return good({ due, helpers: [...hired], wagesPaid });
+    },
+    helperBonus(skill) {
+      let sum = 0;
+      for (const id of hired) {
+        const helper = MINING_HELPERS.find((h) => h.id === id);
+        if (helper && helper.skill === skill) sum += helper.bonus;
+      }
+      return sum;
+    },
+    challenges() {
+      return MINING_CHALLENGES.map((c) => miningChallengeProgress(c, sys));
+    },
+    claimChallenge(id) {
+      const challenge = MINING_CHALLENGES.find((c) => c.id === id);
+      if (!challenge) return bad('unknown-challenge');
+      if (claimed.includes(id)) return bad('already-claimed');
+      const progress = miningChallengeProgress(challenge, sys);
+      if (!progress.done) return bad('not-done');
+      claimed.push(id);
+      return good({ id, xp: challenge.xp });
+    },
+    achievements() {
+      return MINING_ACHIEVEMENTS.map((a) => ({
+        id: a.id,
+        name: a.name,
+        desc: a.desc,
+        done: !!a.check(sys),
+      }));
+    },
+    assay(oreId) {
+      const ore = MINING_ORES.find((o) => o.id === oreId);
+      if (!ore) return bad('unknown-ore');
+      return good({
+        ore: ore.id,
+        value: ore.value,
+        barValue: ore.barValue,
+        hardness: ore.hardness,
+        depth: ore.depth,
+      });
+    },
+    inventoryValue() {
+      let value = 0;
+      for (const o of MINING_ORES) {
+        value += (sys.ore[o.id] || 0) * o.value;
+        value += (sys.bars[o.id] || 0) * o.barValue;
+      }
+      return good({ value: Math.round(value) });
+    },
+    weighIn() {
+      const cap = miningCarryCap(sys.upgrades);
+      return good({
+        carryKg: Math.round(sys.carryKg * 10) / 10,
+        carryCap: cap,
+        free: Math.round((cap - sys.carryKg) * 10) / 10,
+      });
+    },
+    get helpers() {
+      return [...hired];
+    },
+    get claimed() {
+      return [...claimed];
+    },
+    get wagesPaid() {
+      return wagesPaid;
+    },
   };
-}
 
-export const MINING_TIPS = [
-  { id: 'lamp-first', name: 'Lamp First', text: 'A good lamp finds rich veins other miners walk past.' },
-  { id: 'canary', name: 'Trust the Canary', text: 'When the canary stops singing, get out of the shaft.' },
-  { id: 'smelt', name: 'Smelt Your Own', text: 'Bars pay more than raw ore. Build the smelter.' },
-  { id: 'deep-slow', name: 'Deep and Slow', text: 'The Abyss pays best but punishes the careless.' },
-  { id: 'blast-care', name: 'Blast Carefully', text: 'Dynamite opens veins — and sometimes the roof.' },
-  { id: 'gem-jeweler', name: 'Gems to the Jeweler', text: 'Never sell a cut gem to the foundry. Anselm pays double.' },
-  { id: 'coal-winter', name: 'Coal in Winter', text: 'Coal prices spike when the cold comes. Stockpile.' },
-  { id: 'timber', name: 'Shore the Timbers', text: 'Hire Old Bram before your first deep trip.' },
-];
-
-export const MINING_LEADERBOARD = [
-  { name: 'Old Bram', kg: 9800, desc: 'Forty years underground.' },
-  { name: 'Assayer Nell', kg: 6400, desc: 'Grades every lot she hauls.' },
-  { name: 'Ria', kg: 0, desc: 'You. Climbing.' },
-  { name: 'Smelter Gus', kg: 5200, desc: 'Lives by the furnace.' },
-  { name: 'Big Dee', kg: 4100, desc: 'Hauls more than he digs.' },
-];
-
-export function miningTipFor(day) {
-  return MINING_TIPS[day % MINING_TIPS.length];
-}
-
-export function miningLeaderboardWith(playerKg) {
-  const board = MINING_LEADERBOARD.map((e) => ({
-    name: e.name, kg: e.name === 'Ria' ? playerKg : e.kg, desc: e.desc,
-  }));
-  board.sort((a, b) => b.kg - a.kg);
-  return board.map((e, i) => ({ rank: i + 1, ...e }));
-}
-
-export function miningEfficiency(oreMined, swings) {
-  if (swings === 0) return 0;
-  return Math.round((oreMined / swings) * 100) / 100;
-}
-
-export function miningProfitPerTrip(earned, trips) {
-  if (trips === 0) return 0;
-  return Math.round((earned / trips) * 10) / 10;
-}
-
-export function miningGrade(oreMined, hazards, gemsCut) {
-  if (oreMined === 0) return 'D';
-  const score = oreMined - hazards * 10 + gemsCut * 20;
-  if (score >= 300) return 'S';
-  if (score >= 180) return 'A';
-  if (score >= 90) return 'B';
-  if (score >= 40) return 'C';
-  return 'D';
-}
-
-export const MINING_RECORDS = [
-  { id: 'most-ore', name: 'Most Ore', stat: 'oreMined', unit: 'ore', desc: 'Most ore mined in total.' },
-  { id: 'most-bars', name: 'Most Bars', stat: 'barsSmelted', unit: 'bars', desc: 'Most bars smelted.' },
-  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$', desc: 'Most money from mining.' },
-  { id: 'gems', name: 'Most Gems', stat: 'gemsCut', unit: 'gems', desc: 'Most gems cut.' },
-  { id: 'deepest', name: 'Deepest', stat: 'deepest', unit: 'depth', desc: 'Deepest shaft reached.' },
-];
-
-export function miningRecordFor(recordId, state) {
-  const r = MINING_RECORDS.find((x) => x.id === recordId);
-  if (!r) return null;
-  return { id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit };
-}
-
-export function miningAllRecords(state) {
-  return MINING_RECORDS.map((r) => ({
-    id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit, desc: r.desc,
-  }));
-}
-
-export function miningSummary(state) {
-  return `Mine ${MINING_RANKS[state.rank].name}: ${state.oreMined} ore, ${state.barsSmelted} bars, ${state.gemsCut} gems, $${Math.round(state.earned)} earned, depth ${state.deepest}.`;
-}
-
-export function miningNextGoal(state) {
-  if (state.oreMined < 50) return 'Mine 50 ore.';
-  if (state.barsSmelted < 20) return 'Smelt 20 bars.';
-  if (state.rank < 2) return 'Reach rank Shaft Hand.';
-  return 'Reach the Abyss at depth 4.';
-}
-
-export const MINING_QUICK_START = [
-  'Start in the Crown Quarry — coal and iron are easy money.',
-  'Buy the steel pick before you chase silver.',
-  'Smelt bars before selling; the guild pays a premium.',
-  'Never enter the Abyss without the canary.',
-  'Take foundry contracts for ore you already mine.',
-  'Cut gems go to the jeweler, never the foundry.',
-];
-
-export function miningQuickStart(step) {
-  return MINING_QUICK_START[step] || null;
-}
-
-export const MINING_META = {
-  system: 'mining', version: '7-B1', author: 'builder-1',
-  ores: MINING_ORES.length, shafts: MINING_SHAFTS.length,
-  note: 'Deep Shaft: pick, blast, smelt, sell.',
-};
-
-export const MINING_VEINS = [
-  { id: 'surface-seam', name: 'Surface Seam', depth: 1, richness: 1.0, desc: 'A thin seam of ore at the surface.' },
-  { id: 'rich-pocket', name: 'Rich Pocket', depth: 2, richness: 1.5, desc: 'A fat pocket of ore in the wall.' },
-  { id: 'mother-lode', name: 'Mother Lode', depth: 3, richness: 2.0, desc: 'The big one — a vein that runs for metres.' },
-  { id: 'gem-nest', name: 'Gem Nest', depth: 4, richness: 2.5, desc: 'A nest of crystals in the deep rock.' },
-];
-
-export function miningVeinFor(veinId) {
-  return MINING_VEINS.find((v) => v.id === veinId) || null;
-}
-
-export function miningVeinRichness(depth) {
-  const veins = MINING_VEINS.filter((v) => v.depth <= depth);
-  if (veins.length === 0) return 1;
-  return veins[veins.length - 1].richness;
-}
-
-export function miningYieldEstimate(ore, depth, upgrades) {
-  let yield_ = 1 + Math.floor(miningVeinRichness(depth));
-  if (upgrades.includes('drill')) yield_ += 1;
-  if (upgrades.includes('lamp')) yield_ += 1;
-  return { ore: ore.id, name: ore.name, yield: yield_, depth };
-}
-
-export const MINING_SAFETY_RULES = [
-  { id: 'timber', name: 'Timber First', text: 'Shore the roof before you dig under it.' },
-  { id: 'canary', name: 'Watch the Canary', text: 'When the canary stops singing, get out.' },
-  { id: 'lamp', name: 'Lamp Check', text: 'A dead lamp in a deep shaft is a death sentence.' },
-  { id: 'blast', name: 'Blast Clear', text: 'Shout three times before you light the fuse.' },
-  { id: 'water', name: 'Water Rising', text: 'If water rises in the drift, run uphill.' },
-  { id: 'buddy', name: 'Buddy System', text: 'Never go down alone. Never.' },
-];
-
-export function miningSafetyFor(ruleId) {
-  return MINING_SAFETY_RULES.find((r) => r.id === ruleId) || null;
-}
-
-export function miningSafetyCheck(state) {
-  const issues = [];
-  if (state.truckHealth !== undefined) void state.truckHealth;
-  if (state.shaft && !state.upgrades.includes('canary')) issues.push('No canary in a deep shaft — gas is a risk.');
-  if (state.fatigue > 30) issues.push('Fatigue is high — rest before the next swing.');
-  if (state.shaft === 'abyss' && !state.upgrades.includes('elevator')) issues.push('The Abyss without an elevator is a long climb out.');
-  return { safe: issues.length === 0, issues };
+  return extras;
 }

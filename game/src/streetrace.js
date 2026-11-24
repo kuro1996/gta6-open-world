@@ -1,90 +1,51 @@
-// Solara Nights — Street Races & Time Trials (round 4 attempt 5, NEW module).
-// Illegal midnight racing on the streets of Solara Bay: four routes, each
-// a chain of checkpoints the player must hit in order, against a par time.
-// Beat par to earn cash and a leaderboard slot; beat your own best to move
-// up the local board. Races run in the live world — traffic still crosses,
-// cops still notice a speeding car, and a crash costs real seconds.
-// Best times persist in localStorage (guarded: the module works fine in
-// headless/test environments where storage does not exist).
-//
-// Self-contained like the other round-4 systems: the game passes a small
-// `ctx` (getPosition, getSpeed, addCash, notify, addHeat) and the race
-// system owns the rest — state machine, timing, checkpoints, leaderboard.
-
 export const STREETRACE_VERSION = 1;
 
 export const RACE_PHASES = ['idle', 'countdown', 'racing', 'finished', 'aborted'];
 
-// Routes are hand-laid over the city map: start point, ordered checkpoints
-// (x, y, radius), laps, par time in seconds, entry fee and reward.
 export const ROUTES = [
   {
-    id: 'harbor-sprint',
-    name: 'Harbor Sprint',
-    district: 'Harbor',
-    laps: 1,
-    parSeconds: 75,
-    entryFee: 50,
-    reward: 400,
-    start: { x: 120, y: 640 },
+    id: 'harbor-sprint', name: 'Harbor Sprint', district: 'Harbor', laps: 1, parSeconds: 75, entryFee: 50, reward: 400,
+    start: { x: -150, y: 150 },
     checkpoints: [
-      { x: 260, y: 620, r: 42, label: 'Pier Gate' },
-      { x: 420, y: 560, r: 42, label: 'Fish Market' },
-      { x: 520, y: 420, r: 42, label: 'Crane Yard' },
-      { x: 380, y: 300, r: 42, label: 'Old Ferry' },
-      { x: 120, y: 640, r: 48, label: 'Finish' },
+      { x: -100, y: 120, r: 10, label: 'Dock Gate' },
+      { x: -40, y: 90, r: 10, label: 'Crane Row' },
+      { x: 20, y: 110, r: 10, label: 'Fish Market' },
+      { x: 80, y: 80, r: 10, label: 'Warehouse Bend' },
+      { x: 130, y: 130, r: 12, label: 'Harbor Finish' },
     ],
   },
   {
-    id: 'marina-loop',
-    name: 'Marina Loop',
-    district: 'Marina',
-    laps: 2,
-    parSeconds: 150,
-    entryFee: 150,
-    reward: 1100,
-    start: { x: 820, y: 180 },
+    id: 'marina-loop', name: 'Marina Loop', district: 'Marina', laps: 2, parSeconds: 150, entryFee: 150, reward: 1100,
+    start: { x: 40, y: 190 },
     checkpoints: [
-      { x: 700, y: 220, r: 42, label: 'Yacht Club' },
-      { x: 560, y: 300, r: 42, label: 'Boardwalk' },
-      { x: 620, y: 480, r: 42, label: 'Lighthouse' },
-      { x: 800, y: 420, r: 42, label: 'Casino Row' },
-      { x: 820, y: 180, r: 48, label: 'Finish' },
+      { x: 90, y: 160, r: 10, label: 'Yacht Row' },
+      { x: 130, y: 100, r: 10, label: 'Boardwalk' },
+      { x: 80, y: 40, r: 10, label: 'Café Corner' },
+      { x: 20, y: 80, r: 10, label: 'Palm Bend' },
+      { x: 0, y: 160, r: 12, label: 'Marina Finish' },
     ],
   },
   {
-    id: 'downtown-gp',
-    name: 'Downtown GP',
-    district: 'Downtown',
-    laps: 2,
-    parSeconds: 180,
-    entryFee: 300,
-    reward: 2200,
-    start: { x: 560, y: 420 },
+    id: 'downtown-gp', name: 'Downtown GP', district: 'Downtown', laps: 2, parSeconds: 180, entryFee: 300, reward: 2200,
+    start: { x: 0, y: 0 },
     checkpoints: [
-      { x: 480, y: 300, r: 40, label: 'Neon Plaza' },
-      { x: 360, y: 380, r: 40, label: 'Theatre' },
-      { x: 420, y: 540, r: 40, label: 'Central Park' },
-      { x: 620, y: 560, r: 40, label: 'Tower Bridge' },
-      { x: 680, y: 380, r: 40, label: 'Market Sq' },
-      { x: 560, y: 420, r: 48, label: 'Finish' },
+      { x: 60, y: -20, r: 10, label: 'Tower Turn' },
+      { x: 100, y: 40, r: 10, label: 'Plaza Cut' },
+      { x: 60, y: 100, r: 10, label: 'Neon Strip' },
+      { x: -20, y: 90, r: 10, label: 'Hotel Hairpin' },
+      { x: -70, y: 30, r: 10, label: 'Mall Sweep' },
+      { x: -20, y: -30, r: 12, label: 'Downtown Finish' },
     ],
   },
   {
-    id: 'old-town-rally',
-    name: 'Old Town Rally',
-    district: 'Old Town',
-    laps: 1,
-    parSeconds: 95,
-    entryFee: 100,
-    reward: 750,
-    start: { x: 240, y: 300 },
+    id: 'oldtown-rally', name: 'Old Town Rally', district: 'Old Town', laps: 1, parSeconds: 95, entryFee: 100, reward: 750,
+    start: { x: 150, y: 170 },
     checkpoints: [
-      { x: 340, y: 260, r: 42, label: 'Cobble Lane' },
-      { x: 460, y: 340, r: 42, label: 'Chapel' },
-      { x: 380, y: 480, r: 42, label: 'Fountain' },
-      { x: 220, y: 460, r: 42, label: 'Arch Gate' },
-      { x: 240, y: 300, r: 48, label: 'Finish' },
+      { x: 120, y: 120, r: 10, label: 'Market Arch' },
+      { x: 80, y: 150, r: 10, label: 'Cobble Lane' },
+      { x: 40, y: 110, r: 10, label: 'Old Church' },
+      { x: 90, y: 60, r: 10, label: 'Basement Alley' },
+      { x: 140, y: 90, r: 12, label: 'Old Town Finish' },
     ],
   },
 ];
@@ -93,285 +54,275 @@ export function routeById(id) {
   return ROUTES.find((r) => r.id === id) || null;
 }
 
-// Format seconds as M:SS.cs for the HUD and the leaderboard.
 export function formatRaceTime(seconds) {
-  if (!Number.isFinite(seconds) || seconds < 0) return '--:--.--';
+  if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0) return '--:--.--';
   const m = Math.floor(seconds / 60);
   const s = seconds - m * 60;
   return `${m}:${s.toFixed(2).padStart(5, '0')}`;
 }
 
-const STORAGE_KEY = 'solara-nights-streetrace-leaderboard-v1';
+function storageKey() {
+  return `solara-streetrace-v${STREETRACE_VERSION}`;
+}
 
 function loadBoard() {
   try {
     if (typeof localStorage === 'undefined') return {};
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
+    const raw = localStorage.getItem(storageKey());
+    return raw ? JSON.parse(raw) : {};
+  } catch (err) {
     return {};
   }
 }
 
 function saveBoard(board) {
   try {
-    if (typeof localStorage === 'undefined') return false;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(board));
-    return true;
-  } catch {
-    return false;
-  }
+    if (typeof localStorage === 'undefined') return;
+    localStorage.setItem(storageKey(), JSON.stringify(board));
+  } catch (err) {}
+}
+
+function clone(v) {
+  return JSON.parse(JSON.stringify(v));
 }
 
 export function createStreetRaceSystem(ctx = {}) {
-  const hooks = {
-    getPosition: typeof ctx.getPosition === 'function' ? ctx.getPosition : () => ({ x: 0, y: 0 }),
-    getSpeed: typeof ctx.getSpeed === 'function' ? ctx.getSpeed : () => 0,
-    getCash: typeof ctx.getCash === 'function' ? ctx.getCash : null,
-    addCash: typeof ctx.addCash === 'function' ? ctx.addCash : null,
-    notify: typeof ctx.notify === 'function' ? ctx.notify : () => {},
-    addHeat: typeof ctx.addHeat === 'function' ? ctx.addHeat : () => {},
-    playerName: typeof ctx.playerName === 'string' ? ctx.playerName : 'Ria',
-  };
+  const c = ctx || {};
+  let phase = 'idle';
+  let route = null;
+  let countdown = 0;
+  let lap = 0;
+  let checkpointIndex = 0;
+  let raceTime = 0;
+  let lapTime = 0;
+  let lapTimes = [];
+  let bestLap = null;
+  let wrongWayTimer = -1;
+  let racesRun = 0;
+  let racesWon = 0;
+  let totalEarned = 0;
+  let lastResult = null;
+  let board = loadBoard();
 
-  const board = loadBoard();
-  const state = {
-    phase: 'idle',
-    routeId: null,
-    lap: 1,
-    checkpointIndex: 0,
-    countdown: 0,
-    raceTime: 0,
-    lapTime: 0,
-    bestLap: Infinity,
-    lastLapTimes: [],
-    wrongWayTimer: 0,
-    racesRun: 0,
-    racesWon: 0,
-    totalEarned: 0,
-    lastResult: null,
-  };
-
-  function route() {
-    return state.routeId ? routeById(state.routeId) : null;
+  function shout(msg) {
+    if (typeof c.notify === 'function') c.notify(msg);
   }
 
-  function cash() {
-    if (hooks.getCash) return hooks.getCash();
-    return 0;
+  function posNow() {
+    if (typeof c.getPosition === 'function') return c.getPosition();
+    return { x: 0, z: 0 };
   }
 
-  function startRace(routeId) {
-    const r = routeById(routeId);
-    if (!r) return { ok: false, reason: 'unknown-route' };
-    if (state.phase === 'racing' || state.phase === 'countdown') {
-      return { ok: false, reason: 'already-racing' };
-    }
-    if (hooks.getCash && cash() < r.entryFee) {
-      return { ok: false, reason: 'not-enough-cash', fee: r.entryFee, cash: cash() };
-    }
-    if (hooks.addCash) hooks.addCash(-r.entryFee);
-    state.phase = 'countdown';
-    state.routeId = routeId;
-    state.lap = 1;
-    state.checkpointIndex = 0;
-    state.countdown = 3;
-    state.raceTime = 0;
-    state.lapTime = 0;
-    state.lastLapTimes = [];
-    state.wrongWayTimer = 0;
-    state.lastResult = null;
-    hooks.notify(`${r.name}: ${r.laps} lap${r.laps > 1 ? 's' : ''}, par ${formatRaceTime(r.parSeconds)}. $${r.entryFee} entry. Go on green!`);
-    return { ok: true, route: r };
-  }
-
-  function abortRace(reason = 'aborted') {
-    if (state.phase !== 'racing' && state.phase !== 'countdown') {
-      return { ok: false, reason: 'not-racing' };
-    }
-    state.phase = 'aborted';
-    state.lastResult = { routeId: state.routeId, time: state.raceTime, won: false, reason };
-    hooks.notify(`Race ${reason}. Entry fee lost.`);
-    state.phase = 'idle';
-    state.routeId = null;
-    return { ok: true };
-  }
-
-  // Record a finished race on the local leaderboard (top 8 per route).
-  function recordResult(routeId, seconds, won) {
-    const entry = { name: hooks.playerName, time: Math.round(seconds * 100) / 100, won, day: Date.now() };
-    const list = Array.isArray(board[routeId]) ? board[routeId].slice() : [];
-    list.push(entry);
-    list.sort((a, b) => a.time - b.time);
-    board[routeId] = list.slice(0, 8);
+  function recordResult(routeId, time, won) {
+    const name = c.playerName || 'Ria';
+    const entries = board[routeId] || [];
+    const entry = { name, player: name, time: Math.round(time * 100) / 100, won, date: new Date().toISOString() };
+    entries.push(entry);
+    entries.sort((a, b) => a.time - b.time);
+    const kept = entries.slice(0, 8);
+    board[routeId] = kept;
     saveBoard(board);
-    const rank = board[routeId].indexOf(entry) + 1;
-    return { rank, total: board[routeId].length, entry };
+    const rank = kept.indexOf(entry) + 1;
+    return { rank, total: kept.length, entry };
   }
 
   function finishRace() {
-    const r = route();
-    state.phase = 'finished';
-    state.racesRun += 1;
-    const time = state.raceTime;
-    const won = time <= r.parSeconds;
+    const time = raceTime;
+    const won = time <= route.parSeconds;
+    racesRun += 1;
     let payout = 0;
     if (won) {
-      state.racesWon += 1;
-      payout = r.reward;
-      if (hooks.addCash) hooks.addCash(payout);
-      state.totalEarned += payout;
+      racesWon += 1;
+      payout = route.reward;
+      totalEarned += payout;
+      if (typeof c.addCash === 'function') c.addCash(payout);
+      if (typeof c.addHeat === 'function') c.addHeat(4);
     }
-    const placed = recordResult(r.id, time, won);
-    state.lastResult = {
-      routeId: r.id, routeName: r.name, time, won, payout,
-      rank: placed.rank, laps: r.laps, par: r.parSeconds,
-      bestLap: Number.isFinite(state.bestLap) ? state.bestLap : null,
-    };
-    hooks.notify(
-      won
-        ? `${r.name} WON in ${formatRaceTime(time)} (par ${formatRaceTime(r.parSeconds)}). +$${payout}, rank #${placed.rank} locally.`
-        : `${r.name} finished in ${formatRaceTime(time)} — par was ${formatRaceTime(r.parSeconds)}. No payout.`,
-    );
-    // Winning a loud illegal race draws attention: a little heat.
-    if (won) hooks.addHeat(4);
-    state.phase = 'idle';
-    state.routeId = null;
-    return { ...state.lastResult };
+    const rec = recordResult(route.id, time, won);
+    phase = 'finished';
+    lastResult = { route: route.id, routeName: route.name, time, formatted: formatRaceTime(time), won, payout, rank: rec.rank, total: rec.total, laps: route.laps };
+    shout(`Race done: ${formatRaceTime(time)} vs par ${formatRaceTime(route.parSeconds)} — ${won ? `won $${payout}` : 'no payout'} (local #${rec.rank}).`);
+    route = null;
+    phase = 'idle';
+    return lastResult;
   }
 
-  // Advance one checkpoint. Returns the new lap/checkpoint or null.
   function hitCheckpoint() {
-    const r = route();
-    if (!r) return null;
-    state.checkpointIndex += 1;
-    if (state.checkpointIndex >= r.checkpoints.length) {
-      // Lap complete.
-      state.lastLapTimes.push(state.lapTime);
-      if (state.lapTime < state.bestLap) state.bestLap = state.lapTime;
-      state.lapTime = 0;
-      state.checkpointIndex = 0;
-      if (state.lap >= r.laps) return finishRace();
-      state.lap += 1;
-      hooks.notify(`Lap ${state.lap}/${r.laps} — keep pushing!`);
-    } else {
-      const next = r.checkpoints[state.checkpointIndex];
-      hooks.notify(`Checkpoint: ${next.label} (${state.checkpointIndex + 1}/${r.checkpoints.length})`);
-    }
-    return { lap: state.lap, checkpointIndex: state.checkpointIndex };
-  }
-
-  // Per-frame update. dt is real seconds. The caller passes the car (or
-  // player) position; checkpoints are circles the player must drive through.
-  function update(dt) {
-    if (!(dt > 0)) return;
-    if (state.phase === 'countdown') {
-      state.countdown -= dt;
-      if (state.countdown <= 0) {
-        state.phase = 'racing';
-        state.countdown = 0;
-        hooks.notify('GO!');
+    const cp = route.checkpoints[checkpointIndex];
+    checkpointIndex += 1;
+    if (checkpointIndex >= route.checkpoints.length) {
+      lapTimes.push(lapTime);
+      if (bestLap === null || lapTime < bestLap) bestLap = lapTime;
+      lapTime = 0;
+      checkpointIndex = 0;
+      if (lap + 1 >= route.laps) {
+        lap += 1;
+        return finishRace();
       }
-      return;
+      lap += 1;
+      shout(`Lap ${lap + 1} — go!`);
+      return { lap };
     }
-    if (state.phase !== 'racing') return;
-    const r = route();
-    if (!r) return;
-    state.raceTime += dt;
-    state.lapTime += dt;
-    const pos = hooks.getPosition();
-    const cp = r.checkpoints[state.checkpointIndex];
-    // Checkpoints store the map's second axis as `y` (matching the route
-    // tables); the live position carries it as `z`.
-    const dist = Math.hypot(pos.x - cp.x, pos.z - cp.y);
-    if (dist <= cp.r) {
-      hitCheckpoint();
-      return;
-    }
-    // Wrong-way warning: standing still far from the next checkpoint while
-    // the clock runs is how races are lost.
-    if (hooks.getSpeed() < 2 && dist > cp.r * 3) {
-      state.wrongWayTimer += dt;
-      if (state.wrongWayTimer > 10) {
-        hooks.notify('You are barely moving — the race clock is running!');
-        state.wrongWayTimer = -20; // nag at most every 30s
+    shout(`Checkpoint: ${route.checkpoints[checkpointIndex].label}`);
+    return { checkpoint: checkpointIndex };
+  }
+
+  const sys = {
+    routeById,
+    formatRaceTime,
+
+    get phase() { return phase; },
+    get lastResult() { return lastResult ? clone(lastResult) : null; },
+
+    startRace(routeId) {
+      const r = routeById(routeId);
+      if (!r) return { ok: false, reason: 'unknown-route' };
+      if (phase === 'racing' || phase === 'countdown') return { ok: false, reason: 'already-racing' };
+      const cash = typeof c.getCash === 'function' ? c.getCash() : 0;
+      if (cash < r.entryFee) return { ok: false, reason: 'no-cash', fee: r.entryFee, cash };
+      if (typeof c.addCash === 'function') c.addCash(-r.entryFee);
+      route = r;
+      phase = 'countdown';
+      countdown = 3;
+      lap = 0;
+      checkpointIndex = 0;
+      raceTime = 0;
+      lapTime = 0;
+      lapTimes = [];
+      bestLap = null;
+      wrongWayTimer = -1;
+      lastResult = null;
+      shout(`${r.name}: ${r.laps} lap(s), par ${formatRaceTime(r.parSeconds)}, entry $${r.entryFee}.`);
+      return { ok: true, route: clone(r) };
+    },
+
+    abortRace(reason = 'aborted') {
+      if (phase !== 'racing' && phase !== 'countdown') return { ok: false, reason: 'not-racing' };
+      lastResult = { route: route ? route.id : null, won: false, aborted: true, reason, time: raceTime };
+      route = null;
+      phase = 'idle';
+      shout('Race aborted — entry fee lost.');
+      return { ok: true, reason };
+    },
+
+    update(dt) {
+      const step = Number(dt) || 0;
+      if (phase === 'countdown') {
+        countdown -= step;
+        if (countdown <= 0) {
+          phase = 'racing';
+          shout('GO!');
+        }
+        return;
       }
-    } else if (state.wrongWayTimer > 0) {
-      state.wrongWayTimer = Math.max(0, state.wrongWayTimer - dt);
-    }
-    // Give up after 10 minutes: the street has moved on.
-    if (state.raceTime > 600) abortRace('timed-out');
-  }
+      if (phase !== 'racing' || !route) return;
+      raceTime += step;
+      lapTime += step;
+      if (raceTime > 600) {
+        sys.abortRace('timeout');
+        return;
+      }
+      const pos = posNow();
+      const cp = route.checkpoints[checkpointIndex];
+      if (!cp) return;
+      const d = Math.hypot(cp.x - pos.x, cp.y - pos.z);
+      if (d <= cp.r) {
+        hitCheckpoint();
+        return;
+      }
+      const speed = typeof c.getSpeed === 'function' ? c.getSpeed() : 0;
+      if (d > 60 && speed < 1) {
+        if (wrongWayTimer < 0) {
+          wrongWayTimer = 30;
+          shout('Wrong way? Head for the next checkpoint.');
+        } else {
+          wrongWayTimer -= step;
+        }
+      } else if (wrongWayTimer > 0) {
+        wrongWayTimer -= step;
+      }
+      if (wrongWayTimer === -1 && d > 60 && raceTime > 10) wrongWayTimer = 0;
+    },
 
-  function nextCheckpoint() {
-    const r = route();
-    if (!r || state.phase !== 'racing') return null;
-    return r.checkpoints[state.checkpointIndex];
-  }
+    hud() {
+      return {
+        version: STREETRACE_VERSION,
+        phase,
+        route: route ? route.id : null,
+        routeId: route ? route.id : null,
+        routeName: route ? route.name : null,
+        lap: route ? lap + 1 : 0,
+        laps: route ? route.laps : 0,
+        totalLaps: route ? route.laps : 0,
+        checkpoint: checkpointIndex,
+        checkpointIndex,
+        checkpointCount: route ? route.checkpoints.length : 0,
+        nextCheckpoint: route ? route.checkpoints[checkpointIndex] : null,
+        countdown: Math.max(0, Math.ceil(countdown)),
+        raceTime,
+        raceTimeFormatted: formatRaceTime(raceTime),
+        formattedRaceTime: formatRaceTime(raceTime),
+        lapTime,
+        lapTimeFormatted: formatRaceTime(lapTime),
+        formattedLapTime: formatRaceTime(lapTime),
+        bestLap,
+        formattedBestLap: bestLap === null ? '--:--.--' : formatRaceTime(bestLap),
+        par: route ? formatRaceTime(route.parSeconds) : null,
+        formattedPar: route ? formatRaceTime(route.parSeconds) : null,
+        racesRun,
+        racesWon,
+        totalEarned,
+        lastResult: lastResult ? clone(lastResult) : null,
+      };
+    },
 
-  function hud() {
-    const r = route();
-    return {
-      version: STREETRACE_VERSION,
-      phase: state.phase,
-      routeId: state.routeId,
-      routeName: r ? r.name : null,
-      lap: state.lap,
-      laps: r ? r.laps : 0,
-      checkpointIndex: state.checkpointIndex,
-      checkpoints: r ? r.checkpoints.length : 0,
-      nextCheckpoint: nextCheckpoint(),
-      countdown: Math.max(0, Math.ceil(state.countdown)),
-      raceTime: Math.round(state.raceTime * 100) / 100,
-      raceTimeText: formatRaceTime(state.raceTime),
-      lapTimeText: formatRaceTime(state.lapTime),
-      bestLapText: Number.isFinite(state.bestLap) ? formatRaceTime(state.bestLap) : '--:--.--',
-      parText: r ? formatRaceTime(r.parSeconds) : null,
-      racesRun: state.racesRun,
-      racesWon: state.racesWon,
-      totalEarned: state.totalEarned,
-      lastResult: state.lastResult,
-    };
-  }
+    status() {
+      return this.hud();
+    },
 
-  function leaderboard(routeId) {
-    const list = Array.isArray(board[routeId]) ? board[routeId] : [];
-    return list.map((e, i) => ({ rank: i + 1, name: e.name, time: e.time, text: formatRaceTime(e.time), won: e.won }));
-  }
+    leaderboard(routeId) {
+      const entries = board[routeId] || [];
+      return entries.map((e, i) => ({
+        rank: i + 1,
+        name: e.name,
+        time: e.time,
+        formatted: formatRaceTime(e.time),
+        text: `${i + 1}. ${e.name} — ${formatRaceTime(e.time)}`,
+        won: e.won,
+      }));
+    },
 
-  function bestTime(routeId) {
-    const list = leaderboard(routeId);
-    return list.length ? list[0] : null;
-  }
+    bestTime(routeId) {
+      const entries = board[routeId] || [];
+      return entries.length ? clone(entries[0]) : null;
+    },
 
-  function serialize() {
-    return {
-      version: STREETRACE_VERSION,
-      racesRun: state.racesRun,
-      racesWon: state.racesWon,
-      totalEarned: state.totalEarned,
-      board,
-    };
-  }
+    serialize() {
+      return {
+        version: STREETRACE_VERSION,
+        racesRun,
+        racesWon,
+        totalEarned,
+        board: clone(board),
+      };
+    },
 
-  function deserialize(data) {
-    if (!data || typeof data !== 'object') return false;
-    state.racesRun = data.racesRun || 0;
-    state.racesWon = data.racesWon || 0;
-    state.totalEarned = data.totalEarned || 0;
-    if (data.board && typeof data.board === 'object') {
-      for (const [k, v] of Object.entries(data.board)) board[k] = v;
-      saveBoard(board);
-    }
-    return true;
-  }
-
-  return {
-    startRace, abortRace, update, hud, leaderboard, bestTime,
-    serialize, deserialize, routeById, formatRaceTime,
-    get phase() { return state.phase; },
-    get lastResult() { return state.lastResult; },
+    deserialize(input) {
+      if (!input || typeof input !== 'object') return false;
+      if (typeof input.racesRun === 'number') racesRun = input.racesRun;
+      if (typeof input.racesWon === 'number') racesWon = input.racesWon;
+      if (typeof input.totalEarned === 'number') totalEarned = input.totalEarned;
+      if (input.board && typeof input.board === 'object') {
+        for (const k of Object.keys(input.board)) {
+          const merged = [...(board[k] || []), ...input.board[k]];
+          merged.sort((a, b) => a.time - b.time);
+          board[k] = merged.slice(0, 8);
+        }
+        saveBoard(board);
+      }
+      return true;
+    },
   };
+
+  return sys;
 }

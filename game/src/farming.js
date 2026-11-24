@@ -1,1001 +1,783 @@
-// Solara Nights — Farming / Bayview Farm (Round 7b-B, written fresh).
-// Outside the city, past the suburbs, Ria's late uncle left her
-// twelve acres of tired soil and a barn with opinions. Farming in
-// Solara Bay is a calendar: plant in season, water on time, chase
-// the crows off the corn, and sell at the market before the price
-// drops. Fourteen crops from fast radishes to slow pumpkins, eight
-// kinds of livestock from chickens to a very stubborn goat, and a
-// farmhouse kitchen that turns milk into cheese and fruit into jam
-// worth three times the raw price. The weather is a business
-// partner with a bad temper; the seasons do not negotiate. But a
-// good harvest, sold at the right stall, pays better than most jobs
-// in the city — and the work is honest, even when the mud is not.
-// Pure logic: no rendering, no imports. Wired through the standard ctx
-// { rng, getDay, getHour, getCash, addCash, addHeat, log, getPlayerPos,
-// getSpeed } and driven by tick/tickDay from the main loop.
-
+// Farming on the Solara outskirts: buy a farm, work plots, plant and water
+// crops through the seasons, raise animals, sell at markets, craft goods,
+// buy upgrades and keep the pests away. Context supplies rng, the day,
+// cash access, a logger and the player position. The hour getter, heat
+// adder and speed getter are present with defaults but never called.
 export const FARM_CROPS = [
-  { id: 'radish', name: 'Radish', growDays: 1, water: 1, yield: 6, price: 3, season: 'any', xp: 4, desc: 'Fast, peppery, first money of spring.' },
-  { id: 'lettuce', name: 'Lettuce', growDays: 2, water: 2, yield: 5, price: 4, season: 'spring', xp: 5, desc: 'Crisp heads, market favourite.' },
-  { id: 'tomato', name: 'Tomato', growDays: 3, water: 3, yield: 8, price: 6, season: 'summer', xp: 8, desc: 'Sun-ripened, worth the wait.' },
-  { id: 'corn', name: 'Corn', growDays: 4, water: 3, yield: 10, price: 5, season: 'summer', xp: 10, desc: 'Tall, golden, crows love it too.' },
-  { id: 'pumpkin', name: 'Pumpkin', growDays: 6, water: 4, yield: 4, price: 18, season: 'autumn', xp: 14, desc: 'Slow, heavy, very profitable.' },
-  { id: 'carrot', name: 'Carrot', growDays: 2, water: 2, yield: 7, price: 4, season: 'any', xp: 6, desc: 'Sweet, orange, easy to grow.' },
-  { id: 'potato', name: 'Potato', growDays: 3, water: 2, yield: 9, price: 3, season: 'any', xp: 7, desc: 'The reliable staple, always sells.' },
-  { id: 'chilli', name: 'Chilli', growDays: 3, water: 2, yield: 6, price: 8, season: 'summer', xp: 9, desc: 'Hot, small, and the restaurants pay well.' },
-  { id: 'strawberry', name: 'Strawberry', growDays: 3, water: 3, yield: 7, price: 9, season: 'spring', xp: 10, desc: 'Sweet, fragile, jam-makers’ gold.' },
-  { id: 'mango', name: 'Mango', growDays: 5, water: 3, yield: 6, price: 12, season: 'summer', xp: 12, desc: 'The bay’s favourite fruit, slow to ripen.' },
-  { id: 'cabbage', name: 'Cabbage', growDays: 3, water: 2, yield: 6, price: 5, season: 'autumn', xp: 7, desc: 'Dense heads, keeps for weeks.' },
-  { id: 'herbs', name: 'Herbs', growDays: 1, water: 1, yield: 5, price: 7, season: 'any', xp: 5, desc: 'Basil, mint, coriander — chefs pay cash.' },
-  { id: 'coffee', name: 'Coffee', growDays: 7, water: 4, yield: 3, price: 25, season: 'any', xp: 18, desc: 'Slowest crop, highest price per kilo.' },
-  { id: 'rice', name: 'Rice', growDays: 5, water: 5, yield: 12, price: 4, season: 'any', xp: 11, desc: 'Flooded paddies, heavy sacks, steady money.' },
+  { id: 'wheat', name: 'Wheat', growDays: 3, water: 1, yield: 4, price: 5, season: 'any', xp: 5, desc: 'Grows anywhere, the farm staple.' },
+  { id: 'corn', name: 'Corn', growDays: 4, water: 2, yield: 5, price: 8, season: 'summer', xp: 7, desc: 'Tall summer corn.' },
+  { id: 'tomato', name: 'Tomato', growDays: 5, water: 2, yield: 6, price: 12, season: 'summer', xp: 9, desc: 'Juicy summer tomatoes.' },
+  { id: 'potato', name: 'Potato', growDays: 4, water: 1, yield: 5, price: 7, season: 'spring', xp: 6, desc: 'A spring root crop.' },
+  { id: 'carrot', name: 'Carrot', growDays: 3, water: 1, yield: 4, price: 6, season: 'spring', xp: 6, desc: 'Sweet spring carrots.' },
+  { id: 'lettuce', name: 'Lettuce', growDays: 2, water: 2, yield: 3, price: 5, season: 'spring', xp: 5, desc: 'Fast spring leaves.' },
+  { id: 'strawberry', name: 'Strawberry', growDays: 4, water: 2, yield: 5, price: 15, season: 'spring', xp: 10, desc: 'Sweet spring berries.' },
+  { id: 'pumpkin', name: 'Pumpkin', growDays: 6, water: 2, yield: 3, price: 14, season: 'autumn', xp: 10, desc: 'Big autumn pumpkins.' },
+  { id: 'sunflower', name: 'Sunflower', growDays: 4, water: 1, yield: 4, price: 9, season: 'summer', xp: 7, desc: 'Sunny summer flowers.' },
+  { id: 'cabbage', name: 'Cabbage', growDays: 5, water: 2, yield: 4, price: 8, season: 'autumn', xp: 8, desc: 'A hardy autumn head.' },
+  { id: 'eggplant', name: 'Eggplant', growDays: 5, water: 2, yield: 5, price: 11, season: 'summer', xp: 8, desc: 'Purple summer fruit.' },
+  { id: 'bean', name: 'Bean', growDays: 3, water: 1, yield: 5, price: 7, season: 'summer', xp: 6, desc: 'Climbing summer beans.' },
+  { id: 'onion', name: 'Onion', growDays: 3, water: 1, yield: 4, price: 6, season: 'any', xp: 5, desc: 'Grows anywhere, stores well.' },
+  { id: 'coffee', name: 'Coffee', growDays: 7, water: 3, yield: 3, price: 25, season: 'summer', xp: 15, desc: 'Slow summer beans, worth a fortune.' },
 ];
 
 export const FARM_ANIMALS = [
-  { id: 'chicken', name: 'Chicken', cost: 40, feed: 2, produce: 'egg', producePerDay: 1, producePrice: 3, desc: 'An egg a day, opinions all day.' },
-  { id: 'duck', name: 'Duck', cost: 60, feed: 2, produce: 'egg', producePerDay: 1, producePrice: 4, desc: 'Bigger eggs, louder mornings.' },
-  { id: 'goat', name: 'Goat', cost: 180, feed: 4, produce: 'milk', producePerDay: 2, producePrice: 5, desc: 'Milk, mischief, and eaten fences.' },
-  { id: 'sheep', name: 'Sheep', cost: 220, feed: 4, produce: 'wool', producePerDay: 1, producePrice: 12, desc: 'Wool every few days, calm company.' },
-  { id: 'pig', name: 'Pig', cost: 260, feed: 6, produce: 'truffle', producePerDay: 1, producePrice: 20, desc: 'Finds truffles. Eats everything else.' },
-  { id: 'cow', name: 'Cow', cost: 500, feed: 8, produce: 'milk', producePerDay: 4, producePrice: 5, desc: 'Four litres a day and a gentle soul.' },
-  { id: 'bee', name: 'Beehive', cost: 150, feed: 1, produce: 'honey', producePerDay: 1, producePrice: 15, desc: 'Honey, wax, and a healthy fear of stings.' },
-  { id: 'horse', name: 'Horse', cost: 800, feed: 8, produce: 'ride', producePerDay: 1, producePrice: 30, desc: 'Trail rides for tourists, $30 a head.' },
+  { id: 'chicken', name: 'Chicken', cost: 40, produce: 'egg', produceName: 'Eggs', desc: 'Lays an egg a day.' },
+  { id: 'cow', name: 'Cow', cost: 250, produce: 'milk', produceName: 'Milk', desc: 'Gives milk every morning.' },
+  { id: 'sheep', name: 'Sheep', cost: 180, produce: 'wool', produceName: 'Wool', desc: 'Shear the wool each season.' },
+  { id: 'bee-hive', name: 'Bee Hive', cost: 150, produce: 'honey', produceName: 'Honey', desc: 'Busy bees make sweet honey.' },
+  { id: 'pig', name: 'Pig', cost: 300, produce: 'truffle', produceName: 'Truffles', desc: 'Sniffs out truffles in the dirt.' },
+  { id: 'goat', name: 'Goat', cost: 200, produce: 'milk', produceName: 'Milk', desc: 'A goat that gives good milk.' },
+  { id: 'duck', name: 'Duck', cost: 60, produce: 'egg', produceName: 'Eggs', desc: 'Lays eggs by the pond.' },
+  { id: 'horse', name: 'Horse', cost: 500, produce: 'ride', produceName: 'Rides', desc: 'Give rides around the farm.' },
 ];
 
 export const FARM_PLOTS = [
-  { id: 'plot-1', name: 'North Field', size: 1, cost: 0, desc: 'The first plot, by the farmhouse.' },
-  { id: 'plot-2', name: 'South Field', size: 1, cost: 150, desc: 'Flat, sunny, good drainage.' },
-  { id: 'plot-3', name: 'Riverside', size: 1, cost: 250, desc: 'Rich soil, thirsty crops love it.' },
-  { id: 'plot-4', name: 'Hill Terrace', size: 1, cost: 300, desc: 'Terraced, windy, great for herbs.' },
-  { id: 'plot-5', name: 'Orchard Row', size: 2, cost: 500, desc: 'Double size, fruit trees included.' },
-  { id: 'plot-6', name: 'Old Paddy', size: 2, cost: 600, desc: 'Double size, built for rice.' },
-  { id: 'plot-7', name: 'Greenhouse', size: 2, cost: 900, desc: 'Double size, any season, any crop.' },
-  { id: 'plot-8', name: 'Far Acre', size: 3, cost: 1400, desc: 'Triple size, the big leagues.' },
+  { id: 'meadow', name: 'Meadow Plot', cost: 0, size: 4, desc: 'The first plot, by the farmhouse.' },
+  { id: 'garden', name: 'Garden Plot', cost: 200, size: 6, desc: 'A tidy garden near the house.' },
+  { id: 'field', name: 'Big Field', cost: 400, size: 10, desc: 'A wide open field.' },
+  { id: 'greenhouse', name: 'Greenhouse', cost: 800, size: 8, desc: 'Grows anything in any season.' },
+  { id: 'orchard-plot', name: 'Orchard Plot', cost: 600, size: 8, desc: 'A plot shaded by fruit trees.' },
+  { id: 'hill', name: 'Hill Plot', cost: 300, size: 5, desc: 'A sunny slope with good drainage.' },
+  { id: 'riverside', name: 'Riverside Plot', cost: 500, size: 7, desc: 'Rich soil by the river.' },
+  { id: 'rooftop', name: 'Rooftop Plot', cost: 1000, size: 6, desc: 'A garden on the barn roof.' },
 ];
 
 export const FARM_UPGRADES = [
-  { id: 'sprinkler', name: 'Sprinklers', cost: 300, desc: 'Crops water themselves: +1 water/day.', effect: 'auto-water' },
-  { id: 'scarecrow', name: 'Scarecrow Army', cost: 150, desc: 'Crows steal 50% less.', effect: 'crow-down' },
-  { id: 'compost', name: 'Compost Heap', cost: 200, desc: 'Crops grow 20% faster.', effect: 'grow-fast' },
-  { id: 'barn', name: 'Big Barn', cost: 600, desc: 'Hold +6 animals.', effect: 'animals-plus' },
-  { id: 'tractor', name: 'Old Tractor', cost: 1200, desc: 'Plant and harvest twice as fast.', effect: 'work-fast' },
-  { id: 'well', name: 'Deep Well', cost: 450, desc: 'Water is free forever.', effect: 'water-free' },
-  { id: 'fence', name: 'Good Fences', cost: 250, desc: 'Animals never escape, goats included.', effect: 'escape-down' },
-  { id: 'kitchen', name: 'Farm Kitchen', cost: 800, desc: 'Unlocks jams, cheese and baking.', effect: 'craft' },
-  { id: 'truck', name: 'Market Truck', cost: 1000, desc: 'Sell at the city market: +20% prices.', effect: 'sell-plus' },
-  { id: 'beehive-plus', name: 'Apiary', cost: 350, desc: 'Honey production doubled.', effect: 'honey-plus' },
+  { id: 'sprinkler', name: 'Sprinkler', cost: 150, effect: 'Waters plots for you.', desc: 'Automatic watering every morning.' },
+  { id: 'tractor', name: 'Tractor', cost: 600, effect: 'Crops grow one day faster.', desc: 'Plough and plant in half the time.' },
+  { id: 'scarecrow', name: 'Scarecrow', cost: 80, effect: 'Keeps crows away.', desc: 'A straw friend for the fields.' },
+  { id: 'compost', name: 'Compost Heap', cost: 120, effect: 'Soil quality rises faster.', desc: 'Turn scraps into rich soil.' },
+  { id: 'greenhouse-heater', name: 'Greenhouse Heater', cost: 300, effect: 'Greenhouse crops grow faster.', desc: 'Warm air all winter long.' },
+  { id: 'big-barn', name: 'Big Barn', cost: 500, effect: 'Animal cap rises by six.', desc: 'Room for six more animals.' },
+  { id: 'silo', name: 'Silo', cost: 350, effect: 'Stores twice as much grain.', desc: 'A tall silo for the harvest.' },
+  { id: 'beehive-kit', name: 'Beehive Kit', cost: 200, effect: 'Honey yields double.', desc: 'Better hives, more honey.' },
+  { id: 'irrigation', name: 'Irrigation', cost: 400, effect: 'Plots need one less water.', desc: 'Channels water to every plot.' },
+  { id: 'fertilizer', name: 'Fertilizer', cost: 100, effect: 'Yields rise by one.', desc: 'Rich feed for every crop.' },
 ];
 
 export const FARM_RECIPES = [
-  { id: 'jam', name: 'Strawberry Jam', needs: { strawberry: 4 }, time: 1, price: 45, desc: 'Four kilos of berries, one jar of gold.' },
-  { id: 'cheese', name: 'Goat Cheese', needs: { milk: 6 }, time: 2, price: 70, desc: 'Aged two days, sharp and creamy.' },
-  { id: 'bread', name: 'Farm Bread', needs: { wheat: 0 }, time: 1, price: 18, desc: 'Baked at dawn. (Needs flour — see the mill.)' },
-  { id: 'honey-jar', name: 'Honey Jar', needs: { honey: 2 }, time: 1, price: 40, desc: 'Golden, raw, sells itself.' },
-  { id: 'salsa', name: 'Garden Salsa', needs: { tomato: 3, chilli: 2 }, time: 1, price: 32, desc: 'Fresh, hot, gone by noon.' },
-  { id: 'pumpkin-pie', name: 'Pumpkin Pie', needs: { pumpkin: 2 }, time: 1, price: 55, desc: 'Autumn on a plate.' },
-  { id: 'mango-chutney', name: 'Mango Chutney', needs: { mango: 3, chilli: 1 }, time: 1, price: 48, desc: 'Sweet heat in a jar.' },
-  { id: 'coffee-roast', name: 'Roasted Coffee', needs: { coffee: 2 }, time: 1, price: 60, desc: 'Roasted beans, café prices.' },
+  { id: 'bread', name: 'Bread', needs: { wheat: 0 }, price: 20, xp: 8, desc: 'A loaf of fresh bread.' },
+  { id: 'jam', name: 'Strawberry Jam', needs: { strawberry: 2 }, price: 40, xp: 10, desc: 'Sweet jam from spring berries.' },
+  { id: 'cheese', name: 'Cheese', needs: { milk: 3 }, price: 50, xp: 12, desc: 'Aged farm cheese.' },
+  { id: 'salad', name: 'Garden Salad', needs: { lettuce: 2, tomato: 1 }, price: 35, xp: 9, desc: 'Fresh leaves and tomato.' },
+  { id: 'pie', name: 'Pumpkin Pie', needs: { pumpkin: 2 }, price: 60, xp: 14, desc: 'A spiced autumn pie.' },
+  { id: 'honey-cake', name: 'Honey Cake', needs: { honey: 2, wheat: 1 }, price: 70, xp: 15, desc: 'A cake sweetened with honey.' },
+  { id: 'wool-sweater', name: 'Wool Sweater', needs: { wool: 3 }, price: 90, xp: 16, desc: 'A warm sweater from the flock.' },
+  { id: 'omelette', name: 'Omelette', needs: { egg: 2 }, price: 30, xp: 8, desc: 'A fluffy farm omelette.' },
 ];
 
 export const FARM_MARKETS = [
-  { id: 'stall', name: 'Farm Gate Stall', mult: 1.0, desc: 'Sell at your own gate. Slow, honest.' },
-  { id: 'market', name: 'Night Market', mult: 1.15, desc: 'Crowds and cash after dark.' },
-  { id: 'restaurant', name: 'Restaurant Supply', mult: 1.25, desc: 'Chefs buy in bulk, pay on time.' },
-  { id: 'coop', name: 'Farmers Co-op', mult: 1.1, desc: 'Steady prices, shared truck.' },
-  { id: 'city', name: 'City Market', mult: 1.3, desc: 'Best prices, needs the truck.' },
-  { id: 'export', name: 'Export Buyer', mult: 1.5, desc: 'Coffee and honey only, big orders.' },
+  { id: 'farm-stand', name: 'Farm Stand', mult: 1.0, desc: 'Sell at your own gate.' },
+  { id: 'city-market', name: 'City Market', mult: 1.2, desc: 'A busy market in the city.' },
+  { id: 'export', name: 'Export Buyer', mult: 1.5, desc: 'Buys coffee and honey only.' },
+  { id: 'farmers-market', name: 'Farmers Market', mult: 1.1, desc: 'Neighbours selling together.' },
+  { id: 'online', name: 'Online Shop', mult: 1.3, desc: 'Ship orders to the whole city.' },
+  { id: 'wholesale', name: 'Wholesale', mult: 0.8, desc: 'Bulk buyers, low prices.' },
 ];
 
 export const FARM_SEASONS = [
-  { id: 'spring', name: 'Spring', days: 30, waterBonus: 1, growth: 1.1, desc: 'Mild, wet, everything grows.' },
-  { id: 'summer', name: 'Summer', days: 30, waterBonus: 0.7, growth: 1.0, desc: 'Hot and dry. Water twice.' },
-  { id: 'autumn', name: 'Autumn', days: 30, waterBonus: 1, growth: 0.9, desc: 'Cool, pumpkins, harvest moons.' },
-  { id: 'winter', name: 'Winter', days: 30, waterBonus: 1.2, growth: 0.7, desc: 'Slow growth, quiet fields.' },
+  { id: 'spring', name: 'Spring', days: 30, desc: 'Mild days, new growth.' },
+  { id: 'summer', name: 'Summer', days: 30, desc: 'Hot days, fast growth.' },
+  { id: 'autumn', name: 'Autumn', days: 30, desc: 'Cool days, harvest time.' },
+  { id: 'winter', name: 'Winter', days: 30, desc: 'Cold days, the farm rests.' },
 ];
 
 export const FARM_RANKS = [
-  { level: 0, name: 'Garden Helper', xp: 0, perk: 'Two plots, basic crops.' },
-  { level: 1, name: 'Smallholder', xp: 150, perk: 'More plots, animals unlocked.' },
-  { level: 2, name: 'Market Farmer', xp: 400, perk: 'City market, better prices.' },
-  { level: 3, name: 'Bayview Farmer', xp: 800, perk: 'Greenhouse, export buyers.' },
-  { level: 4, name: 'Lord of the Land', xp: 1500, perk: 'The farm feeds the whole bay.' },
+  { level: 0, name: 'Sprout', xp: 0, perk: 'Work your first plot.' },
+  { level: 1, name: 'Gardener', xp: 150, perk: 'Buy more plots and animals.' },
+  { level: 2, name: 'Farmer', xp: 400, perk: 'Open the city market.' },
+  { level: 3, name: 'Harvest Master', xp: 800, perk: 'Export prices and big barns.' },
+  { level: 4, name: 'Farm Legend', xp: 1500, perk: 'The best farm in the valley.' },
 ];
 
 export const FARM_WEATHER = [
-  { id: 'sunny', name: 'Sunny', growth: 1.1, water: 1.2, desc: 'Good growing, thirsty soil.' },
-  { id: 'rain', name: 'Rain', growth: 1.0, water: 0, desc: 'Free watering from the sky.' },
-  { id: 'storm', name: 'Storm', growth: 0.8, water: 0, desc: 'Crops battered, fences tested.' },
-  { id: 'drought', name: 'Drought', growth: 0.7, water: 1.5, desc: 'Water everything, twice.' },
-  { id: 'fog', name: 'Fog', growth: 0.9, water: 0.8, desc: 'Cool and damp, slow and steady.' },
+  { id: 'sunny', name: 'Sunny', growth: 1, water: 0, desc: 'A bright sunny day.' },
+  { id: 'rainy', name: 'Rainy', growth: 1, water: 1, desc: 'Rain waters every plot.' },
+  { id: 'cloudy', name: 'Cloudy', growth: 1, water: 0, desc: 'A grey but mild day.' },
+  { id: 'storm', name: 'Storm', growth: 0, water: 0, desc: 'A storm that wrecks the fields.' },
+  { id: 'windy', name: 'Windy', growth: 1, water: -1, desc: 'Wind dries the soil out.' },
 ];
 
+export const FARM_PESTS = [
+  { id: 'aphids', name: 'Aphids', damage: 1, desc: 'Tiny bugs on the leaves.' },
+  { id: 'crows', name: 'Crows', damage: 2, desc: 'Crows stealing seeds.' },
+  { id: 'rabbits', name: 'Rabbits', damage: 2, desc: 'Rabbits nibbling the shoots.' },
+  { id: 'slugs', name: 'Slugs', damage: 1, desc: 'Slugs on the wet leaves.' },
+  { id: 'beetles', name: 'Beetles', damage: 3, desc: 'Beetles chewing the stems.' },
+];
+
+export const FARM_SEASONAL_TASKS = [
+  { id: 'spring-planting', name: 'Spring Planting', season: 'spring', xp: 40, desc: 'Plant five spring crops.' },
+  { id: 'summer-water', name: 'Summer Watering', season: 'summer', xp: 40, desc: 'Water every plot on a hot day.' },
+  { id: 'autumn-harvest', name: 'Autumn Harvest', season: 'autumn', xp: 50, desc: 'Harvest ten crops in autumn.' },
+  { id: 'winter-rest', name: 'Winter Rest', season: 'winter', xp: 30, desc: 'Tend the animals through winter.' },
+  { id: 'spring-festival-prep', name: 'Festival Prep', season: 'spring', xp: 35, desc: 'Grow flowers for the festival.' },
+  { id: 'summer-jam', name: 'Summer Jam', season: 'summer', xp: 45, desc: 'Make jam from summer berries.' },
+  { id: 'autumn-pie', name: 'Autumn Pie', season: 'autumn', xp: 45, desc: 'Bake a pumpkin pie.' },
+  { id: 'winter-market', name: 'Winter Market', season: 'winter', xp: 40, desc: 'Sell stored crops at the winter market.' },
+];
+
+export const FARM_MARKET_STALLS = [
+  { id: 'veg-stall', name: 'Veg Stall', cost: 200, mult: 1.1, desc: 'A stall for fresh vegetables.' },
+  { id: 'fruit-stall', name: 'Fruit Stall', cost: 250, mult: 1.15, desc: 'A stall for sweet fruit.' },
+  { id: 'baked-stall', name: 'Baked Stall', cost: 300, mult: 1.2, desc: 'A stall for bread and cakes.' },
+  { id: 'dairy-stall', name: 'Dairy Stall', cost: 300, mult: 1.2, desc: 'A stall for cheese and milk.' },
+  { id: 'flower-stall', name: 'Flower Stall', cost: 150, mult: 1.05, desc: 'A stall for fresh flowers.' },
+];
+
+export const FARM_ORCHARD = [
+  { id: 'apple', name: 'Apple Tree', cost: 150, yield: 5, price: 10, desc: 'Crisp apples every autumn.' },
+  { id: 'orange', name: 'Orange Tree', cost: 180, yield: 5, price: 12, desc: 'Sweet oranges in the sun.' },
+  { id: 'lemon', name: 'Lemon Tree', cost: 160, yield: 4, price: 11, desc: 'Sharp lemons for cooking.' },
+  { id: 'peach', name: 'Peach Tree', cost: 200, yield: 4, price: 14, desc: 'Soft peaches in summer.' },
+  { id: 'plum', name: 'Plum Tree', cost: 170, yield: 5, price: 12, desc: 'Dark plums for jam.' },
+];
+
+export const FARM_FESTIVALS = [
+  { id: 'harvest-fest', name: 'Harvest Festival', season: 'autumn', prize: 500, desc: 'The big autumn celebration.' },
+  { id: 'spring-fair', name: 'Spring Fair', season: 'spring', prize: 300, desc: 'A fair to welcome the spring.' },
+  { id: 'summer-fete', name: 'Summer Fete', season: 'summer', prize: 400, desc: 'Music and food in the sun.' },
+  { id: 'winter-market-fest', name: 'Winter Market', season: 'winter', prize: 350, desc: 'Lights and stalls in the cold.' },
+];
+
+export const FARM_NEIGHBOURS = [
+  { id: 'old-joe', name: 'Old Joe', rep: 0, desc: 'The neighbour who knows every trick.' },
+  { id: 'maria', name: 'Maria', rep: 0, desc: 'Bakes the best pies in the valley.' },
+  { id: 'tom', name: 'Tom', rep: 0, desc: 'Runs the tractor repair shop.' },
+  { id: 'lily', name: 'Lily', rep: 0, desc: 'Grows flowers by the river.' },
+  { id: 'sam', name: 'Sam', rep: 0, desc: 'Sells seeds at the market.' },
+];
+
+export const FARM_TIPS = [
+  { id: 'tip-water', name: 'Water Early', tip: 'Water in the morning, before the sun dries the soil.' },
+  { id: 'tip-season', name: 'Mind Seasons', tip: 'A summer crop planted in winter will not grow.' },
+  { id: 'tip-soil', name: 'Feed Soil', tip: 'Good soil grows more than good seed.' },
+  { id: 'tip-animals', name: 'Feed Animals', tip: 'A fed animal gives produce every day.' },
+  { id: 'tip-markets', name: 'Pick Markets', tip: 'Export pays more, but only for some crops.' },
+  { id: 'tip-craft', name: 'Craft Goods', tip: 'Goods sell for more than raw crops.' },
+  { id: 'tip-pests', name: 'Watch Pests', tip: 'Scarecrows keep the crows away.' },
+  { id: 'tip-greenhouse', name: 'Greenhouse', tip: 'A greenhouse grows anything, any season.' },
+];
+
+export const FARM_AWARDS = [
+  { id: 'first-harvest', name: 'First Harvest', need: 'harvests', goal: 1, desc: 'Harvest your first crop.' },
+  { id: 'ten-harvests', name: 'Ten Harvests', need: 'harvests', goal: 10, desc: 'Harvest ten crops.' },
+  { id: 'first-animal', name: 'First Animal', need: 'animalsBought', goal: 1, desc: 'Buy your first animal.' },
+  { id: 'first-good', name: 'First Good', need: 'goodsCrafted', goal: 1, desc: 'Craft your first good.' },
+  { id: 'rich-farmer', name: 'Rich Farmer', need: 'harvests', goal: 50, desc: 'Harvest fifty crops.' },
+];
+
+export const FARM_RECORDS = [
+  { id: 'harvests', name: 'Harvests', field: 'harvests', unit: 'crops', desc: 'All crops harvested.' },
+  { id: 'planted', name: 'Planted', field: 'planted', unit: 'crops', desc: 'All crops planted.' },
+  { id: 'earned', name: 'Total Earned', field: 'earned', unit: 'cash', desc: 'All cash earned from the farm.' },
+  { id: 'animals', name: 'Animals Bought', field: 'animalsBought', unit: 'animals', desc: 'All animals bought.' },
+  { id: 'goods', name: 'Goods Crafted', field: 'goodsCrafted', unit: 'goods', desc: 'All goods crafted.' },
+];
+
+export const FARM_SEASONAL_PRICES = [
+  { id: 'spring-strawberry', crop: 'strawberry', season: 'spring', price: 20, desc: 'Spring berries fetch a premium.' },
+  { id: 'summer-tomato', crop: 'tomato', season: 'summer', price: 16, desc: 'Summer tomatoes at their best.' },
+  { id: 'autumn-pumpkin', crop: 'pumpkin', season: 'autumn', price: 18, desc: 'Autumn pumpkins for the festival.' },
+  { id: 'winter-wheat', crop: 'wheat', season: 'winter', price: 7, desc: 'Winter wheat is scarce.' },
+  { id: 'spring-lettuce', crop: 'lettuce', season: 'spring', price: 7, desc: 'Spring leaves, fresh and dear.' },
+  { id: 'summer-coffee', crop: 'coffee', season: 'summer', price: 30, desc: 'Summer coffee at top price.' },
+  { id: 'autumn-cabbage', crop: 'cabbage', season: 'autumn', price: 10, desc: 'Autumn cabbage for the table.' },
+  { id: 'spring-carrot', crop: 'carrot', season: 'spring', price: 8, desc: 'Spring carrots, sweet and small.' },
+];
+
+export const FARM_QUICK_START = [
+  'Buy the farm and plant wheat in the meadow plot.',
+  'Water the plot every day until the crop is ready.',
+  'Harvest and sell at the farm stand.',
+  'Buy a chicken and feed it for daily eggs.',
+  'Craft jam from strawberries for extra cash.',
+  'Save for a greenhouse to grow in any season.',
+];
+
+export const FARM_META = {
+  system: 'farming',
+  version: '7b-B',
+  author: 'builder-B',
+  files: 1,
+  lines: 992,
+  features: ['crops', 'animals', 'plots', 'crafting', 'markets', 'seasons'],
+};
+
+const findById = (list, id) => list.find((x) => x.id === id);
+const clampNum = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const SEASON_ORDER = ['spring', 'summer', 'autumn', 'winter'];
+
 export function farmRankFor(xp) {
-  let rank = 0;
-  for (let i = 0; i < FARM_RANKS.length; i++) {
-    if (xp >= FARM_RANKS[i].xp) rank = i;
-  }
-  return rank;
+  let level = 0;
+  for (const r of FARM_RANKS) if (xp >= r.xp) level = r.level;
+  return level;
 }
 
-export function farmSeasonFor(day) {
-  const idx = Math.floor((day - 1) / 30) % 4;
-  return FARM_SEASONS[idx];
+export function farmSeasonFor(dayInSeason) {
+  return SEASON_ORDER[Math.floor((dayInSeason - 1) / 30) % 4];
 }
 
-export function farmCropPrice(crop, market, rank, upgrades) {
-  let price = crop.price;
-  const m = FARM_MARKETS.find((x) => x.id === market);
-  if (m) price *= m.mult;
-  price *= 1 + rank * 0.05;
-  if (upgrades.includes('truck') && market === 'city') price *= 1.2;
-  return Math.round(price * 10) / 10;
+export function farmCropPrice(cropId, marketId, seasonId) {
+  const crop = findById(FARM_CROPS, cropId);
+  if (!crop) return 0;
+  const market = findById(FARM_MARKETS, marketId);
+  const seasonal = FARM_SEASONAL_PRICES.find((p) => p.crop === cropId && p.season === seasonId);
+  const base = seasonal ? seasonal.price : crop.price;
+  return Math.round(base * (market ? market.mult : 1));
 }
 
-export function farmGrowTime(crop, season, weather, upgrades) {
+export function farmAnimalCap(upgrades) {
+  return 6 + (upgrades && upgrades.includes('big-barn') ? 6 : 0);
+}
+
+export function farmCanPlant(cropId, seasonId, plotId) {
+  const crop = findById(FARM_CROPS, cropId);
+  if (!crop) return false;
+  if (plotId === 'greenhouse') return true;
+  return crop.season === 'any' || crop.season === seasonId;
+}
+
+export function farmGrowthDays(cropId, upgrades) {
+  const crop = findById(FARM_CROPS, cropId);
+  if (!crop) return 0;
   let days = crop.growDays;
-  days /= season.growth;
-  days /= weather.growth;
-  if (upgrades.includes('compost')) days *= 0.8;
-  return Math.max(1, Math.round(days * 10) / 10);
+  if (upgrades && upgrades.includes('tractor')) days -= 1;
+  return Math.max(1, days);
 }
 
-export function farmAnimalDaily(animal, upgrades) {
-  let n = animal.producePerDay;
-  if (animal.id === 'bee' && upgrades.includes('beehive-plus')) n *= 2;
-  return n;
+export function farmYieldFor(cropId, upgrades) {
+  const crop = findById(FARM_CROPS, cropId);
+  if (!crop) return 0;
+  return crop.yield + (upgrades && upgrades.includes('fertilizer') ? 1 : 0);
 }
 
-export function createFarmingSystem(ctx) {
-  const c = ctx || {};
-  const rng = typeof c.rng === 'function' ? c.rng : Math.random;
-  const getCash = typeof c.getCash === 'function' ? c.getCash : () => 0;
-  const addCash = typeof c.addCash === 'function' ? c.addCash : () => {};
-  const addHeat = typeof c.addHeat === 'function' ? c.addHeat : () => {};
-  const log = typeof c.log === 'function' ? c.log : () => {};
-  const getDay = typeof c.getDay === 'function' ? c.getDay : () => 1;
-  const getHour = typeof c.getHour === 'function' ? c.getHour : () => 12;
-  const getPos = typeof c.getPlayerPos === 'function' ? c.getPlayerPos : () => ({ x: 0, z: 0 });
+export function farmProducePrice(produceId) {
+  if (produceId === 'egg') return 4;
+  if (produceId === 'milk') return 10;
+  if (produceId === 'wool') return 12;
+  if (produceId === 'honey') return 20;
+  if (produceId === 'truffle') return 40;
+  if (produceId === 'ride') return 15;
+  return 0;
+}
+
+export function farmMarketMult(marketId) {
+  const m = findById(FARM_MARKETS, marketId);
+  return m ? m.mult : 1;
+}
+
+export function farmExportAccepts(cropId) {
+  return cropId === 'coffee' || cropId === 'strawberry';
+}
+
+export function farmPestFor(day) {
+  return FARM_PESTS[((day % FARM_PESTS.length) + FARM_PESTS.length) % FARM_PESTS.length];
+}
+
+export function farmWeatherFor(day) {
+  return FARM_WEATHER[((day % FARM_WEATHER.length) + FARM_WEATHER.length) % FARM_WEATHER.length];
+}
+
+export function farmTipFor(day) {
+  return FARM_TIPS[((day % FARM_TIPS.length) + FARM_TIPS.length) % FARM_TIPS.length];
+}
+
+export function farmAwardProgress(awardId, state) {
+  const a = findById(FARM_AWARDS, awardId);
+  if (!a) return null;
+  const current = state[a.need] || 0;
+  return { id: a.id, name: a.name, current, goal: a.goal, done: current >= a.goal };
+}
+
+export function farmSeasonalPriceFor(cropId, seasonId) {
+  const p = FARM_SEASONAL_PRICES.find((x) => x.crop === cropId && x.season === seasonId);
+  return p ? p.price : null;
+}
+
+export function farmRecordFor(recordId, state) {
+  const rec = findById(FARM_RECORDS, recordId);
+  if (!rec) return null;
+  return { id: rec.id, name: rec.name, value: state[rec.field] || 0, unit: rec.unit };
+}
+
+export function farmAllRecords(state) {
+  return FARM_RECORDS.map((r) => ({ id: r.id, name: r.name, value: state[r.field] || 0, unit: r.unit, desc: r.desc }));
+}
+
+export function farmHarvestRate(harvests, planted) {
+  if (!planted) return 0;
+  return Math.round((harvests / planted) * 1000) / 10;
+}
+
+export function farmFarmerGrade(harvests, goodsCrafted, animalsBought) {
+  const score = harvests + goodsCrafted * 3 + animalsBought * 2;
+  if (score >= 100) return 'S';
+  if (score >= 60) return 'A';
+  if (score >= 30) return 'B';
+  if (score >= 10) return 'C';
+  return 'D';
+}
+
+export function farmSeasonalTask(seasonId) {
+  return FARM_SEASONAL_TASKS.filter((t) => t.season === seasonId);
+}
+
+export function farmFestivalFor(seasonId) {
+  return FARM_FESTIVALS.find((f) => f.season === seasonId) || null;
+}
+
+export function farmNeighbourRep(neighbourId, state) {
+  const n = findById(FARM_NEIGHBOURS, neighbourId);
+  if (!n) return 0;
+  return (state.neighbourRep && state.neighbourRep[neighbourId]) || 0;
+}
+
+export function farmQuickStart(step) {
+  if (step < 0 || step >= FARM_QUICK_START.length) return null;
+  return FARM_QUICK_START[step];
+}
+
+export function farmTotalValue(state) {
+  return state.plots.length * 300 + state.animals.length * 150 + state.upgrades.length * 200;
+}
+
+export function farmProgressPercent(state) {
+  const total = state.planted + state.harvests;
+  if (!total) return 0;
+  return Math.round((state.harvests / total) * 1000) / 10;
+}
+
+export function farmSummary(state) {
+  const rankName = FARM_RANKS[state.rank].name;
+  return `${rankName} Fern planted ${state.planted} crops, harvested ${state.harvests}, owns ${state.animals.length} animals and earned ${Math.round(state.earned)}.`;
+}
+
+export function farmNextGoal(state) {
+  if (!state.owned) return 'Buy the farm to hit your first goal.';
+  if (state.harvests < 1) return 'Harvest your first crop to hit your next goal.';
+  if (state.animals.length < 1) return 'Buy your first animal to hit your next goal.';
+  if (state.goodsCrafted < 1) return 'Craft your first good to hit your next goal.';
+  return 'Reach the top rank and become a Farm Legend.';
+}
+
+export function farmMeta() {
+  return { ...FARM_META, features: [...FARM_META.features] };
+}
+
+export function createFarmSystem(ctx) {
+  const {
+    rng = Math.random,
+    getDay = () => 1,
+    getHour = () => 12,
+    getCash = () => 0,
+    addCash = () => {},
+    addHeat = () => {},
+    getSpeed = () => 0,
+    log = () => {},
+    getPlayerPos = () => ({ x: 0, y: 0, z: 0 }),
+  } = ctx || {};
+
+  const storage = {};
+  for (const c of FARM_CROPS) storage[c.id] = 0;
+  const produce = { egg: 0, milk: 0, wool: 0, honey: 0, truffle: 0, ride: 0 };
 
   const state = {
-    xp: 0,
-    rank: 0,
-    owned: false,
-    plots: [],
-    animals: [],
-    storage: {},
-    produce: {},
-    earned: 0,
-    spent: 0,
-    upgrades: [],
-    hands: [],
-    cropsPlanted: 0,
-    cropsHarvested: 0,
-    cropsLost: 0,
-    waterUsed: 0,
-    feedBought: 0,
-    animalsBought: 0,
-    produceCollected: 0,
-    craftsMade: 0,
-    salesMade: 0,
-    bestHarvest: 0,
-    bestHarvestCrop: null,
-    bestSale: 0,
-    season: 'spring',
-    weather: 'sunny',
-    dayInSeason: 1,
-    lastDay: 1,
-    dailySales: 0,
-    dailyRevenue: 0,
-    crowsScared: 0,
-    escapes: 0,
-    perfectDays: 0,
-    marketDay: 0,
-    soilQuality: 50,
+    xp: 0, rank: 0, owned: false, plots: [], animals: [], storage, produce,
+    upgrades: [], goods: {}, season: 'spring', weather: 'sunny', dayInSeason: 1,
+    soilQuality: 50, hands: [], perfectDays: 0, marketDay: 1, planted: 0,
+    harvests: 0, animalsBought: 0, goodsCrafted: 0, earned: 0, spent: 0,
+    lastDay: 1, neighbourRep: {}, pestLevel: 0,
   };
-  for (const crop of FARM_CROPS) { state.storage[crop.id] = 0; }
-  for (const a of FARM_ANIMALS) { state.produce[a.produce] = state.produce[a.produce] || 0; }
-  state.produce.milk = state.produce.milk || 0;
-  state.produce.egg = state.produce.egg || 0;
-  state.produce.wool = state.produce.wool || 0;
-  state.produce.honey = state.produce.honey || 0;
-  state.produce.truffle = state.produce.truffle || 0;
-  state.produce.ride = state.produce.ride || 0;
 
-  function refreshRank() {
-    const r = farmRankFor(state.xp);
-    if (r > state.rank) {
-      state.rank = r;
-      log(`Farming rank up: ${FARM_RANKS[r].name} — ${FARM_RANKS[r].perk}`);
-    }
-  }
-
-  function gainXp(n) {
-    state.xp += n;
-    refreshRank();
-  }
-
-  function currentSeason() {
-    return farmSeasonFor(getDay());
-  }
-
-  function currentWeather() {
-    return FARM_WEATHER.find((w) => w.id === state.weather) || FARM_WEATHER[0];
-  }
-
-  function animalCap() {
-    return 6 + (state.upgrades.includes('barn') ? 6 : 0);
-  }
+  const refreshRank = () => {
+    const next = farmRankFor(state.xp);
+    if (next > state.rank) state.rank = next;
+  };
+  const gainXp = (n) => { state.xp += n; refreshRank(); };
+  const fail = (reason) => ({ ok: false, reason });
+  const plotByIndex = (i) => state.plots[i] || null;
 
   function buyFarm() {
-    if (state.owned) return { ok: false, reason: 'already-owned' };
-    const cost = 1500;
-    if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost };
-    addCash(-cost);
-    state.spent += cost;
+    if (state.owned) return fail('farm already owned');
+    if (getCash() < 1500) return fail('not enough cash');
+    addCash(-1500);
+    state.spent += 1500;
     state.owned = true;
-    state.plots.push({ id: 'plot-1', crop: null, water: 0, growth: 0, plantedDay: 0, ready: false });
-    log('You bought Bayview Farm — twelve acres, a barn, and a lot of weeds.');
-    return { ok: true, cost };
+    const first = FARM_PLOTS[0];
+    state.plots.push({ plotId: first.id, crop: null, growth: 0, water: 0, ready: false });
+    gainXp(50);
+    return { ok: true, plot: first.id };
   }
 
   function buyPlot(plotId) {
-    const def = FARM_PLOTS.find((p) => p.id === plotId);
-    if (!def) return { ok: false, reason: 'no-such-plot' };
-    if (!state.owned) return { ok: false, reason: 'not-owned' };
-    if (state.plots.find((p) => p.id === plotId)) return { ok: false, reason: 'already-owned' };
-    if (getCash() < def.cost) return { ok: false, reason: 'not-enough-cash', cost: def.cost };
+    const def = findById(FARM_PLOTS, plotId);
+    if (!def) return fail('unknown plot');
+    if (!state.owned) return fail('no farm yet');
+    if (state.plots.some((p) => p.plotId === plotId)) return fail('plot already owned');
+    if (getCash() < def.cost) return fail('not enough cash');
     addCash(-def.cost);
     state.spent += def.cost;
-    state.plots.push({ id: plotId, crop: null, water: 0, growth: 0, plantedDay: 0, ready: false });
+    state.plots.push({ plotId, crop: null, growth: 0, water: 0, ready: false });
     gainXp(20);
-    log(`Bought the ${def.name} for $${def.cost}.`);
-    return { ok: true, id: plotId };
+    return { ok: true, plot: plotId };
   }
 
-  function plantCrop(plotId, cropId) {
-    const plot = state.plots.find((p) => p.id === plotId);
-    if (!plot) return { ok: false, reason: 'no-such-plot' };
-    if (plot.crop) return { ok: false, reason: 'plot-busy', crop: plot.crop };
-    const crop = FARM_CROPS.find((x) => x.id === cropId);
-    if (!crop) return { ok: false, reason: 'no-such-crop' };
-    const season = currentSeason();
-    if (crop.season !== 'any' && crop.season !== season.id && plotId !== 'plot-7') {
-      return { ok: false, reason: 'wrong-season', season: season.id, need: crop.season };
-    }
+  function plantCrop(plotIndex, cropId) {
+    const plot = plotByIndex(plotIndex);
+    if (!plot) return fail('unknown plot');
+    const crop = findById(FARM_CROPS, cropId);
+    if (!crop) return fail('unknown crop');
+    if (plot.crop) return fail('plot already planted');
+    if (!farmCanPlant(cropId, state.season, plot.plotId)) return fail('wrong season for this crop');
     plot.crop = cropId;
-    plot.water = 0;
     plot.growth = 0;
-    plot.plantedDay = getDay();
+    plot.water = 0;
     plot.ready = false;
-    state.cropsPlanted += 1;
+    state.planted += 1;
     gainXp(3);
-    return { ok: true, plot: plotId, crop: cropId };
+    return { ok: true, plot: plotIndex, crop: cropId };
   }
 
-  function waterCrop(plotId) {
-    const plot = state.plots.find((p) => p.id === plotId);
-    if (!plot) return { ok: false, reason: 'no-such-plot' };
-    if (!plot.crop) return { ok: false, reason: 'plot-empty' };
-    if (plot.ready) return { ok: false, reason: 'already-ready' };
-    const crop = FARM_CROPS.find((x) => x.id === plot.crop);
-    const cost = state.upgrades.includes('well') ? 0 : 2;
-    if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost };
-    if (cost > 0) { addCash(-cost); state.spent += cost; }
+  function waterCrop(plotIndex) {
+    const plot = plotByIndex(plotIndex);
+    if (!plot) return fail('unknown plot');
+    if (!plot.crop) return fail('nothing planted');
+    const crop = findById(FARM_CROPS, plot.crop);
+    const need = Math.max(1, crop.water - (state.upgrades.includes('irrigation') ? 1 : 0));
+    if (plot.water >= need) return fail('already watered enough');
     plot.water += 1;
-    state.waterUsed += 1;
-    const weather = currentWeather();
-    const need = Math.max(1, Math.round(crop.water * weather.water));
-    if (plot.water >= need) {
-      plot.growth += 1;
-      plot.water = 0;
-    }
-    const season = currentSeason();
-    const total = farmGrowTime(crop, season, weather, state.upgrades);
-    if (plot.growth >= total) {
-      plot.ready = true;
-      log(`The ${crop.name} on ${plotId} is ready to harvest!`);
-    }
-    return { ok: true, plot: plotId, growth: plot.growth, ready: plot.ready };
+    return { ok: true, plot: plotIndex, water: plot.water, need };
   }
 
-  function harvestCrop(plotId) {
-    const plot = state.plots.find((p) => p.id === plotId);
-    if (!plot) return { ok: false, reason: 'no-such-plot' };
-    if (!plot.crop) return { ok: false, reason: 'plot-empty' };
-    if (!plot.ready) return { ok: false, reason: 'not-ready', growth: plot.growth };
-    const crop = FARM_CROPS.find((x) => x.id === plot.crop);
-    let qty = crop.yield;
-    if (state.soilQuality > 70) qty += 1;
-    if (rng() < 0.1) {
-      qty = Math.max(1, qty - 2);
-      log('Crows got some of the harvest. The scarecrow needs work.');
-    }
-    state.storage[crop.id] += qty;
-    state.cropsHarvested += 1;
-    if (qty > state.bestHarvest) { state.bestHarvest = qty; state.bestHarvestCrop = crop.id; }
+  function harvestCrop(plotIndex) {
+    const plot = plotByIndex(plotIndex);
+    if (!plot) return fail('unknown plot');
+    if (!plot.crop) return fail('nothing planted');
+    if (!plot.ready) return fail('not ready yet');
+    const crop = findById(FARM_CROPS, plot.crop);
+    const amount = farmYieldFor(plot.crop, state.upgrades);
+    state.storage[plot.crop] += amount;
+    state.harvests += 1;
     gainXp(crop.xp);
-    log(`Harvested ${qty}x ${crop.name} from ${plotId}.`);
+    const got = plot.crop;
     plot.crop = null;
-    plot.water = 0;
     plot.growth = 0;
+    plot.water = 0;
     plot.ready = false;
-    return { ok: true, crop: crop.id, qty };
+    return { ok: true, crop: got, amount };
   }
 
-  function clearPlot(plotId) {
-    const plot = state.plots.find((p) => p.id === plotId);
-    if (!plot) return { ok: false, reason: 'no-such-plot' };
-    if (!plot.crop) return { ok: false, reason: 'plot-empty' };
-    const crop = plot.crop;
+  function clearPlot(plotIndex) {
+    const plot = plotByIndex(plotIndex);
+    if (!plot) return fail('unknown plot');
     plot.crop = null;
-    plot.water = 0;
     plot.growth = 0;
+    plot.water = 0;
     plot.ready = false;
-    state.cropsLost += 1;
-    log(`Cleared the ${crop} from ${plotId}.`);
-    return { ok: true, crop };
+    return { ok: true, plot: plotIndex };
   }
 
   function buyAnimal(animalId) {
-    const a = FARM_ANIMALS.find((x) => x.id === animalId);
-    if (!a) return { ok: false, reason: 'no-such-animal' };
-    if (!state.owned) return { ok: false, reason: 'not-owned' };
-    if (state.animals.length >= animalCap()) return { ok: false, reason: 'barn-full', cap: animalCap() };
-    if (getCash() < a.cost) return { ok: false, reason: 'not-enough-cash', cost: a.cost };
-    addCash(-a.cost);
-    state.spent += a.cost;
-    state.animals.push({ id: animalId, fed: 0, happiness: 70, daysOld: 0 });
+    const def = findById(FARM_ANIMALS, animalId);
+    if (!def) return fail('unknown animal');
+    if (!state.owned) return fail('no farm yet');
+    if (state.animals.length >= farmAnimalCap(state.upgrades)) return fail('animal cap reached');
+    if (getCash() < def.cost) return fail('not enough cash');
+    addCash(-def.cost);
+    state.spent += def.cost;
+    state.animals.push({ id: animalId, fed: false, produceReady: false });
     state.animalsBought += 1;
     gainXp(15);
-    log(`Bought a ${a.name} for $${a.cost}.`);
-    return { ok: true, id: animalId };
+    return { ok: true, animal: animalId };
   }
 
-  function feedAnimal(idx) {
-    const animal = state.animals[idx];
-    if (!animal) return { ok: false, reason: 'no-such-animal' };
-    const def = FARM_ANIMALS.find((x) => x.id === animal.id);
-    const cost = def.feed;
-    if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost };
-    addCash(-cost);
-    state.spent += cost;
-    state.feedBought += cost;
-    animal.fed += 1;
-    animal.happiness = Math.min(100, animal.happiness + 10);
-    return { ok: true, animal: animal.id, happiness: animal.happiness };
+  function feedAnimal(index) {
+    const a = state.animals[index];
+    if (!a) return fail('unknown animal');
+    if (a.fed) return fail('already fed today');
+    a.fed = true;
+    a.produceReady = true;
+    return { ok: true, animal: a.id };
   }
 
-  function collectProduce() {
-    let collected = {};
-    for (const animal of state.animals) {
-      const def = FARM_ANIMALS.find((x) => x.id === animal.id);
-      if (animal.fed <= 0) continue;
-      if (animal.happiness < 40) continue;
-      const n = farmAnimalDaily(def, state.upgrades);
-      state.produce[def.produce] = (state.produce[def.produce] || 0) + n;
-      collected[def.produce] = (collected[def.produce] || 0) + n;
-      animal.fed = 0;
-    }
-    const total = Object.values(collected).reduce((a, b) => a + b, 0);
-    if (total === 0) return { ok: false, reason: 'nothing-to-collect' };
-    state.produceCollected += total;
-    gainXp(total * 2);
-    log(`Collected produce: ${JSON.stringify(collected)}.`);
-    return { ok: true, collected, total };
+  function collectProduce(index) {
+    const a = state.animals[index];
+    if (!a) return fail('unknown animal');
+    if (!a.produceReady) return fail('no produce ready');
+    const def = findById(FARM_ANIMALS, a.id);
+    let amount = 1;
+    if (def.produce === 'honey' && state.upgrades.includes('beehive-kit')) amount = 2;
+    state.produce[def.produce] += amount;
+    a.produceReady = false;
+    a.fed = false;
+    gainXp(4);
+    return { ok: true, produce: def.produce, amount };
   }
 
   function sellCrop(cropId, qty, marketId) {
-    const have = state.storage[cropId] || 0;
-    if (qty <= 0) return { ok: false, reason: 'bad-qty' };
-    if (have < qty) return { ok: false, reason: 'not-enough', have };
-    const crop = FARM_CROPS.find((x) => x.id === cropId);
-    if (!crop) return { ok: false, reason: 'no-such-crop' };
-    if (marketId === 'city' && !state.upgrades.includes('truck')) {
-      return { ok: false, reason: 'need-truck' };
-    }
-    if (marketId === 'export' && cropId !== 'coffee' && cropId !== 'strawberry') {
-      return { ok: false, reason: 'export-only-coffee' };
-    }
-    const unit = farmCropPrice(crop, marketId, state.rank, state.upgrades);
-    const total = Math.round(unit * qty * 10) / 10;
+    const crop = findById(FARM_CROPS, cropId);
+    if (!crop) return fail('unknown crop');
+    if (marketId === 'export' && !farmExportAccepts(cropId)) return fail('export does not buy this crop');
+    if ((state.storage[cropId] || 0) < qty) return fail('not enough in storage');
+    const price = farmCropPrice(cropId, marketId, state.season);
+    const total = price * qty;
     state.storage[cropId] -= qty;
-    state.salesMade += 1;
-    state.dailySales += qty;
-    state.dailyRevenue += total;
-    state.earned += total;
     addCash(total);
-    gainXp(qty);
-    if (total > state.bestSale) state.bestSale = total;
-    log(`Sold ${qty}x ${crop.name} at the ${marketId} market for $${total}.`);
-    return { ok: true, total, unit, qty };
+    state.earned += total;
+    gainXp(2);
+    return { ok: true, crop: cropId, qty, price, total };
   }
 
   function sellProduce(produceId, qty, marketId) {
-    const have = state.produce[produceId] || 0;
-    if (qty <= 0) return { ok: false, reason: 'bad-qty' };
-    if (have < qty) return { ok: false, reason: 'not-enough', have };
-    const animal = FARM_ANIMALS.find((x) => x.produce === produceId);
-    const unit = animal ? animal.producePrice * 1.2 : 5;
-    const total = Math.round(unit * qty * 10) / 10;
+    if (!(produceId in state.produce)) return fail('unknown produce');
+    if (state.produce[produceId] < qty) return fail('not enough produce');
+    const price = farmProducePrice(produceId);
+    const total = price * qty;
     state.produce[produceId] -= qty;
-    state.salesMade += 1;
-    state.dailyRevenue += total;
-    state.earned += total;
     addCash(total);
-    gainXp(qty);
-    log(`Sold ${qty}x ${produceId} for $${total}.`);
-    return { ok: true, total, unit, qty };
+    state.earned += total;
+    gainXp(2);
+    return { ok: true, produce: produceId, qty, price, total };
   }
 
   function craftGood(recipeId) {
-    const recipe = FARM_RECIPES.find((x) => x.id === recipeId);
-    if (!recipe) return { ok: false, reason: 'no-such-recipe' };
-    if (recipeId === 'bread') return { ok: false, reason: 'needs-flour' };
-    if (!state.upgrades.includes('kitchen')) return { ok: false, reason: 'need-kitchen' };
-    for (const [need, qty] of Object.entries(recipe.needs)) {
-      const have = (state.storage[need] || 0) + (state.produce[need] || 0);
-      if (have < qty) return { ok: false, reason: 'missing-ingredient', ingredient: need, have };
+    const recipe = findById(FARM_RECIPES, recipeId);
+    if (!recipe) return fail('unknown recipe');
+    if (recipeId === 'bread') return fail('needs-flour');
+    for (const [item, qty] of Object.entries(recipe.needs)) {
+      const have = (state.storage[item] || 0) + (state.produce[item] || 0);
+      if (have < qty) return fail('missing ingredients');
     }
-    for (const [need, qty] of Object.entries(recipe.needs)) {
+    for (const [item, qty] of Object.entries(recipe.needs)) {
       let left = qty;
-      const fromStorage = Math.min(state.storage[need] || 0, left);
-      state.storage[need] -= fromStorage;
+      const fromStorage = Math.min(state.storage[item] || 0, left);
+      state.storage[item] = (state.storage[item] || 0) - fromStorage;
       left -= fromStorage;
-      if (left > 0) state.produce[need] -= left;
+      if (left > 0) state.produce[item] = (state.produce[item] || 0) - left;
     }
-    state.craftsMade += 1;
-    state.earned += recipe.price;
-    addCash(recipe.price);
-    gainXp(20);
-    log(`Crafted ${recipe.name} — sold for $${recipe.price}.`);
-    return { ok: true, recipe: recipeId, price: recipe.price };
+    state.goods[recipeId] = (state.goods[recipeId] || 0) + 1;
+    state.goodsCrafted += 1;
+    gainXp(recipe.xp);
+    return { ok: true, good: recipeId, price: recipe.price };
   }
 
-  function buyUpgrade(id) {
-    const u = FARM_UPGRADES.find((x) => x.id === id);
-    if (!u) return { ok: false, reason: 'no-such-upgrade' };
-    if (state.upgrades.includes(id)) return { ok: false, reason: 'already-owned' };
-    if (!state.owned) return { ok: false, reason: 'not-owned' };
-    if (getCash() < u.cost) return { ok: false, reason: 'not-enough-cash', cost: u.cost };
-    addCash(-u.cost);
-    state.spent += u.cost;
-    state.upgrades.push(id);
+  function buyUpgrade(upgradeId) {
+    const up = findById(FARM_UPGRADES, upgradeId);
+    if (!up) return fail('unknown upgrade');
+    if (state.upgrades.includes(upgradeId)) return fail('already owned');
+    if (getCash() < up.cost) return fail('not enough cash');
+    addCash(-up.cost);
+    state.spent += up.cost;
+    state.upgrades.push(upgradeId);
     gainXp(20);
-    log(`Bought ${u.name} for $${u.cost}.`);
-    return { ok: true, id };
+    return { ok: true, upgrade: upgradeId };
   }
 
   function scareCrows() {
-    const plot = state.plots.find((p) => p.crop && !p.ready);
-    if (!plot) return { ok: false, reason: 'nothing-to-scare' };
-    state.crowsScared += 1;
-    gainXp(2);
-    return { ok: true, plot: plot.id };
+    if (getCash() < 20) return fail('not enough cash');
+    addCash(-20);
+    state.spent += 20;
+    state.pestLevel = Math.max(0, state.pestLevel - 1);
+    return { ok: true, cost: 20, pestLevel: state.pestLevel };
   }
 
   function improveSoil() {
-    const cost = 100;
-    if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost };
-    addCash(-cost);
-    state.spent += cost;
-    state.soilQuality = Math.min(100, state.soilQuality + 10);
-    log(`Compost worked into the soil. Quality now ${state.soilQuality}.`);
-    return { ok: true, soil: state.soilQuality };
+    if (getCash() < 30) return fail('not enough cash');
+    addCash(-30);
+    state.spent += 30;
+    state.soilQuality = clampNum(state.soilQuality + 5, 0, 100);
+    return { ok: true, cost: 30, soilQuality: state.soilQuality };
   }
 
   function tick(dt) {
-    if (!state.owned) return;
-    if (state.upgrades.includes('sprinkler')) {
-      for (const plot of state.plots) {
-        if (plot.crop && !plot.ready && rng() < dt * 0.05) {
-          plot.water += 1;
-        }
-      }
+    if (!dt || dt <= 0) return;
+    for (const plot of state.plots) {
+      if (plot.crop && !plot.ready) plot.growth += dt * 0.01;
     }
   }
 
   function tickDay(day) {
     if (day === state.lastDay) return;
     state.lastDay = day;
-    state.dailySales = 0;
-    state.dailyRevenue = 0;
-    state.dayInSeason = ((day - 1) % 30) + 1;
-    state.season = currentSeason().id;
-    const roll = rng();
-    if (roll < 0.35) state.weather = 'sunny';
-    else if (roll < 0.6) state.weather = 'rain';
-    else if (roll < 0.75) state.weather = 'fog';
-    else if (roll < 0.9) state.weather = 'drought';
-    else state.weather = 'storm';
-    const weather = currentWeather();
-    if (weather.id === 'rain') {
-      for (const plot of state.plots) {
-        if (plot.crop && !plot.ready) plot.water += 1;
-      }
-      log('Rain overnight — the fields drank for free.');
+    state.dayInSeason += 1;
+    if (state.dayInSeason > 30) {
+      state.dayInSeason = 1;
+      const idx = SEASON_ORDER.indexOf(state.season);
+      state.season = SEASON_ORDER[(idx + 1) % 4];
+      log(`A new season begins: ${state.season}.`);
     }
-    if (weather.id === 'storm') {
+    const roll = rng();
+    state.weather = roll < 0.5 ? 'sunny' : roll < 0.7 ? 'cloudy' : roll < 0.85 ? 'rainy' : roll < 0.95 ? 'windy' : 'storm';
+    const w = findById(FARM_WEATHER, state.weather);
+    if (state.weather === 'storm') {
       for (const plot of state.plots) {
         if (plot.crop && rng() < 0.2) {
           plot.crop = null;
-          plot.water = 0;
           plot.growth = 0;
+          plot.water = 0;
           plot.ready = false;
-          state.cropsLost += 1;
+          log('A storm wrecked a plot.');
         }
       }
-      log('Storm damage — some crops did not survive the night.');
     }
-    if (weather.id === 'drought') {
-      log('Drought warning — water everything twice today.');
-    }
-    const crowChance = state.upgrades.includes('scarecrow') ? 0.05 : 0.12;
     for (const plot of state.plots) {
-      if (plot.crop && !plot.ready && rng() < crowChance) {
-        plot.growth = Math.max(0, plot.growth - 1);
-        log(`Crows picked at the ${plot.crop} on ${plot.id}.`);
+      if (!plot.crop) continue;
+      if (state.weather === 'rainy') plot.water += 1;
+      if (state.weather === 'windy') plot.water = Math.max(0, plot.water - 1);
+      if (state.upgrades.includes('sprinkler')) plot.water += 1;
+      const crop = findById(FARM_CROPS, plot.crop);
+      const need = Math.max(1, crop.water - (state.upgrades.includes('irrigation') ? 1 : 0));
+      if (plot.water >= need) {
+        plot.growth += w.growth;
+        plot.water -= need;
       }
+      if (plot.growth >= farmGrowthDays(plot.crop, state.upgrades)) plot.ready = true;
     }
-    for (const animal of state.animals) {
-      animal.daysOld += 1;
-      animal.happiness = Math.max(20, animal.happiness - 5);
-      if (animal.fed <= 0 && rng() < 0.05 && !state.upgrades.includes('fence')) {
-        state.escapes += 1;
-        log(`A ${animal.id} escaped the fence! It came back by dinner. Mostly.`);
-      }
+    for (const a of state.animals) a.fed = false;
+    if (rng() < 0.1) {
+      state.pestLevel += 1;
+      log(`Pests spotted: ${farmPestFor(day).name}.`);
     }
-    if (state.dayInSeason === 1) {
-      log(`New season: ${currentSeason().name} — ${currentSeason().desc}`);
-    }
-    state.marketDay += 1;
   }
 
   function serialize() {
-    return JSON.parse(JSON.stringify({
-      xp: state.xp, rank: state.rank, owned: state.owned,
-      plots: state.plots, animals: state.animals,
-      storage: state.storage, produce: state.produce,
-      earned: state.earned, spent: state.spent,
-      upgrades: state.upgrades, hands: state.hands,
-      cropsPlanted: state.cropsPlanted,
-      cropsHarvested: state.cropsHarvested,
-      cropsLost: state.cropsLost, waterUsed: state.waterUsed,
-      feedBought: state.feedBought,
-      animalsBought: state.animalsBought,
-      produceCollected: state.produceCollected,
-      craftsMade: state.craftsMade, salesMade: state.salesMade,
-      bestHarvest: state.bestHarvest,
-      bestHarvestCrop: state.bestHarvestCrop,
-      bestSale: state.bestSale, season: state.season,
-      weather: state.weather, dayInSeason: state.dayInSeason,
-      lastDay: state.lastDay, dailySales: state.dailySales,
-      dailyRevenue: state.dailyRevenue,
-      crowsScared: state.crowsScared, escapes: state.escapes,
-      perfectDays: state.perfectDays, marketDay: state.marketDay,
-      soilQuality: state.soilQuality,
-    }));
+    return JSON.parse(JSON.stringify(state));
   }
 
-  function deserialize(d) {
-    if (!d || typeof d !== 'object') return;
-    for (const k of Object.keys(state)) {
-      if (d[k] !== undefined) state[k] = d[k];
+  function deserialize(saved) {
+    if (!saved || typeof saved !== 'object') return;
+    for (const key of Object.keys(saved)) {
+      if (key in state) state[key] = saved[key];
     }
     refreshRank();
   }
 
   function stats() {
     return {
-      rank: FARM_RANKS[state.rank].name,
-      xp: state.xp,
-      owned: state.owned,
-      plots: state.plots.length,
-      planted: state.plots.filter((p) => p.crop).length,
-      ready: state.plots.filter((p) => p.ready).length,
-      animals: state.animals.length,
-      animalCap: animalCap(),
-      cropsPlanted: state.cropsPlanted,
-      cropsHarvested: state.cropsHarvested,
-      cropsLost: state.cropsLost,
-      waterUsed: state.waterUsed,
-      produceCollected: state.produceCollected,
-      craftsMade: state.craftsMade,
-      salesMade: state.salesMade,
-      earned: Math.round(state.earned),
-      spent: state.spent,
-      upgrades: state.upgrades.length,
-      bestHarvest: state.bestHarvest,
-      bestHarvestCrop: state.bestHarvestCrop,
-      bestSale: Math.round(state.bestSale),
-      season: state.season,
-      weather: state.weather,
-      dayInSeason: state.dayInSeason,
-      soilQuality: state.soilQuality,
-      crowsScared: state.crowsScared,
-      escapes: state.escapes,
-      dailyRevenue: Math.round(state.dailyRevenue),
+      rank: FARM_RANKS[state.rank].name, xp: state.xp, owned: state.owned,
+      plots: state.plots.length, animals: state.animals.length,
+      planted: state.planted, harvests: state.harvests,
+      goodsCrafted: state.goodsCrafted, upgrades: state.upgrades.length,
+      earned: Math.round(state.earned), spent: state.spent,
+      season: state.season, weather: state.weather, dayInSeason: state.dayInSeason,
+      soilQuality: state.soilQuality, pestLevel: state.pestLevel,
+      animalCap: farmAnimalCap(state.upgrades),
     };
   }
 
   function hudLine() {
-    if (!state.owned) return '';
+    if (!state.owned) return 'Buy the farm to start farming.';
     const ready = state.plots.filter((p) => p.ready).length;
-    const planted = state.plots.filter((p) => p.crop).length;
-    if (ready > 0) return `Farm: ${ready} crop(s) ready to harvest! (${state.season}, ${state.weather})`;
-    if (planted > 0) return `Farm: ${planted} crop(s) growing — ${state.season}, ${state.weather}`;
-    return `Farm: ${state.animals.length} animals, ${state.plots.length} plots — ${state.season}`;
+    if (ready > 0) return `${ready} plot${ready > 1 ? 's' : ''} ready to harvest.`;
+    const growing = state.plots.filter((p) => p.crop).length;
+    if (growing > 0) return `${growing} crop${growing > 1 ? 's' : ''} growing in ${state.season}.`;
+    return '';
   }
 
   function interact() {
-    const pos = getPos();
-    const nearFarm = Math.hypot(pos.x + 200, pos.z - 200) < 40;
-    if (!nearFarm) return false;
-    if (!state.owned) { buyFarm(); return true; }
-    const ready = state.plots.find((p) => p.ready);
-    if (ready) { harvestCrop(ready.id); return true; }
-    const thirsty = state.plots.find((p) => p.crop && !p.ready);
-    if (thirsty) { waterCrop(thirsty.id); return true; }
+    const pos = getPlayerPos() || {};
+    const dx = (pos.x || 0) - (-200);
+    const dz = (pos.z || 0) - (-200);
+    if (Math.sqrt(dx * dx + dz * dz) > 40) return false;
+    const ready = state.plots.findIndex((p) => p.ready);
+    if (ready >= 0) { harvestCrop(ready); return true; }
     return false;
   }
 
   function plotList() {
-    return state.plots.map((p) => ({
-      id: p.id, crop: p.crop, water: p.water, growth: p.growth, ready: p.ready,
+    return state.plots.map((p, i) => ({
+      index: i, plot: p.plotId, crop: p.crop, growth: Math.round(p.growth * 10) / 10,
+      water: p.water, ready: p.ready,
     }));
   }
 
   function storageList() {
-    return FARM_CROPS.map((c) => ({
-      id: c.id, name: c.name, stored: state.storage[c.id] || 0, price: c.price,
-    })).filter((x) => x.stored > 0);
+    return FARM_CROPS.filter((c) => (state.storage[c.id] || 0) > 0)
+      .map((c) => ({ crop: c.id, name: c.name, qty: state.storage[c.id] }));
+  }
+
+  function animalCap() {
+    return farmAnimalCap(state.upgrades);
+  }
+
+  function currentSeason() {
+    return state.season;
+  }
+
+  function currentWeather() {
+    return state.weather;
   }
 
   return {
-    state, buyFarm, buyPlot, plantCrop, waterCrop, harvestCrop,
-    clearPlot, buyAnimal, feedAnimal, collectProduce, sellCrop,
-    sellProduce, craftGood, buyUpgrade, scareCrows, improveSoil,
-    tick, tickDay, serialize, deserialize, stats, hudLine, interact,
-    plotList, storageList, animalCap, currentSeason, currentWeather,
+    state, buyFarm, buyPlot, plantCrop, waterCrop, harvestCrop, clearPlot,
+    buyAnimal, feedAnimal, collectProduce, sellCrop, sellProduce, craftGood,
+    buyUpgrade, scareCrows, improveSoil, tick, tickDay, serialize, deserialize,
+    stats, hudLine, interact, plotList, storageList, animalCap, currentSeason,
+    currentWeather,
   };
 }
 
-export const FARM_PESTS = [
-  { id: 'aphids', name: 'Aphids', damage: 1, cure: 'Spray soap water.', desc: 'Tiny green pests on the leaves.' },
-  { id: 'slugs', name: 'Slugs', damage: 1, cure: 'Beer traps at dusk.', desc: 'Slow, slimy, hungry.' },
-  { id: 'mildew', name: 'Powdery Mildew', damage: 2, cure: 'More air, less water.', desc: 'White dust on the leaves.' },
-  { id: 'locusts', name: 'Locusts', damage: 3, cure: 'Scare them off fast.', desc: 'A cloud with teeth.' },
-  { id: 'rats', name: 'Rats', damage: 2, cure: 'A good barn cat.', desc: 'They eat the stored grain.' },
-];
-
-export function farmPestFor(day) {
-  return FARM_PESTS[day % FARM_PESTS.length];
-}
-
-export function farmHarvestValue(cropId, qty, marketId, rank, upgrades) {
-  const crop = FARM_CROPS.find((x) => x.id === cropId);
-  if (!crop) return 0;
-  return Math.round(farmCropPrice(crop, marketId, rank, upgrades) * qty * 10) / 10;
-}
-
-export function farmSeasonCropBonus(crop, seasonId) {
-  if (crop.season === seasonId) return 1.2;
-  if (crop.season === 'any') return 1.0;
-  return 0.8;
-}
-
-export function farmAnimalHappiness(daysOld, fed, escapes) {
-  let h = 70 + fed * 5 - escapes * 10 - Math.floor(daysOld / 30);
-  return Math.max(0, Math.min(100, h));
-}
-
-export const FARM_SEASONAL_TASKS = [
-  { id: 'spring-plant', name: 'Spring Planting', season: 'spring', xp: 30, pay: 100, desc: 'Get everything in the ground before the rains end.' },
-  { id: 'summer-water', name: 'Summer Watering', season: 'summer', xp: 25, pay: 80, desc: 'Water twice a day or lose the crop.' },
-  { id: 'autumn-harvest', name: 'Autumn Harvest', season: 'autumn', xp: 40, pay: 150, desc: 'Bring it all in before the first frost.' },
-  { id: 'winter-repair', name: 'Winter Repairs', season: 'winter', xp: 20, pay: 60, desc: 'Fix fences, mend the barn, sharpen the tools.' },
-  { id: 'market-prep', name: 'Market Prep', season: 'any', xp: 15, pay: 50, desc: 'Wash, weigh, and pack for the morning market.' },
-  { id: 'orchard-prune', name: 'Orchard Pruning', season: 'winter', xp: 25, pay: 90, desc: 'Cut back the trees for a bigger spring.' },
-  { id: 'soil-rest', name: 'Soil Rest', season: 'winter', xp: 15, pay: 40, desc: 'Cover crops and compost for next year.' },
-  { id: 'festival-prep', name: 'Harvest Festival', season: 'autumn', xp: 35, pay: 120, desc: 'The farm hosts the whole village.' },
-];
-
-export const FARM_MARKET_STALLS = [
-  { id: 'veg-stall', name: 'Veg Stall', cost: 100, mult: 1.1, desc: 'Your own stall at the morning market.' },
-  { id: 'fruit-stall', name: 'Fruit Stall', cost: 150, mult: 1.15, desc: 'Fruit sells itself when it smells this good.' },
-  { id: 'honey-stall', name: 'Honey Stall', cost: 120, mult: 1.2, desc: 'Honey, wax, and a lot of questions.' },
-  { id: 'flower-stall', name: 'Flower Stall', cost: 80, mult: 1.1, desc: 'Cut flowers for the city crowd.' },
-  { id: 'egg-stall', name: 'Egg Stall', cost: 60, mult: 1.05, desc: 'Fresh eggs, every morning.' },
-];
-
-export const FARM_ORCHARD = [
-  { id: 'mango-tree', name: 'Mango Tree', cost: 200, yield: 8, days: 5, desc: 'A tree that pays every summer.' },
-  { id: 'lime-tree', name: 'Lime Tree', cost: 120, yield: 10, days: 4, desc: 'Limes for the restaurants.' },
-  { id: 'banana', name: 'Banana Grove', cost: 180, yield: 12, days: 4, desc: 'Fast, heavy, always hungry for water.' },
-  { id: 'coconut', name: 'Coconut Palm', cost: 250, yield: 6, days: 6, desc: 'Slow, tall, and very profitable.' },
-  { id: 'papaya', name: 'Papaya Tree', cost: 150, yield: 9, days: 3, desc: 'Quick fruit, sweet flesh.' },
-];
-
-export function farmTaskFor(seasonId) {
-  return FARM_SEASONAL_TASKS.filter((t) => t.season === seasonId || t.season === 'any');
-}
-
-export function farmStallMult(stallId) {
-  const s = FARM_MARKET_STALLS.find((x) => x.id === stallId);
-  return s ? s.mult : 1;
-}
-
-export function farmOrchardYield(treeId, daysGrown) {
-  const t = FARM_ORCHARD.find((x) => x.id === treeId);
-  if (!t) return 0;
-  if (daysGrown < t.days) return 0;
-  return t.yield;
-}
-
 export function createFarmTasks(system) {
-  const done = [];
-  let tasksPay = 0;
+  const st = system.state;
+  const claimed = [];
   const stalls = [];
   const trees = [];
+  let tasksDone = 0;
+  let tasksEarned = 0;
+  let stallsBought = 0;
+  let treesPlanted = 0;
+
+  const fail = (reason) => ({ ok: false, reason });
 
   function doTask(taskId) {
-    const t = FARM_SEASONAL_TASKS.find((x) => x.id === taskId);
-    if (!t) return { ok: false, reason: 'no-such-task' };
-    if (done.includes(taskId)) return { ok: false, reason: 'already-done' };
-    if (t.season !== 'any' && t.season !== system.state.season) {
-      return { ok: false, reason: 'wrong-season', season: system.state.season, need: t.season };
-    }
-    done.push(taskId);
-    tasksPay += t.pay;
-    return { ok: true, task: taskId, xp: t.xp, pay: t.pay };
+    const task = findById(FARM_SEASONAL_TASKS, taskId);
+    if (!task) return fail('unknown task');
+    if (claimed.includes(taskId)) return fail('task already done');
+    if (task.season !== st.season) return fail('wrong season for this task');
+    claimed.push(taskId);
+    tasksDone += 1;
+    tasksEarned += task.xp;
+    return { ok: true, task: taskId, xp: task.xp };
   }
 
   function buyStall(stallId) {
-    const s = FARM_MARKET_STALLS.find((x) => x.id === stallId);
-    if (!s) return { ok: false, reason: 'no-such-stall' };
-    if (stalls.includes(stallId)) return { ok: false, reason: 'already-owned' };
+    const stall = findById(FARM_MARKET_STALLS, stallId);
+    if (!stall) return fail('unknown stall');
+    if (stalls.includes(stallId)) return fail('stall already owned');
     stalls.push(stallId);
-    return { ok: true, stall: stallId, mult: s.mult };
+    stallsBought += 1;
+    return { ok: true, stall: stallId, cost: stall.cost };
   }
 
   function plantTree(treeId) {
-    const t = FARM_ORCHARD.find((x) => x.id === treeId);
-    if (!t) return { ok: false, reason: 'no-such-tree' };
-    trees.push({ id: treeId, plantedDay: system.state.lastDay });
-    return { ok: true, tree: treeId, cost: t.cost };
+    const tree = findById(FARM_ORCHARD, treeId);
+    if (!tree) return fail('unknown tree');
+    if (trees.some((t) => t.id === treeId)) return fail('tree already planted');
+    trees.push({ id: treeId, growth: 0, ready: false });
+    treesPlanted += 1;
+    return { ok: true, tree: treeId, cost: tree.cost };
   }
 
-  function harvestTree(idx) {
-    const tree = trees[idx];
-    if (!tree) return { ok: false, reason: 'no-such-tree' };
-    const def = FARM_ORCHARD.find((x) => x.id === tree.id);
-    const grown = system.state.lastDay - tree.plantedDay;
-    const qty = farmOrchardYield(tree.id, grown);
-    if (qty <= 0) return { ok: false, reason: 'not-ready', grown, need: def.days };
-    trees.splice(idx, 1);
-    return { ok: true, tree: tree.id, qty };
+  function harvestTree(treeId) {
+    const tree = trees.find((t) => t.id === treeId);
+    if (!tree) return fail('tree not planted');
+    if (!tree.ready) return fail('tree not ready');
+    const def = findById(FARM_ORCHARD, treeId);
+    tree.ready = false;
+    tree.growth = 0;
+    const pay = def.yield * def.price;
+    tasksEarned += pay;
+    return { ok: true, tree: treeId, yield: def.yield, pay };
   }
 
   function taskRecord() {
-    return { done: [...done], tasksPay, stalls: [...stalls], trees: trees.length };
+    return { tasksDone, tasksEarned, stallsBought, treesPlanted, claimed: [...claimed], stalls: [...stalls] };
   }
 
   return { doTask, buyStall, plantTree, harvestTree, taskRecord };
 }
 
-export const FARM_FESTIVALS = [
-  { id: 'harvest', name: 'Harvest Festival', season: 'autumn', prize: 300, desc: 'Biggest pumpkin wins the ribbon.' },
-  { id: 'flower', name: 'Flower Show', season: 'spring', prize: 200, desc: 'The prettiest plot takes the prize.' },
-  { id: 'honey', name: 'Honey Fair', season: 'summer', prize: 250, desc: 'Sweetest honey, judged blind.' },
-  { id: 'cook', name: 'Cook-Off', season: 'winter', prize: 200, desc: 'Best dish from your own produce.' },
-];
-
-export const FARM_NEIGHBOURS = [
-  { id: 'old-joe', name: 'Old Joe', trade: 'tools', desc: 'Lends tools, tells stories, never hurries.' },
-  { id: 'maria', name: 'Maria', trade: 'seeds', desc: 'Rare seeds for a fair price.' },
-  { id: 'sam', name: 'Sam the Vet', trade: 'animals', desc: 'Healthy animals, honest prices.' },
-  { id: 'lily', name: 'Lily', trade: 'flowers', desc: 'Buys your flowers for the city shops.' },
-  { id: 'pete', name: 'Pete the Miller', trade: 'flour', desc: 'Turns grain into flour, cheap.' },
-];
-
-export function farmFestivalPrize(festivalId, place) {
-  const f = FARM_FESTIVALS.find((x) => x.id === festivalId);
-  if (!f) return 0;
-  return place === 1 ? f.prize : place === 2 ? Math.round(f.prize / 2) : Math.round(f.prize / 4);
-}
-
-export function farmNeighbourTrade(neighbourId) {
-  const n = FARM_NEIGHBOURS.find((x) => x.id === neighbourId);
-  return n ? n.trade : null;
-}
-
-export function farmSoilHealth(soilQuality, compost, waterUsed) {
-  let score = soilQuality;
-  score += compost * 5;
-  score -= Math.max(0, waterUsed - 100) / 10;
-  return Math.max(0, Math.min(100, Math.round(score)));
-}
-
-export function farmYearSummary(seasons) {
-  let total = 0;
-  for (const s of seasons) total += s.revenue || 0;
-  return { seasons: seasons.length, totalRevenue: Math.round(total) };
-}
-
-export const FARM_TIPS = [
-  { id: 'water-morning', name: 'Water Mornings', text: 'Water at dawn. The sun steals the rest.' },
-  { id: 'season-right', name: 'Right Season', text: 'Plant in season or plant twice.' },
-  { id: 'compost-always', name: 'Compost Always', text: 'Good soil is the whole farm.' },
-  { id: 'crows-watch', name: 'Watch the Crows', text: 'Scarecrows work until they do not.' },
-  { id: 'sell-fresh', name: 'Sell Fresh', text: 'Fresh produce sells. Wilted produce rots.' },
-  { id: 'jam-value', name: 'Jam Value', text: 'Jam sells for three times the berries.' },
-  { id: 'animals-happy', name: 'Happy Animals', text: 'Fed animals produce. Hungry ones escape.' },
-  { id: 'rain-free', name: 'Rain Is Free', text: 'Let the rain water for you.' },
-];
-
-export const FARM_AWARDS = [
-  { id: 'first-harvest', name: 'First Harvest', need: 'cropsHarvested', goal: 1, desc: 'Harvest your first crop.' },
-  { id: 'hundred-crops', name: 'Hundred Crops', need: 'cropsHarvested', goal: 100, desc: 'Harvest 100 crops.' },
-  { id: 'big-barn', name: 'Big Barn', need: 'animalsBought', goal: 10, desc: 'Buy 10 animals.' },
-  { id: 'market-king', name: 'Market King', need: 'salesMade', goal: 50, desc: 'Make 50 sales.' },
-  { id: 'master-chef', name: 'Master Chef', need: 'craftsMade', goal: 20, desc: 'Craft 20 farm goods.' },
-];
-
-export function farmTipFor(day) {
-  return FARM_TIPS[day % FARM_TIPS.length];
-}
-
-export function farmAwardProgress(awardId, state) {
-  const a = FARM_AWARDS.find((x) => x.id === awardId);
-  if (!a) return null;
-  const have = state[a.need] || 0;
-  return { id: a.id, name: a.name, have, goal: a.goal, done: have >= a.goal };
-}
-
-export function farmWaterNeed(cropId, weatherId) {
-  const crop = FARM_CROPS.find((x) => x.id === cropId);
-  const weather = FARM_WEATHER.find((x) => x.id === weatherId);
-  if (!crop || !weather) return 0;
-  return Math.max(1, Math.round(crop.water * weather.water));
-}
-
-export function farmFeedCost(animals) {
-  let total = 0;
-  for (const animal of animals) {
-    const def = FARM_ANIMALS.find((x) => x.id === animal.id);
-    if (def) total += def.feed;
-  }
-  return total;
-}
-
-export function farmStorageValue(storage) {
-  let total = 0;
-  for (const [cropId, qty] of Object.entries(storage)) {
-    const crop = FARM_CROPS.find((x) => x.id === cropId);
-    if (crop) total += crop.price * qty;
-  }
-  return Math.round(total * 10) / 10;
-}
-
-export function farmBestPlot(plots) {
-  let best = null;
-  let bestGrowth = -1;
-  for (const plot of plots) {
-    if (plot.crop && plot.growth > bestGrowth) { bestGrowth = plot.growth; best = plot.id; }
-  }
-  return best ? { plot: best, growth: bestGrowth } : null;
-}
-
-export const FARM_RECORDS = [
-  { id: 'most-harvested', name: 'Most Harvested', stat: 'cropsHarvested', unit: 'crops', desc: 'Most crops harvested.' },
-  { id: 'best-harvest', name: 'Best Harvest', stat: 'bestHarvest', unit: 'units', desc: 'Biggest single harvest.' },
-  { id: 'most-sales', name: 'Most Sales', stat: 'salesMade', unit: 'sales', desc: 'Most sales made.' },
-  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$', desc: 'Most money earned.' },
-  { id: 'most-crafts', name: 'Most Crafts', stat: 'craftsMade', unit: 'goods', desc: 'Most farm goods crafted.' },
-];
-
-export function farmRecordFor(recordId, state) {
-  const r = FARM_RECORDS.find((x) => x.id === recordId);
-  if (!r) return null;
-  return { id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit };
-}
-
-export function farmAllRecords(state) {
-  return FARM_RECORDS.map((r) => ({
-    id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit, desc: r.desc,
-  }));
-}
-
-export function farmYieldPerPlot(harvested, plots) {
-  if (plots === 0) return 0;
-  return Math.round((harvested / plots) * 10) / 10;
-}
-
-export function farmLossRate(lost, planted) {
-  if (planted === 0) return 0;
-  return Math.round((lost / planted) * 100);
-}
-
-export function farmFarmerGrade(harvested, planted, earned) {
-  const loss = farmLossRate(0, planted);
-  void loss;
-  if (harvested >= 100 && earned >= 5000) return 'S';
-  if (harvested >= 50) return 'A';
-  if (harvested >= 25) return 'B';
-  if (harvested >= 10) return 'C';
-  return 'D';
-}
-
-export const FARM_SEASONAL_PRICES = [
-  { season: 'spring', crop: 'strawberry', mult: 1.3 },
-  { season: 'summer', crop: 'tomato', mult: 1.25 },
-  { season: 'summer', crop: 'mango', mult: 1.2 },
-  { season: 'autumn', crop: 'pumpkin', mult: 1.4 },
-  { season: 'autumn', crop: 'cabbage', mult: 1.15 },
-  { season: 'winter', crop: 'coffee', mult: 1.2 },
-  { season: 'winter', crop: 'potato', mult: 1.1 },
-  { season: 'spring', crop: 'lettuce', mult: 1.2 },
-];
-
-export function farmSeasonalPriceMult(seasonId, cropId) {
-  const row = FARM_SEASONAL_PRICES.find((x) => x.season === seasonId && x.crop === cropId);
-  return row ? row.mult : 1;
-}
-
-export function farmBestSeasonFor(cropId) {
-  let best = null;
-  let bestMult = 0;
-  for (const row of FARM_SEASONAL_PRICES) {
-    if (row.crop === cropId && row.mult > bestMult) { bestMult = row.mult; best = row.season; }
-  }
-  return best ? { season: best, mult: bestMult } : null;
-}
-
-export function farmSeasonRevenue(sales, seasonId) {
-  let total = 0;
-  for (const sale of sales) {
-    if (sale.season === seasonId) total += sale.total || 0;
-  }
-  return Math.round(total);
-}
-
-export const FARM_QUICK_START = [
-  'Plant radishes first — cash in one day.',
-  'Water at dawn, before the sun steals it.',
-  'Plant in season or plant twice.',
-  'Feed animals daily. Hungry animals escape.',
-  'Turn berries into jam. It pays triple.',
-  'Sell at the city market once you own the truck.',
-];
-
-export function farmQuickStart(step) {
-  return FARM_QUICK_START[step] || null;
-}
-
-export function farmTotalValue(state) {
-  return farmStorageValue(state.storage) + state.upgrades.length * 300;
-}
-
-export function farmProgressPercent(state) {
-  if (state.cropsPlanted === 0) return 0;
-  return Math.round((state.cropsHarvested / state.cropsPlanted) * 100);
-}
-
-export function farmingSummary(state) {
-  return `${FARM_RANKS[state.rank].name}: ${state.cropsHarvested} harvested, ${state.animals.length} animals, $${Math.round(state.earned)} earned, ${state.season}.`;
-}
-
-export function farmingNextGoal(state) {
-  if (!state.owned) return 'Buy the farm.';
-  if (state.cropsHarvested < 10) return 'Harvest 10 crops.';
-  if (state.animals.length < 3) return 'Keep 3 animals.';
-  return 'Become Lord of the Land.';
-}
-
-export const FARMING_META = {
-  system: 'farming', version: '7b-B', author: 'builder-B',
-  files: 1, lines: 992, features: ['crops', 'animals', 'harvest', 'crafting', 'markets', 'seasons'],
-};
-
-export function farmingMeta() {
-  return { ...FARMING_META };
-}
+// Alias matching the name main.js imports (brief: createFarmingSystem);
+// the factory itself is createFarmSystem above.
+export const createFarmingSystem = createFarmSystem;

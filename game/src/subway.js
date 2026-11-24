@@ -1,13 +1,7 @@
-// Solara Metro — subway fast travel, fares, passes and metro jobs.
-// Round 7, all-new system. Two lines (Red / Blue), six stations, a live
-// train that actually runs the tunnels: buy a ticket or a weekly pass,
-// ride between stations, take courier shifts, dodge fare inspectors and
-// pickpockets, and keep the metro's own reputation (Metro Rep) high to
-// unlock the express line and the night service.
 export const SUBWAY_LINES = [
-  { id: 'red', name: 'Red Line', color: '#e5484d', express: false, nightService: false, baseFare: 4 },
-  { id: 'blue', name: 'Blue Line', color: '#3e8ef7', express: false, nightService: false, baseFare: 5 },
-  { id: 'express', name: 'Express Line', color: '#f5a524', express: true, nightService: true, baseFare: 12 },
+  { id: 'red', name: 'Red Line', color: '#e33', express: false, nightService: false, baseFare: 4 },
+  { id: 'blue', name: 'Blue Line', color: '#36c', express: false, nightService: false, baseFare: 5 },
+  { id: 'express', name: 'Express Line', color: '#fc0', express: true, nightService: true, baseFare: 12 },
 ];
 
 export const SUBWAY_STATIONS = [
@@ -27,21 +21,15 @@ export const SUBWAY_PASSES = [
   { id: 'gold', name: 'Gold Metro Card', price: 400, days: 30, perks: ['unlimited rides', 'express line free', 'lounge access'] },
 ];
 
-export const SUBWAY_FARES = {
-  single: 4,
-  transfer: 2,
-  expressSurcharge: 8,
-  inspectorFine: 60,
-  nightSurcharge: 6,
-};
+export const SUBWAY_FARES = { single: 4, transfer: 2, expressSurcharge: 8, inspectorFine: 60, nightSurcharge: 6 };
 
 export const SUBWAY_SHOP_ITEMS = [
-  { id: 'coffee', name: 'Metro Coffee', price: 3, effect: 'energy +10 for 1h' },
-  { id: 'newspaper', name: 'Solara Times', price: 2, effect: 'rumor: next delay revealed' },
-  { id: 'snack', name: 'Station Snack', price: 4, effect: 'hunger handled, +5 stamina' },
-  { id: 'umbrella', name: 'Cheap Umbrella', price: 8, effect: 'rain-proof until tomorrow' },
-  { id: 'map', name: 'Metro Map', price: 1, effect: 'unlocks all station names on HUD' },
-  { id: 'charger', name: 'Phone Charger', price: 12, effect: 'calls never drop for a day' },
+  { id: 'coffee', name: 'Metro Coffee', price: 3, effect: 'Energy plus 10 for 1 hour.' },
+  { id: 'newspaper', name: 'Solara Times', price: 2, effect: 'Rumor of next delay.' },
+  { id: 'snack', name: 'Station Snack', price: 4, effect: 'Hunger handled plus 5 stamina.' },
+  { id: 'umbrella', name: 'Cheap Umbrella', price: 8, effect: 'Rain-proof until tomorrow.' },
+  { id: 'map', name: 'Metro Map', price: 1, effect: 'Unlocks all station names on HUD.' },
+  { id: 'charger', name: 'Phone Charger', price: 12, effect: 'Calls never drop for a day.' },
 ];
 
 export const SUBWAY_COURIER_JOBS = [
@@ -54,65 +42,98 @@ export const SUBWAY_COURIER_JOBS = [
 ];
 
 export const SUBWAY_EVENTS = [
-  { id: 'busker', name: 'Busker', text: 'A busker plays a killer set. The crowd tips generously.', good: true },
-  { id: 'delay', name: 'Signal Failure', text: 'Signal failure! The next train is delayed 3 minutes.', good: false },
-  { id: 'inspector', name: 'Fare Inspector', text: 'A fare inspector boards and checks tickets.', good: false },
-  { id: 'pickpocket', name: 'Pickpocket', text: 'Someone bumps into you — your pocket feels lighter.', good: false },
-  { id: 'celebrity', name: 'Celebrity Sighting', text: 'A film star rides the metro! Fans go wild.', good: true },
-  { id: 'lost-item', name: 'Lost Item', text: 'You spot a lost wallet on the seat.', good: true },
-  { id: 'blackout', name: 'Tunnel Blackout', text: 'Lights flicker out in the tunnel. Eerie silence.', good: false },
-  { id: 'flash-mob', name: 'Flash Mob', text: 'A flash mob dances through the carriage!', good: true },
+  { id: 'busker', name: 'Busker', text: 'A busker plays a sweet tune.', good: true },
+  { id: 'delay', name: 'Delay', text: 'The train is delayed.', good: false },
+  { id: 'inspector', name: 'Inspector', text: 'A ticket inspector boards.', good: false },
+  { id: 'pickpocket', name: 'Pickpocket', text: 'Someone bumps into you.', good: false },
+  { id: 'celebrity', name: 'Celebrity', text: 'A celebrity rides your car.', good: true },
+  { id: 'lost-item', name: 'Lost Item', text: 'You spot something left behind.', good: true },
+  { id: 'blackout', name: 'Blackout', text: 'The lights cut out for a moment.', good: false },
+  { id: 'flash-mob', name: 'Flash Mob', text: 'A flash mob breaks into dance.', good: true },
 ];
 
 export const SUBWAY_REP_TIERS = [
   { rep: 0, name: 'Fare Dodger', perks: [] },
-  { rep: 20, name: 'Regular Rider', perks: ['10% fare discount'] },
-  { rep: 50, name: 'Metro Loyalist', perks: ['20% fare discount', 'priority boarding'] },
-  { rep: 100, name: 'Metro Legend', perks: ['30% fare discount', 'express unlocked', 'free coffee'] },
+  { rep: 20, name: 'Regular Rider', perks: ['10 percent fare discount'] },
+  { rep: 50, name: 'Metro Loyalist', perks: ['20 percent fare discount', 'priority boarding'] },
+  { rep: 100, name: 'Metro Legend', perks: ['30 percent fare discount', 'express unlocked', 'free coffee'] },
 ];
 
-export function subwayDistance(a, b) {
-  const sa = SUBWAY_STATIONS.find((s) => s.id === a);
-  const sb = SUBWAY_STATIONS.find((s) => s.id === b);
-  if (!sa || !sb) return 0;
-  return Math.hypot(sa.x - sb.x, sa.z - sb.z);
+const LOST_ITEMS = [
+  { id: 'wallet', name: 'Lost Wallet', value: 60 },
+  { id: 'phone', name: 'Lost Phone', value: 120 },
+  { id: 'watch', name: 'Lost Watch', value: 90 },
+  { id: 'keys', name: 'Lost Keys', value: 20 },
+  { id: 'bag', name: 'Lost Bag', value: 45 },
+  { id: 'book', name: 'Lost Book', value: 15 },
+];
+
+const BUSKER_SONGS = [
+  { id: 'ballad', name: 'Harbor Ballad', difficulty: 1 },
+  { id: 'jazz', name: 'Midnight Jazz', difficulty: 2 },
+  { id: 'rock', name: 'Street Rock', difficulty: 3 },
+  { id: 'folk', name: 'Old Folk Song', difficulty: 1 },
+];
+
+const SOUVENIRS = [
+  { id: 'keychain', name: 'Metro Keychain', price: 8 },
+  { id: 'mug', name: 'Metro Mug', price: 15 },
+  { id: 'shirt', name: 'Metro Shirt', price: 25 },
+  { id: 'model-train', name: 'Model Train', price: 40 },
+];
+
+function stationById(id) {
+  for (const s of SUBWAY_STATIONS) if (s.id === id) return s;
+  return null;
 }
 
-export function subwayFare(fromId, toId, opts = {}) {
-  const from = SUBWAY_STATIONS.find((s) => s.id === fromId);
-  const to = SUBWAY_STATIONS.find((s) => s.id === toId);
-  if (!from || !to) return null;
-  const sameLine = from.line === to.line;
-  let fare = SUBWAY_FARES.single;
-  if (!sameLine) fare += SUBWAY_FARES.transfer;
-  if (to.line === 'express' || from.line === 'express') fare += SUBWAY_FARES.expressSurcharge;
-  if (opts.night) fare += SUBWAY_FARES.nightSurcharge;
-  if (opts.repTier >= 1) fare = Math.max(1, Math.round(fare * (1 - 0.1 * opts.repTier)));
-  return fare;
+function lineById(id) {
+  for (const l of SUBWAY_LINES) if (l.id === id) return l;
+  return null;
+}
+
+export function subwayDistance(fromId, toId) {
+  const a = stationById(fromId);
+  const b = stationById(toId);
+  if (!a || !b) return 0;
+  return Math.hypot(a.x - b.x, a.z - b.z);
 }
 
 export function subwayRepTier(rep) {
-  let tier = 0;
-  for (let i = 0; i < SUBWAY_REP_TIERS.length; i++) {
-    if (rep >= SUBWAY_REP_TIERS[i].rep) tier = i;
-  }
-  return tier;
+  let out = 0;
+  for (let i = 0; i < SUBWAY_REP_TIERS.length; i++) if (rep >= SUBWAY_REP_TIERS[i].rep) out = i;
+  return out;
 }
 
-export function createSubwaySystem(deps = {}) {
-  const rng = deps.rng || Math.random;
-  const getCash = deps.getCash || (() => 0);
-  const addCash = deps.addCash || (() => {});
-  const addHeat = deps.addHeat || (() => {});
-  const log = deps.log || (() => {});
-  const getDay = deps.getDay || (() => 1);
-  const getHour = deps.getHour || (() => 12);
-  const getPlayerPos = deps.getPlayerPos || (() => ({ x: 0, z: 0 }));
-  const getSpeed = deps.getSpeed || (() => 0);
+export function subwayFare(fromId, toId, options) {
+  const a = stationById(fromId);
+  const b = stationById(toId);
+  if (!a || !b) return null;
+  const opts = options || {};
+  let fare = SUBWAY_FARES.single;
+  if (a.line !== b.line) fare += SUBWAY_FARES.transfer;
+  if (a.line === 'express' || b.line === 'express') fare += SUBWAY_FARES.expressSurcharge;
+  if (opts.night) fare += SUBWAY_FARES.nightSurcharge;
+  const tier = subwayRepTier(opts.rep || 0);
+  const discount = tier * 0.1;
+  fare = Math.max(1, Math.round(fare * (1 - discount)));
+  return fare;
+}
+
+export function createSubwaySystem(deps) {
+  const d = deps || {};
+  const rnd = typeof d.rng === 'function' ? d.rng : Math.random;
+  const cashOf = typeof d.getCash === 'function' ? d.getCash : () => 0;
+  const moveCash = typeof d.addCash === 'function' ? d.addCash : () => {};
+  const pushHeat = typeof d.addHeat === 'function' ? d.addHeat : () => {};
+  const say = typeof d.log === 'function' ? d.log : () => {};
+  const dayOf = typeof d.getDay === 'function' ? d.getDay : () => 1;
+  const hourOf = typeof d.getHour === 'function' ? d.getHour : () => 12;
+  const posOf = typeof d.getPlayerPos === 'function' ? d.getPlayerPos : () => ({ x: 0, z: 0 });
 
   const state = {
     tickets: 0,
-    pass: null, // { id, expiresDay }
+    pass: null,
     rep: 0,
     rides: 0,
     totalSpent: 0,
@@ -120,8 +141,8 @@ export function createSubwaySystem(deps = {}) {
     currentStation: 'central',
     onTrain: false,
     train: { line: 'red', atStation: 'central', nextStation: 'harbor', progress: 0, direction: 1, delay: 0, speed: 1 },
-    riding: null, // { from, to, line, timeLeft, fare }
-    courier: null, // active courier job
+    riding: null,
+    courier: null,
     courierDone: 0,
     courierFailed: 0,
     jobsOffered: [],
@@ -135,224 +156,220 @@ export function createSubwaySystem(deps = {}) {
     expressRides: 0,
     favoriteStation: null,
     stationVisits: {},
-    shift: null, // metro courier shift { jobsLeft, bonus }
+    shift: null,
     lastRideDay: 0,
     lostFound: [],
     souvenirs: [],
     coffeeSub: null,
   };
 
-  function repTier() { return subwayRepTier(state.rep); }
-  function tierName() { return SUBWAY_REP_TIERS[repTier()].name; }
+  function repTier() {
+    return subwayRepTier(state.rep);
+  }
+
+  function tierName() {
+    return SUBWAY_REP_TIERS[repTier()].name;
+  }
+
   function hasValidPass() {
-    if (!state.pass) return false;
-    return getDay() <= state.pass.expiresDay;
+    return !!state.pass && dayOf() <= state.pass.expiryDay;
   }
+
   function passCoversExpress() {
-    return state.pass && state.pass.id === 'gold' && hasValidPass();
+    return hasValidPass() && state.pass.id === 'gold';
   }
+
+  function isNight() {
+    const h = hourOf();
+    return h >= 23 || h < 5;
+  }
+
   function fareFor(fromId, toId) {
-    const hour = getHour();
-    const night = hour >= 23 || hour < 5;
-    let fare = subwayFare(fromId, toId, { night, repTier: repTier() });
-    if (fare === null) return null;
-    if (hasValidPass()) fare = 0;
-    return fare;
+    if (hasValidPass()) return 0;
+    return subwayFare(fromId, toId, { night: isNight(), rep: state.rep });
   }
-  function nearestStation(maxDist = 16) {
-    const p = getPlayerPos();
+
+  function nearestStation(maxDist) {
+    const limit = maxDist === undefined || maxDist === null ? 16 : maxDist;
+    const pos = posOf();
     let best = null;
     let bestD = Infinity;
     for (const s of SUBWAY_STATIONS) {
-      const d = Math.hypot(s.x - p.x, s.z - p.z);
-      if (d < bestD) { bestD = d; best = s; }
+      const dist = Math.hypot(pos.x - s.x, pos.z - s.z);
+      if (dist <= limit && dist < bestD) { best = s; bestD = dist; }
     }
-    return bestD <= maxDist ? { station: best, dist: bestD } : null;
-  }
-  function visitStation(id) {
-    state.stationVisits[id] = (state.stationVisits[id] || 0) + 1;
-    let top = null;
-    let topN = 0;
-    for (const [k, v] of Object.entries(state.stationVisits)) {
-      if (v > topN) { topN = v; top = k; }
-    }
-    state.favoriteStation = top;
-  }
-  function maybeEvent() {
-    const roll = rng();
-    if (roll > 0.34) return null;
-    const ev = SUBWAY_EVENTS[Math.floor(rng() * SUBWAY_EVENTS.length)];
-    state.eventsSeen[ev.id] = (state.eventsSeen[ev.id] || 0) + 1;
-    return ev;
-  }
-  function applyEvent(ev) {
-    if (!ev) return null;
-    switch (ev.id) {
-      case 'pickpocket': {
-        const loss = Math.min(getCash(), 5 + Math.floor(rng() * 20));
-        if (loss > 0) { addCash(-loss); state.pickpocketLoss += loss; }
-        log(`Pickpocket on the metro! Lost $${loss}.`);
-        return { event: ev.id, loss };
-      }
-      case 'lost-item': {
-        const found = 10 + Math.floor(rng() * 40);
-        addCash(found);
-        log(`Found a lost wallet on the metro seat: +$${found}.`);
-        return { event: ev.id, found };
-      }
-      case 'inspector': {
-        if (hasValidPass()) { log('Fare inspector checks your pass — all good.'); return { event: ev.id, fined: false }; }
-        if (state.tickets > 0) { state.tickets -= 1; log('Fare inspector checks your ticket — valid.'); return { event: ev.id, fined: false }; }
-        const fine = SUBWAY_FARES.inspectorFine;
-        if (getCash() >= fine) {
-          addCash(-fine);
-          state.finesPaid += fine;
-          state.inspectorStrikes += 1;
-          state.rep = Math.max(0, state.rep - 5);
-          log(`Fare inspector caught you without a ticket! Fine $${fine}.`);
-          return { event: ev.id, fined: true, fine };
-        }
-        state.inspectorStrikes += 1;
-        addHeat(15);
-        state.rep = Math.max(0, state.rep - 10);
-        log('No ticket, no cash for the fine — the inspector calls transit police!');
-        return { event: ev.id, fined: true, fine: 0, heat: 15 };
-      }
-      case 'delay': {
-        state.train.delay = 120 + Math.floor(rng() * 120);
-        log('Signal failure — the next train is delayed.');
-        return { event: ev.id, delay: state.train.delay };
-      }
-      case 'celebrity': {
-        state.rep += 2;
-        log('A film star rides your carriage! Metro Rep +2.');
-        return { event: ev.id, rep: 2 };
-      }
-      case 'busker': {
-        const tip = 3 + Math.floor(rng() * 12);
-        addCash(tip);
-        log(`A busker plays your favorite tune. A stranger tips you $${tip}.`);
-        return { event: ev.id, tip };
-      }
-      case 'flash-mob': {
-        state.rep += 3;
-        log('Flash mob on the train! Metro Rep +3.');
-        return { event: ev.id, rep: 3 };
-      }
-      case 'blackout': {
-        state.rep = Math.max(0, state.rep - 1);
-        log('Tunnel blackout — the lights die for a long minute.');
-        return { event: ev.id };
-      }
-      default:
-        return { event: ev.id };
-    }
+    return best ? { station: best, distance: bestD } : null;
   }
 
-  function buyTicket(count = 1) {
-    const price = SUBWAY_FARES.single * count;
-    if (getCash() < price) return { ok: false, reason: 'no-cash', need: price };
-    addCash(-price);
-    state.tickets += count;
-    state.totalSpent += price;
-    log(`Bought ${count} metro ticket${count > 1 ? 's' : ''} for $${price}.`);
-    return { ok: true, tickets: state.tickets, price };
+  function visitStation(stationId) {
+    state.stationVisits[stationId] = (state.stationVisits[stationId] || 0) + 1;
+    let fav = null;
+    let favCount = 0;
+    for (const k of Object.keys(state.stationVisits)) {
+      if (state.stationVisits[k] > favCount) { favCount = state.stationVisits[k]; fav = k; }
+    }
+    state.favoriteStation = fav;
+  }
+
+  function maybeEvent() {
+    if (rnd() >= 0.34) return null;
+    const ev = SUBWAY_EVENTS[Math.floor(rnd() * SUBWAY_EVENTS.length)];
+    return applyEvent(ev.id);
+  }
+
+  function applyEvent(eventId) {
+    state.eventsSeen[eventId] = (state.eventsSeen[eventId] || 0) + 1;
+    if (eventId === 'pickpocket') {
+      const loss = Math.min(cashOf(), 5 + Math.floor(rnd() * 20));
+      moveCash(-loss);
+      state.pickpocketLoss += loss;
+      say('Pickpocket! Lost $' + loss + '.');
+      return { eventId, loss };
+    }
+    if (eventId === 'lost-item') {
+      const found = 10 + Math.floor(rnd() * 40);
+      moveCash(found);
+      say('Found $' + found + ' left behind.');
+      return { eventId, found };
+    }
+    if (eventId === 'inspector') {
+      if (hasValidPass() || state.tickets > 0) {
+        if (state.tickets > 0 && !hasValidPass()) state.tickets -= 1;
+        return { eventId, passed: true };
+      }
+      state.inspectorStrikes += 1;
+      if (cashOf() >= 60) {
+        moveCash(-60);
+        state.finesPaid += 60;
+        state.totalSpent += 60;
+        state.rep = Math.max(0, state.rep - 5);
+        return { eventId, fined: true, fine: 60 };
+      }
+      pushHeat(15);
+      state.rep = Math.max(0, state.rep - 10);
+      return { eventId, fined: false, heat: 15 };
+    }
+    if (eventId === 'delay') {
+      state.train.delay = 120 + Math.floor(rnd() * 120);
+      return { eventId, delay: state.train.delay };
+    }
+    if (eventId === 'celebrity') {
+      state.rep += 2;
+      return { eventId, rep: 2 };
+    }
+    if (eventId === 'busker') {
+      const tip = 3 + Math.floor(rnd() * 12);
+      moveCash(tip);
+      return { eventId, tip };
+    }
+    if (eventId === 'flash-mob') {
+      state.rep += 3;
+      return { eventId, rep: 3 };
+    }
+    if (eventId === 'blackout') {
+      state.rep = Math.max(0, state.rep - 1);
+      return { eventId, rep: -1 };
+    }
+    return { eventId };
+  }
+
+  function buyTicket(count) {
+    const n = count === undefined || count === null ? 1 : count;
+    const cost = 4 * n;
+    if (cashOf() < cost) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-cost);
+    state.tickets += n;
+    state.totalSpent += cost;
+    return { ok: true, tickets: state.tickets, price: cost };
   }
 
   function buyPass(passId) {
     const pass = SUBWAY_PASSES.find((p) => p.id === passId);
-    if (!pass) return { ok: false, reason: 'no-such-pass' };
-    if (getCash() < pass.price) return { ok: false, reason: 'no-cash', need: pass.price };
-    if (hasValidPass() && state.pass.id === passId) return { ok: false, reason: 'already-active' };
-    addCash(-pass.price);
-    state.pass = { id: pass.id, expiresDay: getDay() + pass.days - 1 };
+    if (!pass) return { ok: false, reason: 'unknown-pass' };
+    if (cashOf() < pass.price) return { ok: false, reason: 'not-enough-cash' };
+    if (state.pass && state.pass.id === passId && hasValidPass()) return { ok: false, reason: 'already-active' };
+    moveCash(-pass.price);
+    state.pass = { ...pass, expiryDay: dayOf() + pass.days - 1 };
     state.totalSpent += pass.price;
-    log(`Bought ${pass.name} for $${pass.price} — valid until day ${state.pass.expiresDay}.`);
-    return { ok: true, pass: state.pass, price: pass.price };
+    return { ok: true, pass: { ...state.pass }, price: pass.price };
   }
 
-  function boardTrain(toId) {
-    if (state.onTrain) return { ok: false, reason: 'already-riding' };
-    const from = SUBWAY_STATIONS.find((s) => s.id === state.currentStation);
-    const to = SUBWAY_STATIONS.find((s) => s.id === toId);
-    if (!to) return { ok: false, reason: 'no-such-station' };
-    if (toId === state.currentStation) return { ok: false, reason: 'already-there' };
-    const hour = getHour();
-    const night = hour >= 23 || hour < 5;
-    if (night && to.line === 'express' && !passCoversExpress() && repTier() < 3) {
-      return { ok: false, reason: 'express-locked', need: 'Gold pass or Metro Legend' };
-    }
-    if (night && from.line !== 'express' && to.line !== 'express') {
-      const line = SUBWAY_LINES.find((l) => l.id === from.line);
-      if (!line.nightService) return { ok: false, reason: 'no-night-service' };
-    }
-    const fare = fareFor(state.currentStation, toId);
-    if (fare === null) return { ok: false, reason: 'no-route' };
+  function boardTrain(destId) {
+    if (state.riding) return { ok: false, reason: 'already-riding' };
+    const dest = stationById(destId);
+    if (!dest) return { ok: false, reason: 'unknown-station' };
+    if (destId === state.currentStation) return { ok: false, reason: 'already-there' };
+    const night = isNight();
+    const destLine = lineById(dest.line);
+    if (dest.line === 'express' && night && !passCoversExpress() && repTier() < 3) return { ok: false, reason: 'express-locked' };
+    if (night && destLine && !destLine.nightService && dest.line !== 'express') return { ok: false, reason: 'no-night-service' };
+    const fare = fareFor(state.currentStation, destId);
     if (fare > 0) {
       if (state.tickets > 0) {
         state.tickets -= 1;
-      } else if (getCash() >= fare) {
-        addCash(-fare);
+      } else if (cashOf() >= fare) {
+        moveCash(-fare);
         state.totalSpent += fare;
       } else {
-        return { ok: false, reason: 'no-ticket-or-cash', need: fare };
+        return { ok: false, reason: 'no-ticket' };
       }
     }
-    const dist = subwayDistance(state.currentStation, toId);
-    const rideTime = 6 + dist / 28 + (state.train.delay > 0 ? state.train.delay / 60 : 0);
-    state.riding = { from: state.currentStation, to: toId, line: to.line, timeLeft: rideTime, fare, startedDay: getDay() };
+    const dist = subwayDistance(state.currentStation, destId);
+    const rideTime = 6 + dist / 28 + state.train.delay / 60;
+    const ride = {
+      from: state.currentStation,
+      to: destId,
+      line: dest.line,
+      timeLeft: Math.round(rideTime * 60),
+      fare,
+      startedDay: dayOf(),
+    };
+    state.riding = ride;
     state.onTrain = true;
-    if (to.line === 'express') state.expressRides += 1;
+    if (dest.line === 'express') state.expressRides += 1;
     if (night) state.nightRides += 1;
-    log(`Boarded the ${to.line === 'express' ? 'Express' : to.line} train to ${to.name}.`);
-    return { ok: true, ride: { ...state.riding }, fare };
+    return { ok: true, ride: { ...ride }, fare };
   }
 
   function arrive() {
-    if (!state.riding) return null;
-    const dest = state.riding.to;
-    const station = SUBWAY_STATIONS.find((s) => s.id === dest);
-    state.currentStation = dest;
-    state.onTrain = false;
+    if (!state.riding) return { ok: false, reason: 'not-riding' };
+    const ride = state.riding;
     state.riding = null;
+    state.onTrain = false;
+    state.currentStation = ride.to;
     state.rides += 1;
     state.rep += 1;
-    state.lastRideDay = getDay();
-    visitStation(dest);
-    log(`Arrived at ${station.name}. Metro Rep +1.`);
-    const ev = maybeEvent();
-    const applied = ev ? applyEvent(ev) : null;
-    // Courier delivery check: arriving at the job destination completes it.
+    state.lastRideDay = dayOf();
+    visitStation(ride.to);
+    say('Arrived at ' + (stationById(ride.to) || {}).name + '.');
+    const eventResult = maybeEvent();
     let courierResult = null;
-    if (state.courier && state.courier.to === dest) {
-      courierResult = completeCourier(true);
-    } else if (state.courier && state.courier.timeLeft <= 0) {
-      courierResult = completeCourier(false);
+    if (state.courier) {
+      if (state.courier.to === ride.to) courierResult = completeCourier(true);
+      else if (state.courier.timeLeft <= 0) courierResult = completeCourier(false);
     }
-    return { station: dest, event: applied, courier: courierResult };
+    return { ok: true, station: ride.to, event: eventResult, courier: courierResult };
   }
 
   function offerJobs() {
-    const here = state.currentStation;
-    const pool = SUBWAY_COURIER_JOBS.filter((j) => j.from === here);
-    const extra = SUBWAY_COURIER_JOBS.filter((j) => j.from !== here);
-    const picks = [...pool];
-    while (picks.length < 3 && extra.length > 0) {
-      const idx = Math.floor(rng() * extra.length);
-      picks.push(extra.splice(idx, 1)[0]);
+    const atHere = SUBWAY_COURIER_JOBS.filter((j) => j.from === state.currentStation);
+    const others = SUBWAY_COURIER_JOBS.filter((j) => j.from !== state.currentStation);
+    const picked = [...atHere];
+    while (picked.length < 3 && others.length > 0) {
+      const idx = Math.floor(rnd() * others.length);
+      picked.push(others.splice(idx, 1)[0]);
     }
-    state.jobsOffered = picks.slice(0, 3).map((j) => j.id);
-    return picks.slice(0, 3);
+    const jobs = picked.slice(0, 3);
+    state.jobsOffered = jobs.map((j) => j.id);
+    return jobs.map((j) => ({ ...j }));
   }
 
   function takeCourierJob(jobId) {
     if (state.courier) return { ok: false, reason: 'job-active' };
     const job = SUBWAY_COURIER_JOBS.find((j) => j.id === jobId);
-    if (!job) return { ok: false, reason: 'no-such-job' };
-    const heavy = job.weight === 'heavy';
-    const pay = job.pay + (state.shift ? state.shift.bonus : 0);
-    state.courier = { ...job, pay, timeLeft: job.deadlineMin * 60, heavy, startedDay: getDay() };
-    log(`Courier job accepted: ${job.name} — $${pay} if you arrive in ${job.deadlineMin} min.`);
+    if (!job) return { ok: false, reason: 'unknown-job' };
+    const bonus = state.shift ? state.shift.bonus : 0;
+    state.courier = { ...job, pay: job.pay + bonus, timeLeft: job.deadlineMin * 60, heavy: job.weight === 'heavy', startedDay: dayOf() };
     return { ok: true, job: { ...state.courier } };
   }
 
@@ -363,187 +380,162 @@ export function createSubwaySystem(deps = {}) {
     if (!onTime) {
       state.courierFailed += 1;
       state.rep = Math.max(0, state.rep - 4);
-      log(`Courier job failed — ${job.name} arrived too late. Rep -4.`);
-      return { ok: false, reason: 'late', job: job.id };
+      return { ok: true, onTime: false, pay: 0, tip: 0, jobId: job.id };
     }
-    const tip = Math.floor(rng() * 15);
-    const total = job.pay + tip;
-    addCash(total);
+    const tip = Math.floor(rnd() * 15);
+    const pay = job.pay + tip;
+    moveCash(pay);
     state.courierDone += 1;
     state.rep += 3;
+    let shiftBonus = 0;
     if (state.shift) {
       state.shift.jobsLeft -= 1;
       if (state.shift.jobsLeft <= 0) {
-        const shiftBonus = 60 + state.shift.jobsDone * 10;
-        addCash(shiftBonus);
-        log(`Metro courier shift complete! Shift bonus $${shiftBonus}.`);
+        shiftBonus = 60 + state.shift.jobsDone * 10;
+        moveCash(shiftBonus);
         state.shift = null;
-        return { ok: true, pay: total, tip, shiftBonus, job: job.id };
       }
     }
-    log(`Courier delivered: ${job.name} — $${total} (incl. $${tip} tip). Rep +3.`);
-    return { ok: true, pay: total, tip, job: job.id };
+    const out = { ok: true, onTime: true, pay, tip, jobId: job.id };
+    if (shiftBonus > 0) out.shiftBonus = shiftBonus;
+    return out;
   }
 
   function startShift() {
     if (state.shift) return { ok: false, reason: 'shift-active' };
-    if (state.rep < 10) return { ok: false, reason: 'rep-too-low', need: 10 };
-    const jobs = 3 + Math.floor(rng() * 3);
-    state.shift = { jobsLeft: jobs, jobsDone: 0, bonus: 10, startedDay: getDay() };
-    log(`Metro courier shift started — ${jobs} deliveries, +$10 per job.`);
+    if (state.rep < 10) return { ok: false, reason: 'rep-too-low' };
+    state.shift = { jobsLeft: 3 + Math.floor(rnd() * 3), jobsDone: 0, bonus: 10, startedDay: dayOf() };
     return { ok: true, shift: { ...state.shift } };
   }
 
   function buyShopItem(itemId) {
     const item = SUBWAY_SHOP_ITEMS.find((i) => i.id === itemId);
-    if (!item) return { ok: false, reason: 'no-such-item' };
-    if (getCash() < item.price) return { ok: false, reason: 'no-cash', need: item.price };
-    addCash(-item.price);
+    if (!item) return { ok: false, reason: 'unknown-item' };
+    if (cashOf() < item.price) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-item.price);
     state.itemsBought[itemId] = (state.itemsBought[itemId] || 0) + 1;
     state.totalSpent += item.price;
     if (itemId === 'map') state.hasMap = true;
-    log(`Bought ${item.name} for $${item.price}. ${item.effect}.`);
-    return { ok: true, item: item.id, price: item.price };
+    return { ok: true, itemId, price: item.price };
   }
 
   function dodgeInspector() {
-    if (state.inspectorStrikes <= 0) return { ok: false, reason: 'no-inspector' };
-    if (rng() < 0.55) {
-      state.inspectorStrikes = Math.max(0, state.inspectorStrikes - 1);
+    if (state.inspectorStrikes <= 0) return { ok: false, reason: 'no-strikes' };
+    if (rnd() < 0.55) {
+      state.inspectorStrikes -= 1;
       state.rep += 1;
-      log('You slipped past the inspector at the next stop. Rep +1.');
       return { ok: true, dodged: true };
     }
-    addHeat(10);
-    log('The inspector caught you dodging — transit police alerted!');
+    pushHeat(10);
     return { ok: true, dodged: false, heat: 10 };
   }
 
   function reportPickpocket() {
-    if (state.pickpocketLoss <= 0) return { ok: false, reason: 'nothing-to-report' };
+    if (state.pickpocketLoss <= 0) return { ok: false, reason: 'nothing-lost' };
     const recovered = Math.floor(state.pickpocketLoss * 0.4);
-    addCash(recovered);
+    moveCash(recovered);
     state.pickpocketLoss = 0;
     state.rep += 2;
-    log(`Transit police recovered $${recovered} of your stolen cash. Rep +2.`);
     return { ok: true, recovered };
   }
 
   function tick(dt) {
-    // The live train crawls its line: progress 0..1 between stations,
-    // then it dwells, picks the next station and rolls on.
-    const train = state.train;
-    if (train.delay > 0) {
-      train.delay = Math.max(0, train.delay - dt);
+    const step = dt || 0;
+    if (state.train.delay > 0) {
+      state.train.delay = Math.max(0, state.train.delay - step);
     } else {
-      train.progress += dt * 0.02 * (1 + repTier() * 0.05);
-      if (train.progress >= 1) {
-        train.progress = 0;
-        const lineStations = SUBWAY_STATIONS.filter((s) => s.line === train.line);
-        const idx = lineStations.findIndex((s) => s.id === train.atStation);
-        let nextIdx = idx + train.direction;
-        if (nextIdx >= lineStations.length || nextIdx < 0) {
-          train.direction *= -1;
-          nextIdx = idx + train.direction;
+      state.train.progress += step * 0.02 * (1 + repTier() * 0.05);
+      if (state.train.progress >= 1) {
+        state.train.progress = 0;
+        const lineStations = SUBWAY_STATIONS.filter((s) => s.line === state.train.line);
+        const idx = lineStations.findIndex((s) => s.id === state.train.atStation);
+        let next = idx + state.train.direction;
+        if (next >= lineStations.length || next < 0) {
+          state.train.direction *= -1;
+          next = idx + state.train.direction;
         }
-        train.atStation = lineStations[nextIdx].id;
-        train.nextStation = lineStations[Math.min(lineStations.length - 1, Math.max(0, nextIdx + train.direction))].id;
-        if (rng() < 0.08) {
-          train.delay = 45 + Math.floor(rng() * 90);
+        if (lineStations[next]) {
+          state.train.atStation = state.train.atStation;
+          state.train.nextStation = lineStations[next].id;
+          state.train.atStation = lineStations[next].id;
         }
       }
+      if (rnd() < 0.08 * step) state.train.delay = 45 + Math.floor(rnd() * 90);
     }
-    // Riding: the clock ticks down; arrival is automatic.
-    if (state.onTrain && state.riding) {
-      state.riding.timeLeft -= dt;
+    if (state.riding) {
+      state.riding.timeLeft -= step;
       if (state.riding.timeLeft <= 0) arrive();
     }
-    // Courier deadline ticks in real seconds while a job is active.
     if (state.courier) {
-      state.courier.timeLeft -= dt;
-      if (state.courier.timeLeft <= 0) {
-        completeCourier(false);
-      }
+      state.courier.timeLeft -= step;
+      if (state.courier.timeLeft <= 0) completeCourier(false);
     }
-    // A shift left overnight expires at dawn.
-    if (state.shift && getDay() !== state.shift.startedDay && getHour() < 6) {
-      log('Metro courier shift expired overnight.');
-      state.shift = null;
-    }
-    // A pass that expired yesterday is quietly dropped from the wallet.
-    if (state.pass && getDay() > state.pass.expiresDay + 1) {
-      state.pass = null;
-    }
+    if (state.shift && state.shift.startedDay !== dayOf() && hourOf() < 6) state.shift = null;
+    if (state.pass && dayOf() > state.pass.expiryDay + 1) state.pass = null;
   }
 
   function tickDay(day) {
-    if (state.lastDelayDay !== day && rng() < 0.5) {
-      state.lastDelayDay = day;
-      state.train.delay = 60 + Math.floor(rng() * 180);
-      log('Metro control reports signal works today — expect delays.');
+    const today = day !== undefined && day !== null ? day : dayOf();
+    let delay = 0;
+    if (rnd() < 0.5) {
+      delay = 60 + Math.floor(rnd() * 180);
+      state.train.delay = delay;
+      state.lastDelayDay = today;
     }
-    // Weekly pass holders get a loyalty bump each Monday (day % 7 === 1).
-    if (day % 7 === 1 && hasValidPass()) {
-      state.rep += 2;
-    }
-    // Courier demand resets; fresh jobs appear at every station.
+    if (today % 7 === 1 && hasValidPass()) state.rep += 2;
     state.jobsOffered = [];
-    return { day, delay: state.train.delay, rep: state.rep };
+    return { day: today, delay, rep: state.rep };
   }
 
   function interact() {
     const near = nearestStation(16);
     if (!near) return false;
-    // Standing on a platform: if a ride is already running, E does nothing
-    // (the train arrives on its own); otherwise open the station by riding
-    // to the next station on the same line, or start a courier shift.
     if (state.onTrain) return false;
     if (state.currentStation !== near.station.id) {
       state.currentStation = near.station.id;
       visitStation(near.station.id);
-      log(`You are at ${near.station.name} (${near.station.line} line).`);
+      say('Now at ' + near.station.name + '.');
     }
-    if (!state.courier && state.rep >= 10 && rng() < 0.4) {
+    if (!state.courier && state.rep >= 10 && rnd() < 0.4) {
       const jobs = offerJobs();
       if (jobs.length > 0) {
-        const job = jobs[0];
-        return takeCourierJob(job.id).ok;
+        takeCourierJob(jobs[0].id);
+        return true;
       }
     }
-    // Default: ride one hop along the line to the next station.
-    const lineStations = SUBWAY_STATIONS.filter((s) => s.line === near.station.line);
-    const idx = lineStations.findIndex((s) => s.id === near.station.id);
-    const next = lineStations[(idx + 1) % lineStations.length];
+    const lineStations = SUBWAY_STATIONS.filter((s) => s.line === state.train.line);
+    const idx = lineStations.findIndex((s) => s.id === state.currentStation);
+    const next = lineStations[idx + state.train.direction] || lineStations[idx - state.train.direction];
+    if (!next) return true;
     const res = boardTrain(next.id);
-    if (!res.ok) {
-      log(`Metro: ${res.reason}${res.need ? ` (need ${res.need})` : ''}.`);
-      return true;
-    }
+    if (!res.ok) say('Could not board: ' + res.reason + '.');
     return true;
   }
 
   function hudLine() {
-    if (state.onTrain && state.riding) {
-      const dest = SUBWAY_STATIONS.find((s) => s.id === state.riding.to);
-      return `METRO → ${dest ? dest.name : state.riding.to} ${Math.max(0, Math.ceil(state.riding.timeLeft))}s`;
+    if (state.riding) {
+      const dest = stationById(state.riding.to);
+      return 'METRO → ' + (dest ? dest.name : state.riding.to) + ' · ' + Math.ceil(state.riding.timeLeft) + 's';
     }
     if (state.courier) {
-      const dest = SUBWAY_STATIONS.find((s) => s.id === state.courier.to);
-      return `COURIER → ${dest ? dest.name : state.courier.to} $${state.courier.pay} ${Math.max(0, Math.ceil(state.courier.timeLeft))}s`;
+      const dest = stationById(state.courier.to);
+      return 'COURIER → ' + (dest ? dest.name : state.courier.to) + ' · $' + state.courier.pay + ' · ' + Math.ceil(state.courier.timeLeft) + 's';
     }
     const near = nearestStation(16);
-    if (near) return `METRO ${near.station.name} — tickets ${state.tickets} · Rep ${state.rep} (${tierName()})`;
-    if (state.pass) return `METRO pass ${state.pass.id} until day ${state.pass.expiresDay}`;
+    if (near) {
+      return 'METRO ' + near.station.name + ' · ' + state.tickets + ' tickets · ' + state.rep + ' rep (' + tierName() + ')';
+    }
+    if (state.pass) return 'METRO ' + state.pass.id + ' pass until day ' + state.pass.expiryDay;
     return '';
   }
 
   function stats() {
     return {
       tickets: state.tickets,
-      pass: state.pass ? state.pass.id : null,
-      passExpiresDay: state.pass ? state.pass.expiresDay : null,
+      passId: state.pass ? state.pass.id : null,
+      passExpiryDay: state.pass ? state.pass.expiryDay : null,
       rep: state.rep,
-      tier: tierName(),
+      tierName: tierName(),
       rides: state.rides,
       nightRides: state.nightRides,
       expressRides: state.expressRides,
@@ -567,7 +559,7 @@ export function createSubwaySystem(deps = {}) {
   function serialize() {
     return {
       tickets: state.tickets,
-      pass: state.pass,
+      pass: state.pass ? { ...state.pass } : null,
       rep: state.rep,
       rides: state.rides,
       totalSpent: state.totalSpent,
@@ -585,185 +577,143 @@ export function createSubwaySystem(deps = {}) {
       itemsBought: { ...state.itemsBought },
       hasMap: state.hasMap,
       lastRideDay: state.lastRideDay,
-      lostFound: [...state.lostFound],
+      lostFound: state.lostFound.map((x) => ({ ...x })),
       souvenirs: [...state.souvenirs],
       coffeeSub: state.coffeeSub ? { ...state.coffeeSub } : null,
     };
   }
 
-  function deserialize(d) {
-    if (!d) return;
-    state.tickets = d.tickets ?? 0;
-    state.pass = d.pass ?? null;
-    state.rep = d.rep ?? 0;
-    state.rides = d.rides ?? 0;
-    state.totalSpent = d.totalSpent ?? 0;
-    state.finesPaid = d.finesPaid ?? 0;
-    state.currentStation = d.currentStation ?? 'central';
-    state.courierDone = d.courierDone ?? 0;
-    state.courierFailed = d.courierFailed ?? 0;
-    state.inspectorStrikes = d.inspectorStrikes ?? 0;
-    state.pickpocketLoss = d.pickpocketLoss ?? 0;
-    state.nightRides = d.nightRides ?? 0;
-    state.expressRides = d.expressRides ?? 0;
-    state.favoriteStation = d.favoriteStation ?? null;
-    state.stationVisits = { ...(d.stationVisits || {}) };
-    state.eventsSeen = { ...(d.eventsSeen || {}) };
-    state.itemsBought = { ...(d.itemsBought || {}) };
-    state.hasMap = !!d.hasMap;
-    state.lastRideDay = d.lastRideDay ?? 0;
-    state.lostFound = [...(d.lostFound || [])];
-    state.souvenirs = [...(d.souvenirs || [])];
-    state.coffeeSub = d.coffeeSub ? { ...d.coffeeSub } : null;
+  function deserialize(saved) {
+    const s = saved || {};
+    state.tickets = Math.floor(Number(s.tickets) || 0);
+    state.pass = s.pass && typeof s.pass.id === 'string' ? { ...s.pass } : null;
+    state.rep = Math.floor(Number(s.rep) || 0);
+    state.rides = Math.floor(Number(s.rides) || 0);
+    state.totalSpent = Number(s.totalSpent) || 0;
+    state.finesPaid = Number(s.finesPaid) || 0;
+    state.currentStation = typeof s.currentStation === 'string' ? s.currentStation : 'central';
+    state.courierDone = Math.floor(Number(s.courierDone) || 0);
+    state.courierFailed = Math.floor(Number(s.courierFailed) || 0);
+    state.inspectorStrikes = Math.floor(Number(s.inspectorStrikes) || 0);
+    state.pickpocketLoss = Number(s.pickpocketLoss) || 0;
+    state.nightRides = Math.floor(Number(s.nightRides) || 0);
+    state.expressRides = Math.floor(Number(s.expressRides) || 0);
+    state.favoriteStation = s.favoriteStation || null;
+    state.stationVisits = s.stationVisits && typeof s.stationVisits === 'object' ? { ...s.stationVisits } : {};
+    state.eventsSeen = s.eventsSeen && typeof s.eventsSeen === 'object' ? { ...s.eventsSeen } : {};
+    state.itemsBought = s.itemsBought && typeof s.itemsBought === 'object' ? { ...s.itemsBought } : {};
+    state.hasMap = s.hasMap === true;
+    state.lastRideDay = Math.floor(Number(s.lastRideDay) || 0);
+    state.lostFound = Array.isArray(s.lostFound) ? s.lostFound.map((x) => ({ ...x })) : [];
+    state.souvenirs = Array.isArray(s.souvenirs) ? [...s.souvenirs] : [];
+    state.coffeeSub = s.coffeeSub ? { ...s.coffeeSub } : null;
     state.onTrain = false;
     state.riding = null;
     state.courier = null;
     state.shift = null;
+    return { ok: true };
   }
 
-  // --- Round 7 top-up: lost & found, busking, souvenirs, transfers ---
-  const SUBWAY_LOST_ITEMS = [
-    { id: 'umbrella-lost', name: 'Lost Umbrella', value: 8 },
-    { id: 'wallet-lost', name: 'Lost Wallet', value: 45 },
-    { id: 'phone-lost', name: 'Lost Phone', value: 120 },
-    { id: 'guitar-lost', name: 'Lost Guitar', value: 200 },
-    { id: 'briefcase', name: 'Lost Briefcase', value: 90 },
-    { id: 'backpack', name: 'Lost Backpack', value: 35 },
-  ];
-  const SUBWAY_SOUVENIRS = [
-    { id: 'metro-mug', name: 'Metro Mug', price: 12 },
-    { id: 'metro-cap', name: 'Metro Cap', price: 18 },
-    { id: 'metro-model', name: 'Model Train', price: 45 },
-    { id: 'metro-poster', name: 'Vintage Poster', price: 25 },
-  ];
-  const SUBWAY_BUSKER_SONGS = [
-    { id: 'blues', name: 'Harbor Blues', difficulty: 1 },
-    { id: 'jazz', name: 'Midnight Jazz', difficulty: 2 },
-    { id: 'rock', name: 'Subway Rock', difficulty: 2 },
-    { id: 'classical', name: 'Tunnel Sonata', difficulty: 3 },
-  ];
   function checkSchedule(stationId) {
-    const station = SUBWAY_STATIONS.find((s) => s.id === stationId);
-    if (!station) return { ok: false, reason: 'no-such-station' };
-    const train = state.train;
-    const nextIn = Math.max(0, Math.round((1 - train.progress) * 50));
-    return {
-      ok: true, station: station.id, line: station.line,
-      nextTrainIn: nextIn + Math.round(train.delay),
-      delayed: train.delay > 0, atStation: train.atStation,
-    };
+    const st = stationById(stationId);
+    if (!st) return { ok: false, reason: 'unknown-station' };
+    const nextIn = Math.round((1 - state.train.progress) * 60 + state.train.delay);
+    return { ok: true, stationId, line: st.line, nextTrainIn: nextIn, delayed: state.train.delay > 0, trainAt: state.train.atStation };
   }
-  function transferLines(toLine) {
-    const line = SUBWAY_LINES.find((l) => l.id === toLine);
-    if (!line) return { ok: false, reason: 'no-such-line' };
-    const station = SUBWAY_STATIONS.find((s) => s.id === state.currentStation);
-    if (!station || !station.transfer.includes(toLine)) {
-      return { ok: false, reason: 'no-transfer-here', station: state.currentStation };
-    }
-    if (toLine === 'express' && !passCoversExpress() && repTier() < 3) {
-      return { ok: false, reason: 'express-locked' };
-    }
-    state.train.line = toLine;
-    log(`Transferred to the ${line.name} at ${station.name}.`);
-    return { ok: true, line: toLine, station: station.id };
+
+  function transferLines(lineId) {
+    const line = lineById(lineId);
+    if (!line) return { ok: false, reason: 'unknown-line' };
+    const st = stationById(state.currentStation);
+    if (!st || !st.transfer.includes(lineId)) return { ok: false, reason: 'no-transfer' };
+    if (lineId === 'express' && !passCoversExpress() && repTier() < 3) return { ok: false, reason: 'express-locked' };
+    state.train.line = lineId;
+    return { ok: true, line: lineId, stationId: state.currentStation };
   }
+
   function findLostItem() {
-    const roll = rng();
-    if (roll > 0.4) return { ok: false, reason: 'nothing-found' };
-    const item = SUBWAY_LOST_ITEMS[Math.floor(rng() * SUBWAY_LOST_ITEMS.length)];
-    state.lostFound = state.lostFound || [];
-    state.lostFound.push(item.id);
-    log(`You found a ${item.name} left on the train! Hand it in for a reward, or keep it...`);
-    return { ok: true, item: item.id, value: item.value };
+    if (rnd() < 0.6) return { ok: false, reason: 'nothing-found' };
+    const item = LOST_ITEMS[Math.floor(rnd() * LOST_ITEMS.length)];
+    state.lostFound.push({ ...item });
+    return { ok: true, itemId: item.id, value: item.value };
   }
+
   function handInLostItem(itemId) {
-    const item = SUBWAY_LOST_ITEMS.find((i) => i.id === itemId);
-    if (!item) return { ok: false, reason: 'no-such-item' };
-    if (!state.lostFound || !state.lostFound.includes(itemId)) return { ok: false, reason: 'not-found' };
-    state.lostFound = state.lostFound.filter((x) => x !== itemId);
-    const reward = Math.round(item.value * 0.5);
-    addCash(reward);
+    const item = LOST_ITEMS.find((i) => i.id === itemId);
+    if (!item) return { ok: false, reason: 'unknown-item' };
+    const idx = state.lostFound.findIndex((x) => x.id === itemId);
+    if (idx < 0) return { ok: false, reason: 'not-found' };
+    state.lostFound.splice(idx, 1);
+    const reward = Math.round(item.value / 2);
+    moveCash(reward);
     state.rep += 2;
-    log(`Handed in the ${item.name}. Reward $${reward}, Rep +2. Honesty pays.`);
-    return { ok: true, reward, rep: state.rep };
+    return { ok: true, reward, rep: 2 };
   }
+
   function keepLostItem(itemId) {
-    const item = SUBWAY_LOST_ITEMS.find((i) => i.id === itemId);
-    if (!item) return { ok: false, reason: 'no-such-item' };
-    if (!state.lostFound || !state.lostFound.includes(itemId)) return { ok: false, reason: 'not-found' };
-    state.lostFound = state.lostFound.filter((x) => x !== itemId);
-    addCash(item.value);
+    const item = LOST_ITEMS.find((i) => i.id === itemId);
+    if (!item) return { ok: false, reason: 'unknown-item' };
+    const idx = state.lostFound.findIndex((x) => x.id === itemId);
+    if (idx < 0) return { ok: false, reason: 'not-found' };
+    state.lostFound.splice(idx, 1);
+    moveCash(item.value);
     state.rep = Math.max(0, state.rep - 3);
-    addHeat(5);
-    log(`Kept the ${item.name} and sold it for $${item.value}. Rep -3, heat +5.`);
+    pushHeat(5);
     return { ok: true, value: item.value };
   }
-  function busk(songId, minutes = 5) {
-    const song = SUBWAY_BUSKER_SONGS.find((s) => s.id === songId);
-    if (!song) return { ok: false, reason: 'no-such-song' };
-    const station = SUBWAY_STATIONS.find((s) => s.id === state.currentStation);
-    const crowd = Math.round(station.busy * 20);
+
+  function busk(songId, minutes) {
+    const song = BUSKER_SONGS.find((s) => s.id === songId);
+    if (!song) return { ok: false, reason: 'unknown-song' };
+    const mins = minutes === undefined || minutes === null ? 5 : minutes;
+    const st = stationById(state.currentStation);
+    const crowd = st ? st.busy * 20 : 10;
     const skill = 0.4 + repTier() * 0.1 + state.rides * 0.001;
-    const earned = Math.round(crowd * skill * minutes * (0.5 + rng()));
-    addCash(earned);
+    const earned = Math.round(crowd * skill * mins * 0.5 + rnd());
+    moveCash(earned);
     state.rep += 1;
-    state.totalSpent -= 0;
-    log(`Busking ${song.name} at ${station.name} for ${minutes} min — $${earned} in the hat! Rep +1.`);
-    return { ok: true, earned, song: songId, station: station.id };
+    return { ok: true, earned, songId, stationId: state.currentStation };
   }
-  function buySouvenir(souvId) {
-    const item = SUBWAY_SOUVENIRS.find((s) => s.id === souvId);
-    if (!item) return { ok: false, reason: 'no-such-souvenir' };
-    if (getCash() < item.price) return { ok: false, reason: 'no-cash', need: item.price };
-    addCash(-item.price);
-    state.souvenirs = state.souvenirs || [];
-    state.souvenirs.push(souvId);
-    state.totalSpent += item.price;
-    log(`Bought ${item.name} for $${item.price} at the metro gift shop.`);
-    return { ok: true, souvenir: souvId, price: item.price };
+
+  function buySouvenir(souvenirId) {
+    const item = SOUVENIRS.find((s) => s.id === souvenirId);
+    if (!item) return { ok: false, reason: 'unknown-souvenir' };
+    if (cashOf() < item.price) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-item.price);
+    state.souvenirs.push(souvenirId);
+    return { ok: true, souvenirId, price: item.price };
   }
+
   function buyCoffeeSubscription() {
-    const price = 30;
-    if (getCash() < price) return { ok: false, reason: 'no-cash', need: price };
-    if (state.coffeeSub && getDay() <= state.coffeeSub.expiresDay) return { ok: false, reason: 'already-active' };
-    addCash(-price);
-    state.coffeeSub = { expiresDay: getDay() + 6 };
-    state.totalSpent += price;
-    log('Metro coffee subscription: free coffee at every station for 7 days!');
-    return { ok: true, expiresDay: state.coffeeSub.expiresDay, price };
+    if (cashOf() < 30) return { ok: false, reason: 'not-enough-cash' };
+    if (state.coffeeSub && dayOf() <= state.coffeeSub.expiryDay) return { ok: false, reason: 'already-active' };
+    moveCash(-30);
+    state.coffeeSub = { expiryDay: dayOf() + 6 };
+    return { ok: true, expiryDay: state.coffeeSub.expiryDay, price: 30 };
   }
+
   function helpTourist() {
-    const station = SUBWAY_STATIONS.find((s) => s.id === state.currentStation);
-    if (rng() < 0.5) {
-      const tip = 5 + Math.floor(rng() * 15);
-      addCash(tip);
+    if (rnd() < 0.5) {
+      const tip = 5 + Math.floor(rnd() * 15);
+      moveCash(tip);
       state.rep += 2;
-      log(`Helped a lost tourist at ${station.name}. They tip $${tip}. Rep +2.`);
       return { ok: true, tip };
     }
     state.rep += 1;
-    log(`Helped a tourist find the ${station.line} line. Rep +1.`);
     return { ok: true, tip: 0 };
   }
+
   function nightRideBonus() {
-    const hour = getHour();
-    if (hour < 23 && hour >= 5) return { ok: false, reason: 'not-night' };
+    if (!isNight()) return { ok: false, reason: 'not-night' };
     if (state.nightRides <= 0) return { ok: false, reason: 'no-night-rides' };
     const bonus = state.nightRides * 2;
-    addCash(bonus);
-    log(`Night Owl bonus: $${bonus} for riding the metro after dark.`);
+    moveCash(bonus);
     return { ok: true, bonus };
   }
 
   return {
+    name: 'Subway',
     state,
-    tick,
-    tickDay,
-    interact,
-    hudLine,
-    stats,
-    serialize,
-    deserialize,
     buyTicket,
     buyPass,
     boardTrain,
@@ -775,12 +725,13 @@ export function createSubwaySystem(deps = {}) {
     buyShopItem,
     dodgeInspector,
     reportPickpocket,
-    nearestStation,
-    fareFor,
-    hasValidPass,
-    repTier,
-    tierName,
-    visitStation,
+    tick,
+    tickDay,
+    interact,
+    hudLine,
+    stats,
+    serialize,
+    deserialize,
     checkSchedule,
     transferLines,
     findLostItem,

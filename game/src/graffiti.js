@@ -1,650 +1,316 @@
-// Street-art crew system for Solara Nights.
-//
-// The player runs a small graffiti crew trying to make a name across the
-// city. Cans of spray paint are bought from the corner shop, tags go up
-// district by district, rival crews fight back over turf, and every
-// district the crew holds pays a little turf money each day.
-//
-// This module is self contained. It knows nothing about the DOM, nothing
-// about rendering, and nothing about any other game file. All it needs
-// arrives through the single `deps` object handed to the factory: a random
-// number source, the clock, the cash and heat hooks, and a log hook.
-// Every one of those is optional; sensible stand-ins are used when a
-// caller leaves one out.
-//
-// Money never lives here. The cash balance belongs to the caller: this
-// system only asks how much there is (getCash) and moves it (addCash).
-// Heat is reported through addHeat, and anything worth the player
-// noticing is reported through log.
-//
-// Every public action answers with a plain object. A success carries
-// `ok: true` and the numbers that describe what happened. A failure
-// carries `ok: false` and a short kebab-case `reason` string, so callers
-// can branch on the reason without parsing a message.
-//
-// Randomness always flows through `deps.rng`. The module never reaches
-// for Math.random on its own, so a caller can hand it a seeded generator
-// and replay a whole session exactly.
-//
-// Eight corners of the city. Each one carries a police heat level from 0
-// (sleepy) to 3 (crawling with patrols) and a daily turf income in dollars
-// paid to whoever controls the walls there. The `owner` field records who
-// holds the district right now: 'you', one of the rival crew ids, or
-// 'none' when nobody has claimed it yet. Rival crews start out holding
-// the richer walls; the quiet districts start unclaimed.
-
 export const GRAFFITI_DISTRICTS = [
-  {
-    id: 'harbor',
-    name: 'The Harbor',
-    heat: 2,
-    turfIncome: 60,
-    owner: 'neon-vandals',
-    blurb: 'Container stacks and crane arms, seen for miles.',
-  },
-  {
-    id: 'old-town',
-    name: 'Old Town',
-    heat: 1,
-    turfIncome: 45,
-    owner: 'none',
-    blurb: 'Cobbled lanes and shuttered shopfronts.',
-  },
-  {
-    id: 'boardwalk',
-    name: 'Boardwalk',
-    heat: 2,
-    turfIncome: 75,
-    owner: 'chrome-kings',
-    blurb: 'Arcades, surf shops and a mile of wooden planks.',
-  },
-  {
-    id: 'downtown',
-    name: 'Downtown',
-    heat: 3,
-    turfIncome: 110,
-    owner: 'neon-vandals',
-    blurb: 'Glass towers and the busiest walls in the city.',
-  },
-  {
-    id: 'suburbs',
-    name: 'Suburbs',
-    heat: 0,
-    turfIncome: 40,
-    owner: 'none',
-    blurb: 'Quiet cul-de-sacs and sleepy garden fences.',
-  },
-  {
-    id: 'industrial',
-    name: 'Industrial Zone',
-    heat: 1,
-    turfIncome: 55,
-    owner: 'street-saints',
-    blurb: 'Warehouses, rail sidings and rusted silos.',
-  },
-  {
-    id: 'university',
-    name: 'University Quarter',
-    heat: 1,
-    turfIncome: 80,
-    owner: 'none',
-    blurb: 'Dorm blocks, lecture halls and late-night crowds.',
-  },
-  {
-    id: 'marina',
-    name: 'Marina',
-    heat: 2,
-    turfIncome: 100,
-    owner: 'midnight-ink',
-    blurb: 'Yachts, boatyards and long white pontoons.',
-  },
+  { id: 'harbor', name: 'Harbor', heat: 2, turfIncome: 60, owner: 'neon-vandals', blurb: 'Crates and cranes, watched by the docks.' },
+  { id: 'old-town', name: 'Old Town', heat: 1, turfIncome: 45, owner: 'none', blurb: 'Quiet lanes with old brick walls.' },
+  { id: 'boardwalk', name: 'Boardwalk', heat: 2, turfIncome: 75, owner: 'chrome-kings', blurb: 'Bright boards above the sand.' },
+  { id: 'downtown', name: 'Downtown', heat: 3, turfIncome: 110, owner: 'neon-vandals', blurb: 'Glass towers and camera eyes.' },
+  { id: 'suburbs', name: 'Suburbs', heat: 0, turfIncome: 40, owner: 'none', blurb: 'Fences, garages, sleepy streets.' },
+  { id: 'industrial', name: 'Industrial', heat: 1, turfIncome: 55, owner: 'street-saints', blurb: 'Warehouses nobody patrols at night.' },
+  { id: 'university', name: 'University', heat: 1, turfIncome: 80, owner: 'none', blurb: 'Students who love a fresh wall.' },
+  { id: 'marina', name: 'Marina', heat: 2, turfIncome: 100, owner: 'midnight-ink', blurb: 'White hulls and late-night lights.' },
 ];
-
-// Four brands on the shop shelf. Price roughly doubles with each step
-// up the shelf, and so does the quality of the line the paint lays down.
-// Quality runs from 1 (thin, drippy) to 4 (buttery, opaque in one pass).
 
 export const SPRAY_BRANDS = [
-  {
-    id: 'rattle-can',
-    name: 'Rattle Can Basics',
-    price: 15,
-    quality: 1,
-    blurb: 'Cheap, thin, and always in stock.',
-  },
-  {
-    id: 'nova-spray',
-    name: 'Nova Spray',
-    price: 30,
-    quality: 2,
-    blurb: 'A decent everyday can with a clean cap.',
-  },
-  {
-    id: 'krome-line',
-    name: 'Krome Line Pro',
-    price: 60,
-    quality: 3,
-    blurb: 'Pro grade. Rich colour, fat lines, no drips.',
-  },
-  {
-    id: 'aerosol-royal',
-    name: 'Aerosol Royal',
-    price: 120,
-    quality: 4,
-    blurb: 'The crown jewel. One pass and the wall is yours.',
-  },
+  { id: 'rattle-can', name: 'Rattle-Can Basics', price: 15, quality: 1, blurb: 'Cheap, loud, gets the job done.' },
+  { id: 'nova-spray', name: 'Nova Spray', price: 30, quality: 2, blurb: 'Clean lines, brighter colours.' },
+  { id: 'krome-line', name: 'Krome-Line Pro', price: 60, quality: 3, blurb: 'Pro caps for sharp detail work.' },
+  { id: 'aerosol-royal', name: 'Aerosol Royal', price: 120, quality: 4, blurb: 'The best paint money can buy.' },
 ];
-
-// Four crews already working the city. `skill` is how good their pieces
-// are in a style battle (1 to 10). `aggression` is how hard they push
-// back when they lose (1 to 10); it flavours the log lines and the heat
-// a lost battle brings.
 
 export const RIVAL_CREWS = [
-  {
-    id: 'neon-vandals',
-    name: 'Neon Vandals',
-    skill: 7,
-    aggression: 8,
-    blurb: 'Loud colours, louder mouths, downtown regulars.',
-  },
-  {
-    id: 'chrome-kings',
-    name: 'Chrome Kings',
-    skill: 5,
-    aggression: 6,
-    blurb: 'Silver-heavy throwies along the boardwalk.',
-  },
-  {
-    id: 'street-saints',
-    name: 'Street Saints',
-    skill: 4,
-    aggression: 3,
-    blurb: 'Patient old heads who paint the warehouses.',
-  },
-  {
-    id: 'midnight-ink',
-    name: 'Midnight Ink',
-    skill: 8,
-    aggression: 9,
-    blurb: 'The best hands in the city, and they know it.',
-  },
+  { id: 'neon-vandals', name: 'Neon Vandals', skill: 7, aggression: 8, blurb: 'Fast, loud, everywhere at once.' },
+  { id: 'chrome-kings', name: 'Chrome Kings', skill: 5, aggression: 6, blurb: 'Shiny pieces, old-school pride.' },
+  { id: 'street-saints', name: 'Street Saints', skill: 4, aggression: 3, blurb: 'Slow and steady, hard to shift.' },
+  { id: 'midnight-ink', name: 'Midnight Ink', skill: 8, aggression: 9, blurb: 'The crew everyone whispers about.' },
 ];
 
-// Ranks are earned purely from style points. A tag earns style equal to
-// its quality, a battle win earns a flat bonus. The thresholds below are
-// the whole ladder; there is no other way up it.
-
-const CREW_RANKS = [
-  { min: 0, name: 'Toy' },
-  { min: 25, name: 'Up-and-Comer' },
-  { min: 60, name: 'Street Legend' },
-  { min: 120, name: 'Graffiti King' },
+const RANKS = [
+  { at: 0, name: 'Toy' },
+  { at: 25, name: 'Up-and-Comer' },
+  { at: 60, name: 'Street Legend' },
+  { at: 120, name: 'Graffiti King' },
 ];
+const BATTLE_PRIZE = 250;
+const BATTLE_STYLE = 10;
+const LOSS_HEAT = 2;
+const MAX_CANS = 99;
 
-const BATTLE_WIN_STYLE = 10;
+function rankNameFor(points) {
+  let out = RANKS[0].name;
+  for (const r of RANKS) if (points >= r.at) out = r.name;
+  return out;
+}
 
-const BATTLE_WIN_CASH = 250;
-
-const BATTLE_LOSS_HEAT = 2;
-
-const HOT_DISTRICT_HEAT = 2;
-
-// Daytime hours, inclusive on both ends. Tagging a hot wall while the
-// sun is up risks a patrol spotting the crew.
-const DAY_START_HOUR = 6;
-const DAY_END_HOUR = 20;
-
-const MAX_CANS_PER_BUY = 99;
-
-// ---------------------------------------------------------------------------
-// Small helpers
-// ---------------------------------------------------------------------------
-
-function findDistrict(districtId) {
-  for (let i = 0; i < GRAFFITI_DISTRICTS.length; i += 1) {
-    if (GRAFFITI_DISTRICTS[i].id === districtId) return GRAFFITI_DISTRICTS[i];
-  }
+function districtById(id) {
+  for (const d of GRAFFITI_DISTRICTS) if (d.id === id) return d;
   return null;
 }
 
-function findBrand(brandId) {
-  for (let i = 0; i < SPRAY_BRANDS.length; i += 1) {
-    if (SPRAY_BRANDS[i].id === brandId) return SPRAY_BRANDS[i];
-  }
+function brandById(id) {
+  for (const b of SPRAY_BRANDS) if (b.id === id) return b;
   return null;
 }
 
-function findCrew(crewId) {
-  for (let i = 0; i < RIVAL_CREWS.length; i += 1) {
-    if (RIVAL_CREWS[i].id === crewId) return RIVAL_CREWS[i];
-  }
+function crewById(id) {
+  for (const c of RIVAL_CREWS) if (c.id === id) return c;
   return null;
 }
 
-function isWholeCount(value) {
-  return typeof value === 'number' && Number.isFinite(value) && Math.floor(value) === value;
-}
+export function createGraffitiSystem(deps) {
+  const d = deps || {};
+  const rnd = typeof d.rng === 'function' ? d.rng : Math.random;
+  const dayOf = typeof d.getDay === 'function' ? d.getDay : () => 1;
+  const hourOf = typeof d.getHour === 'function' ? d.getHour : () => 12;
+  const cashOf = typeof d.getCash === 'function' ? d.getCash : () => 0;
+  const moveCash = typeof d.addCash === 'function' ? d.addCash : () => {};
+  const pushHeat = typeof d.addHeat === 'function' ? d.addHeat : () => {};
+  const say = typeof d.log === 'function' ? d.log : () => {};
+  const heatOf = typeof d.getHeatLevel === 'function' ? d.getHeatLevel : () => 0;
 
-function rankNameForPoints(points) {
-  let name = CREW_RANKS[0].name;
-  for (let i = 0; i < CREW_RANKS.length; i += 1) {
-    if (points >= CREW_RANKS[i].min) name = CREW_RANKS[i].name;
-  }
-  return name;
-}
-
-// ---------------------------------------------------------------------------
-// Factory
-// ---------------------------------------------------------------------------
-
-export function createGraffitiSystem(deps = {}) {
-  const rng = typeof deps.rng === 'function' ? deps.rng : Math.random;
-  const getDay = typeof deps.getDay === 'function' ? deps.getDay : () => 1;
-  const getHour = typeof deps.getHour === 'function' ? deps.getHour : () => 12;
-  const getCash = typeof deps.getCash === 'function' ? deps.getCash : () => 0;
-  const addCash = typeof deps.addCash === 'function' ? deps.addCash : () => {};
-  const addHeat = typeof deps.addHeat === 'function' ? deps.addHeat : () => {};
-  const log = typeof deps.log === 'function' ? deps.log : () => {};
-  const getHeatLevel = typeof deps.getHeatLevel === 'function' ? deps.getHeatLevel : () => 0;
-
-  // cans: brand id -> cans on hand. tags: district id -> { quality, age }.
-  // owners: district id -> 'you' | rival crew id | 'none'.
-  const cans = {};
-  const tags = {};
   const owners = {};
-  for (let i = 0; i < GRAFFITI_DISTRICTS.length; i += 1) {
-    owners[GRAFFITI_DISTRICTS[i].id] = GRAFFITI_DISTRICTS[i].owner;
-  }
+  for (const dist of GRAFFITI_DISTRICTS) owners[dist.id] = dist.owner;
 
-  let stylePoints = 0;
-  let totalEarned = 0;
-  let tagsPlaced = 0;
-  let tagsLost = 0;
-  let cansBought = 0;
-  let battlesWon = 0;
-  let battlesLost = 0;
-  let lastSettledDay = null;
+  const state = {
+    cans: {},
+    tags: {},
+    owners,
+    stylePoints: 0,
+    totalEarned: 0,
+    tagsPlaced: 0,
+    tagsLost: 0,
+    cansBought: 0,
+    battlesWon: 0,
+    battlesLost: 0,
+    lastSettledDay: 0,
+  };
 
-  // --- private helpers -----------------------------------------------------
-
-  function cansTotal() {
-    let total = 0;
-    const ids = Object.keys(cans);
-    for (let i = 0; i < ids.length; i += 1) total += cans[ids[i]];
-    return total;
-  }
-
-  function tagCount() {
-    return Object.keys(tags).length;
-  }
-
-  function districtsControlled() {
-    let count = 0;
-    const ids = Object.keys(owners);
-    for (let i = 0; i < ids.length; i += 1) {
-      if (owners[ids[i]] === 'you') count += 1;
-    }
-    return count;
-  }
-
-  // The best can on hand: the highest-quality brand with at least one
-  // can left. Returns the brand record, or null when the bag is empty.
-  function bestBrandOwned() {
+  function bestCan() {
     let best = null;
-    for (let i = SPRAY_BRANDS.length - 1; i >= 0; i -= 1) {
-      const brand = SPRAY_BRANDS[i];
-      if ((cans[brand.id] || 0) > 0) {
-        best = brand;
-        break;
-      }
+    for (const b of SPRAY_BRANDS) {
+      const held = state.cans[b.id] || 0;
+      if (held > 0 && (!best || b.quality > best.quality)) best = b;
     }
     return best;
   }
 
-  function averageTagQuality() {
-    const ids = Object.keys(tags);
-    if (ids.length === 0) return 0;
-    let sum = 0;
-    for (let i = 0; i < ids.length; i += 1) sum += tags[ids[i]].quality;
-    return sum / ids.length;
+  function totalCans() {
+    let n = 0;
+    for (const k of Object.keys(state.cans)) n += state.cans[k];
+    return n;
   }
 
-  function lowestQualityTagDistricts() {
-    const ids = Object.keys(tags);
-    if (ids.length === 0) return [];
-    let lowest = Infinity;
-    for (let i = 0; i < ids.length; i += 1) {
-      if (tags[ids[i]].quality < lowest) lowest = tags[ids[i]].quality;
-    }
-    const out = [];
-    for (let i = 0; i < ids.length; i += 1) {
-      if (tags[ids[i]].quality === lowest) out.push(ids[i]);
-    }
-    return out;
+  function turfCount() {
+    let n = 0;
+    for (const k of Object.keys(state.owners)) if (state.owners[k] === 'you') n += 1;
+    return n;
   }
-
-  // -------------------------------------------------------------------------
-  // Public actions
-  // -------------------------------------------------------------------------
 
   function buyCans(brandId, qty) {
-    const brand = findBrand(brandId);
+    const brand = brandById(brandId);
     if (!brand) return { ok: false, reason: 'unknown-brand' };
-    if (!isWholeCount(qty) || qty < 1 || qty > MAX_CANS_PER_BUY) {
-      return { ok: false, reason: 'bad-quantity' };
-    }
+    if (!Number.isInteger(qty) || qty < 1 || qty > MAX_CANS) return { ok: false, reason: 'bad-quantity' };
     const cost = brand.price * qty;
-    if (getCash() < cost) return { ok: false, reason: 'not-enough-cash' };
-    addCash(-cost);
-    cans[brand.id] = (cans[brand.id] || 0) + qty;
-    cansBought += qty;
-    log(`Bought ${qty}x ${brand.name} spray for $${cost}.`);
-    return { ok: true, brand: brand.id, brandName: brand.name, qty, cost, cans: cans[brand.id] };
+    if (cashOf() < cost) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-cost);
+    state.cans[brandId] = (state.cans[brandId] || 0) + qty;
+    state.cansBought += qty;
+    say('Bought ' + qty + ' cans of ' + brand.name + '.');
+    return { ok: true, brandId, brandName: brand.name, quantity: qty, cost, held: state.cans[brandId] };
   }
 
-  // Put a tag up in a district. One can of the best brand on hand is
-  // spent, and the piece quality is that brand's quality plus a small
-  // burst of inspiration from the rng (0 to 2). A fresh wall takes the
-  // tag outright; a wall the crew already holds only swaps the piece
-  // when the new one is strictly better. Tagging a hot district in
-  // daylight draws a patrol, which adds one heat.
   function tag(districtId) {
-    const district = findDistrict(districtId);
-    if (!district) return { ok: false, reason: 'unknown-district' };
-    const brand = bestBrandOwned();
+    const dist = districtById(districtId);
+    if (!dist) return { ok: false, reason: 'unknown-district' };
+    const brand = bestCan();
     if (!brand) return { ok: false, reason: 'no-cans' };
-
-    // The can is spent the moment the crew starts spraying, whether or
-    // not the new piece ends up better than what is already there.
-    cans[brand.id] -= 1;
-    const bonus = Math.floor(rng() * 3);
-    const quality = brand.quality + bonus;
-    const hour = getHour();
-    const isDaytime = hour >= DAY_START_HOUR && hour <= DAY_END_HOUR;
-    const heatAdded = district.heat >= HOT_DISTRICT_HEAT && isDaytime ? 1 : 0;
-
-    const existing = tags[districtId];
-    if (existing && quality <= existing.quality) {
-      if (heatAdded > 0) addHeat(heatAdded);
-      log(`Tag in ${district.name} was not better than the old piece (${quality} vs ${existing.quality}).`);
-      return {
-        ok: false,
-        reason: 'tag-too-weak',
-        district: districtId,
-        quality,
-        existingQuality: existing.quality,
-        heatAdded,
-        cansLeft: cans[brand.id],
-      };
+    state.cans[brand.id] -= 1;
+    if (state.cans[brand.id] <= 0) delete state.cans[brand.id];
+    const quality = brand.quality + Math.floor(rnd() * 3);
+    let heatAdded = 0;
+    const hour = hourOf();
+    if (dist.heat >= 2 && hour >= 6 && hour <= 20) {
+      heatAdded = 1;
+      pushHeat(1);
     }
-
-    tags[districtId] = { quality, age: 0 };
-    owners[districtId] = 'you';
-    stylePoints += quality;
-    tagsPlaced += 1;
-    if (heatAdded > 0) addHeat(heatAdded);
-    log(`Tagged ${district.name} with ${brand.name} (quality ${quality}).`);
-    return {
-      ok: true,
-      district: districtId,
-      districtName: district.name,
-      brand: brand.id,
-      quality,
-      stylePoints,
-      heatAdded,
-      cansLeft: cans[brand.id],
-    };
+    const existing = state.tags[districtId];
+    if (existing && quality <= existing.quality) {
+      return { ok: false, reason: 'tag-too-weak', quality, existingQuality: existing.quality, heatAdded, cansLeft: totalCans() };
+    }
+    state.tags[districtId] = { quality, age: 0 };
+    state.owners[districtId] = 'you';
+    state.stylePoints += quality;
+    state.tagsPlaced += 1;
+    say('Tagged ' + dist.name + ' with ' + brand.name + ' (quality ' + quality + ').');
+    return { ok: true, districtId, districtName: dist.name, brandId: brand.id, quality, stylePoints: state.stylePoints, heatAdded, cansLeft: totalCans() };
   }
 
-  // Challenge a rival crew to a style battle. The crew's score is the
-  // average quality of its standing tags plus a roll of 0 to 5; the
-  // rival's score is its flat skill number. A win takes the rival's
-  // first listed district, pays $250, and adds style. A loss costs the
-  // crew its weakest tag and adds heat.
   function challengeRival(crewId) {
-    const crew = findCrew(crewId);
+    const crew = crewById(crewId);
     if (!crew) return { ok: false, reason: 'unknown-crew' };
-
-    const average = averageTagQuality();
-    const roll = rng() * 5;
-    const playerScore = average + roll;
+    let qualitySum = 0;
+    let tagCount = 0;
+    for (const k of Object.keys(state.tags)) {
+      if (state.owners[k] === 'you') { qualitySum += state.tags[k].quality; tagCount += 1; }
+    }
+    const avg = tagCount > 0 ? qualitySum / tagCount : 0;
+    const playerScore = Math.round((avg + rnd() * 5) * 10) / 10;
     const rivalScore = crew.skill;
-    const won = playerScore > rivalScore;
-
-    if (won) {
+    if (playerScore > rivalScore) {
       let taken = null;
-      for (let i = 0; i < GRAFFITI_DISTRICTS.length; i += 1) {
-        const district = GRAFFITI_DISTRICTS[i];
-        if (owners[district.id] === crew.id) {
-          owners[district.id] = 'you';
-          taken = district.id;
-          break;
-        }
+      for (const dist of GRAFFITI_DISTRICTS) {
+        if (state.owners[dist.id] === crewId) { taken = dist.id; break; }
       }
-      addCash(BATTLE_WIN_CASH);
-      totalEarned += BATTLE_WIN_CASH;
-      stylePoints += BATTLE_WIN_STYLE;
-      battlesWon += 1;
-      log(`Beat ${crew.name} in a style battle and took ${taken ? findDistrict(taken).name : 'no turf'} (+$${BATTLE_WIN_CASH}).`);
-      return {
-        ok: true,
-        won: true,
-        crew: crew.id,
-        crewName: crew.name,
-        playerScore,
-        rivalScore,
-        districtTaken: taken,
-        prize: BATTLE_WIN_CASH,
-        stylePoints,
-      };
+      if (taken) state.owners[taken] = 'you';
+      moveCash(BATTLE_PRIZE);
+      state.totalEarned += BATTLE_PRIZE;
+      state.stylePoints += BATTLE_STYLE;
+      state.battlesWon += 1;
+      say('Beat ' + crew.name + ' in a style battle.');
+      return { ok: true, won: true, crewId, crewName: crew.name, playerScore, rivalScore, districtTaken: taken, prize: BATTLE_PRIZE, stylePoints: state.stylePoints };
     }
-
-    // Lost: the rival crew buffs the crew's weakest piece. When the
-    // walls are already bare there is simply nothing left to lose.
-    const weakest = lowestQualityTagDistricts();
     let lostTag = null;
-    if (weakest.length > 0) {
-      lostTag = weakest[0];
-      const lostQuality = tags[lostTag].quality;
-      delete tags[lostTag];
-      owners[lostTag] = 'none';
-      tagsLost += 1;
-      log(`${crew.name} painted over the crew's piece in ${findDistrict(lostTag).name} (quality ${lostQuality}).`);
+    let weakest = null;
+    let weakestQ = Infinity;
+    for (const k of Object.keys(state.tags)) {
+      if (state.owners[k] === 'you' && state.tags[k].quality < weakestQ) { weakestQ = state.tags[k].quality; weakest = k; }
     }
-    addHeat(BATTLE_LOSS_HEAT);
-    battlesLost += 1;
-    log(`Lost a style battle to ${crew.name} (+${BATTLE_LOSS_HEAT} heat).`);
-    return {
-      ok: true,
-      won: false,
-      crew: crew.id,
-      crewName: crew.name,
-      playerScore,
-      rivalScore,
-      tagLost: lostTag,
-      heatAdded: BATTLE_LOSS_HEAT,
-      stylePoints,
-    };
+    if (weakest) {
+      lostTag = weakest;
+      delete state.tags[weakest];
+      state.owners[weakest] = 'none';
+    }
+    pushHeat(LOSS_HEAT);
+    state.battlesLost += 1;
+    say('Lost a battle to ' + crew.name + '.');
+    return { ok: true, won: false, crewId, crewName: crew.name, playerScore, rivalScore, tagLost: lostTag, heatAdded: LOSS_HEAT, stylePoints: state.stylePoints };
   }
 
   function crewRank() {
-    return rankNameForPoints(stylePoints);
+    return rankNameFor(state.stylePoints);
   }
 
   function districtStatus(districtId) {
-    const district = findDistrict(districtId);
-    if (!district) return { ok: false, reason: 'unknown-district' };
-    const ownTag = tags[districtId] || null;
+    const dist = districtById(districtId);
+    if (!dist) return { ok: false, reason: 'unknown-district' };
+    const tagRec = state.tags[districtId];
     return {
       ok: true,
-      id: district.id,
-      name: district.name,
-      heat: district.heat,
-      turfIncome: district.turfIncome,
-      owner: owners[districtId],
-      controlled: owners[districtId] === 'you',
-      tagQuality: ownTag ? ownTag.quality : null,
-      tagAge: ownTag ? ownTag.age : null,
+      id: dist.id,
+      name: dist.name,
+      heat: dist.heat,
+      turfIncome: dist.turfIncome,
+      owner: state.owners[districtId],
+      controlled: state.owners[districtId] === 'you',
+      tagQuality: tagRec ? tagRec.quality : null,
+      tagAge: tagRec ? tagRec.age : null,
     };
   }
 
-  // Daily settlement, run once per in-game day. Each rival crew paints
-  // over one of the crew's lowest-quality tags (ties are broken with a
-  // roll), the surviving tags age by a day, and every district the crew
-  // still controls pays its turf income in a single cash move.
   function settleDay(day) {
-    const dayNumber = typeof day === 'number' ? day : getDay();
-    if (lastSettledDay !== null && dayNumber === lastSettledDay) {
-      return { ok: false, reason: 'already-settled' };
+    const today = day !== undefined && day !== null ? day : dayOf();
+    if (state.lastSettledDay === today) return { ok: false, reason: 'already-settled' };
+    state.lastSettledDay = today;
+    const painted = [];
+    for (const crew of RIVAL_CREWS) {
+      const mine = Object.keys(state.tags).filter((k) => state.owners[k] === 'you');
+      if (mine.length === 0) break;
+      let lowest = Infinity;
+      for (const k of mine) if (state.tags[k].quality < lowest) lowest = state.tags[k].quality;
+      const weakest = mine.filter((k) => state.tags[k].quality === lowest);
+      const victim = weakest[Math.floor(rnd() * weakest.length)];
+      const q = state.tags[victim].quality;
+      delete state.tags[victim];
+      state.owners[victim] = crew.id;
+      state.tagsLost += 1;
+      const dist = districtById(victim);
+      painted.push({ crewId: crew.id, crewName: crew.name, district: victim, quality: q, districtName: dist ? dist.name : victim });
     }
-    lastSettledDay = dayNumber;
-
-    const paintedOver = [];
-    for (let c = 0; c < RIVAL_CREWS.length; c += 1) {
-      const crew = RIVAL_CREWS[c];
-      const weakest = lowestQualityTagDistricts();
-      if (weakest.length === 0) break;
-      const pick = Math.floor(rng() * weakest.length);
-      const districtId = weakest[pick];
-      const lostQuality = tags[districtId].quality;
-      delete tags[districtId];
-      owners[districtId] = crew.id;
-      tagsLost += 1;
-      paintedOver.push({ crew: crew.id, crewName: crew.name, district: districtId, quality: lostQuality });
-      log(`${crew.name} painted over the crew's piece in ${findDistrict(districtId).name}.`);
-    }
-
-    const remaining = Object.keys(tags);
-    for (let i = 0; i < remaining.length; i += 1) {
-      tags[remaining[i]].age += 1;
-    }
-
+    for (const k of Object.keys(state.tags)) state.tags[k].age += 1;
     let income = 0;
     const paid = [];
-    for (let i = 0; i < GRAFFITI_DISTRICTS.length; i += 1) {
-      const district = GRAFFITI_DISTRICTS[i];
-      if (owners[district.id] === 'you') {
-        income += district.turfIncome;
-        paid.push({ district: district.id, income: district.turfIncome });
+    for (const dist of GRAFFITI_DISTRICTS) {
+      if (state.owners[dist.id] === 'you') {
+        income += dist.turfIncome;
+        paid.push({ districtId: dist.id, income: dist.turfIncome });
       }
     }
     if (income > 0) {
-      addCash(income);
-      totalEarned += income;
-      log(`Turf income: +$${income} from ${paid.length} district(s).`);
+      moveCash(income);
+      state.totalEarned += income;
     }
-
-    return {
-      ok: true,
-      day: dayNumber,
-      income,
-      districtsPaid: paid,
-      paintedOver,
-      tagsLost: paintedOver.length,
-      tagsStanding: tagCount(),
-      stylePoints,
-    };
+    const standing = Object.keys(state.tags).filter((k) => state.owners[k] === 'you').length;
+    return { ok: true, day: today, income, paid, paintedOver: painted, tagsLost: painted.length, tagsStanding: standing, stylePoints: state.stylePoints };
   }
-
-  // --- reporting -----------------------------------------------------------
 
   function stats() {
     return {
-      tags: tagCount(),
-      cansTotal: cansTotal(),
-      cansBought,
-      stylePoints,
-      rank: rankNameForPoints(stylePoints),
-      districtsControlled: districtsControlled(),
-      totalEarned,
-      tagsPlaced,
-      tagsLost,
-      battlesWon,
-      battlesLost,
-      lastSettledDay: lastSettledDay === null ? 0 : lastSettledDay,
-      heatLevel: getHeatLevel(),
+      tags: Object.keys(state.tags).length,
+      totalCans: totalCans(),
+      cansBought: state.cansBought,
+      stylePoints: state.stylePoints,
+      rank: crewRank(),
+      districtsControlled: turfCount(),
+      totalEarned: state.totalEarned,
+      tagsPlaced: state.tagsPlaced,
+      tagsLost: state.tagsLost,
+      battlesWon: state.battlesWon,
+      battlesLost: state.battlesLost,
+      lastSettledDay: state.lastSettledDay || 0,
+      heatLevel: heatOf(),
     };
   }
 
   function hudLine() {
-    if (tagCount() === 0 && stylePoints === 0 && districtsControlled() === 0) return '';
-    return `Graffiti: ${tagCount()} tags · ${stylePoints} style · ${rankNameForPoints(stylePoints)} · ${districtsControlled()} turf`;
+    const tagCount = Object.keys(state.tags).length;
+    if (tagCount === 0 && state.stylePoints === 0 && turfCount() === 0) return '';
+    return ['Graffiti', tagCount + ' tags', state.stylePoints + ' style', crewRank(), turfCount() + ' turf'].join(' · ');
   }
 
-  // --- persistence ---------------------------------------------------------
-
   function serialize() {
-    const cansOut = {};
-    const brandIds = Object.keys(cans);
-    for (let i = 0; i < brandIds.length; i += 1) cansOut[brandIds[i]] = cans[brandIds[i]];
-    const tagsOut = {};
-    const tagIds = Object.keys(tags);
-    for (let i = 0; i < tagIds.length; i += 1) {
-      tagsOut[tagIds[i]] = { quality: tags[tagIds[i]].quality, age: tags[tagIds[i]].age };
-    }
-    const ownersOut = {};
-    const ownerIds = Object.keys(owners);
-    for (let i = 0; i < ownerIds.length; i += 1) ownersOut[ownerIds[i]] = owners[ownerIds[i]];
     return {
-      cans: cansOut,
-      tags: tagsOut,
-      owners: ownersOut,
-      stylePoints,
-      totalEarned,
-      tagsPlaced,
-      tagsLost,
-      cansBought,
-      battlesWon,
-      battlesLost,
-      lastSettledDay,
+      cans: { ...state.cans },
+      tags: JSON.parse(JSON.stringify(state.tags)),
+      owners: { ...state.owners },
+      stylePoints: state.stylePoints,
+      totalEarned: state.totalEarned,
+      tagsPlaced: state.tagsPlaced,
+      tagsLost: state.tagsLost,
+      cansBought: state.cansBought,
+      battlesWon: state.battlesWon,
+      battlesLost: state.battlesLost,
+      lastSettledDay: state.lastSettledDay,
     };
   }
 
-  function deserialize(d) {
-    const data = d && typeof d === 'object' ? d : {};
-    const savedCans = data.cans && typeof data.cans === 'object' ? data.cans : {};
-    const savedTags = data.tags && typeof data.tags === 'object' ? data.tags : {};
-    const savedOwners = data.owners && typeof data.owners === 'object' ? data.owners : {};
-
-    const canIds = Object.keys(cans);
-    for (let i = 0; i < canIds.length; i += 1) delete cans[canIds[i]];
-    const canKeys = Object.keys(savedCans);
-    for (let i = 0; i < canKeys.length; i += 1) {
-      const amount = savedCans[canKeys[i]];
-      if (typeof amount === 'number' && amount > 0) cans[canKeys[i]] = Math.floor(amount);
+  function deserialize(saved) {
+    const s = saved || {};
+    state.cans = {};
+    if (s.cans) for (const k of Object.keys(s.cans)) {
+      const v = Math.floor(Number(s.cans[k]));
+      if (Number.isFinite(v) && v > 0) state.cans[k] = v;
     }
-
-    const tagIds = Object.keys(tags);
-    for (let i = 0; i < tagIds.length; i += 1) delete tags[tagIds[i]];
-    const savedTagKeys = Object.keys(savedTags);
-    for (let i = 0; i < savedTagKeys.length; i += 1) {
-      const entry = savedTags[savedTagKeys[i]];
-      if (entry && typeof entry === 'object') {
-        tags[savedTagKeys[i]] = {
-          quality: typeof entry.quality === 'number' ? entry.quality : 1,
-          age: typeof entry.age === 'number' ? entry.age : 0,
-        };
-      }
+    state.tags = {};
+    if (s.tags) for (const k of Object.keys(s.tags)) {
+      const rec = s.tags[k] || {};
+      state.tags[k] = { quality: Math.floor(Number(rec.quality) || 1), age: Math.floor(Number(rec.age) || 0) };
     }
-
-    for (let i = 0; i < GRAFFITI_DISTRICTS.length; i += 1) {
-      const id = GRAFFITI_DISTRICTS[i].id;
-      owners[id] = typeof savedOwners[id] === 'string' ? savedOwners[id] : GRAFFITI_DISTRICTS[i].owner;
+    state.owners = {};
+    for (const dist of GRAFFITI_DISTRICTS) {
+      state.owners[dist.id] = s.owners && typeof s.owners[dist.id] === 'string' ? s.owners[dist.id] : dist.owner;
     }
-
-    stylePoints = typeof data.stylePoints === 'number' ? data.stylePoints : 0;
-    totalEarned = typeof data.totalEarned === 'number' ? data.totalEarned : 0;
-    tagsPlaced = typeof data.tagsPlaced === 'number' ? data.tagsPlaced : 0;
-    tagsLost = typeof data.tagsLost === 'number' ? data.tagsLost : 0;
-    cansBought = typeof data.cansBought === 'number' ? data.cansBought : 0;
-    battlesWon = typeof data.battlesWon === 'number' ? data.battlesWon : 0;
-    battlesLost = typeof data.battlesLost === 'number' ? data.battlesLost : 0;
-    lastSettledDay = typeof data.lastSettledDay === 'number' ? data.lastSettledDay : null;
+    state.stylePoints = Math.floor(Number(s.stylePoints) || 0);
+    state.totalEarned = Number(s.totalEarned) || 0;
+    state.tagsPlaced = Math.floor(Number(s.tagsPlaced) || 0);
+    state.tagsLost = Math.floor(Number(s.tagsLost) || 0);
+    state.cansBought = Math.floor(Number(s.cansBought) || 0);
+    state.battlesWon = Math.floor(Number(s.battlesWon) || 0);
+    state.battlesLost = Math.floor(Number(s.battlesLost) || 0);
+    state.lastSettledDay = Math.floor(Number(s.lastSettledDay) || 0);
     return { ok: true };
   }
 
   return {
+    name: 'Graffiti',
+    state,
     buyCans,
     tag,
     challengeRival,

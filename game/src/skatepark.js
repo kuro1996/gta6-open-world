@@ -1,16 +1,10 @@
-// Concrete Kings — skatepark and BMX: tricks, combos, competitions,
-// sponsors and video clips. Round 7, all-new system. The park has bowls,
-/// rails and a half-pipe; your board (or BMX) has a trick list, and your
-// run has a combo meter that multiplies everything — until you bail.
-// Land clean runs, enter the Saturday comp, get a sponsor, and film clips
-// that go viral. Concrete doesn't forgive, but it remembers.
 export const SKATE_PARK = { id: 'concrete-kings', name: 'Concrete Kings Skatepark', x: -40, z: 190, district: 'Campus' };
 
 export const SKATE_PARKS = [
   { id: 'concrete-kings', name: 'Concrete Kings', x: -40, z: 190, difficulty: 1, features: ['bowl', 'rail', 'quarter'] },
   { id: 'harbor-diy', name: 'Harbor DIY', x: -180, z: 120, difficulty: 2, features: ['ledge', 'stair', 'rail'] },
-  { id: 'stadium-park', name: 'Stadium Skatepark', x: -200, z: -40, difficulty: 3, features: ['half-pipe', 'bowl', 'vert'] },
-  { id: 'rooftop', name: 'Rooftop Spot', x: 20, z: -140, difficulty: 4, features: ['gap', 'rail', 'ledge'] },
+  { id: 'stadium-park', name: 'Stadium Park', x: -200, z: -40, difficulty: 3, features: ['half-pipe', 'bowl', 'vert'] },
+  { id: 'rooftop', name: 'Rooftop', x: 20, z: -140, difficulty: 4, features: ['gap', 'rail', 'ledge'] },
 ];
 
 export const SKATE_TRICKS = [
@@ -20,13 +14,13 @@ export const SKATE_TRICKS = [
   { id: 'pop-shove', name: 'Pop Shove-It', base: 200, risk: 0.12, level: 1, style: 'flat' },
   { id: 'grind-50', name: '50-50 Grind', base: 300, risk: 0.2, level: 2, style: 'rail' },
   { id: 'boardslide', name: 'Boardslide', base: 350, risk: 0.22, level: 2, style: 'rail' },
-  { id: 'nosegrind', name: 'Nose Grind', base: 450, risk: 0.3, level: 3, style: 'rail' },
-  { id: 'tailgrab', name: 'Tail Grab', base: 400, risk: 0.25, level: 2, style: 'air' },
-  { id: 'air-360', name: '360 Air', base: 600, risk: 0.35, level: 3, style: 'air' },
+  { id: 'nosegrind', name: 'Nosegrind', base: 450, risk: 0.3, level: 3, style: 'rail' },
+  { id: 'tailgrab', name: 'Tailgrab', base: 400, risk: 0.25, level: 2, style: 'air' },
+  { id: 'air-360', name: 'Air 360', base: 600, risk: 0.35, level: 3, style: 'air' },
   { id: 'mctwist', name: 'McTwist', base: 900, risk: 0.45, level: 4, style: 'air' },
   { id: 'manual', name: 'Manual', base: 150, risk: 0.08, level: 1, style: 'flat' },
   { id: 'nose-manual', name: 'Nose Manual', base: 250, risk: 0.18, level: 2, style: 'flat' },
-  { id: 'rock-roll', name: 'Rock to Fakie', base: 500, risk: 0.3, level: 3, style: 'bowl' },
+  { id: 'rock-roll', name: 'Rock and Roll', base: 500, risk: 0.3, level: 3, style: 'bowl' },
   { id: 'invert', name: 'Invert', base: 800, risk: 0.4, level: 4, style: 'bowl' },
   { id: 'smith', name: 'Smith Grind', base: 550, risk: 0.35, level: 3, style: 'rail' },
   { id: 'bluntslide', name: 'Bluntslide', base: 700, risk: 0.42, level: 4, style: 'rail' },
@@ -37,7 +31,7 @@ export const SKATE_TRICKS = [
 ];
 
 export const BMX_TRICKS = [
-  { id: 'bunnyhop', name: 'Bunny Hop', base: 100, risk: 0.05, level: 1 },
+  { id: 'bunnyhop', name: 'Bunnyhop', base: 100, risk: 0.05, level: 1 },
   { id: 'barspin', name: 'Barspin', base: 400, risk: 0.25, level: 2 },
   { id: 'tailwhip', name: 'Tailwhip', base: 600, risk: 0.35, level: 3 },
   { id: 'backflip', name: 'Backflip', base: 900, risk: 0.5, level: 4 },
@@ -49,21 +43,21 @@ export const BMX_TRICKS = [
 
 export const SKATE_GEAR = [
   { id: 'board-basic', name: 'Basic Board', price: 0, kind: 'board', skill: 0, style: 0 },
-  { id: 'board-pro', name: 'Pro Deck', price: 220, kind: 'board', skill: 2, style: 1 },
-  { id: 'board-carbon', name: 'Carbon Deck', price: 500, kind: 'board', skill: 4, style: 2 },
-  { id: 'bmx-basic', name: 'BMX Bike', price: 400, kind: 'bmx', skill: 0, style: 0 },
+  { id: 'board-pro', name: 'Pro Board', price: 220, kind: 'board', skill: 2, style: 1 },
+  { id: 'board-carbon', name: 'Carbon Board', price: 500, kind: 'board', skill: 4, style: 2 },
+  { id: 'bmx-basic', name: 'Basic BMX', price: 400, kind: 'bmx', skill: 0, style: 0 },
   { id: 'bmx-pro', name: 'Pro BMX', price: 900, kind: 'bmx', skill: 3, style: 2 },
   { id: 'wheels', name: 'Fast Wheels', price: 120, kind: 'upgrade', skill: 1, style: 0 },
   { id: 'bearings', name: 'Ceramic Bearings', price: 180, kind: 'upgrade', skill: 1, style: 1 },
-  { id: 'grip', name: 'Grip Tape Art', price: 60, kind: 'upgrade', skill: 0, style: 2 },
+  { id: 'grip', name: 'Grip Tape', price: 60, kind: 'upgrade', skill: 0, style: 2 },
   { id: 'helmet', name: 'Helmet', price: 80, kind: 'safety', skill: 0, style: 0, protection: 0.5 },
-  { id: 'pads', name: 'Pad Set', price: 70, kind: 'safety', skill: 0, style: 0, protection: 0.4 },
+  { id: 'pads', name: 'Pads', price: 70, kind: 'safety', skill: 0, style: 0, protection: 0.4 },
   { id: 'shoes', name: 'Skate Shoes', price: 140, kind: 'upgrade', skill: 2, style: 1 },
-  { id: 'camera', name: 'Action Camera', price: 300, kind: 'video', skill: 0, style: 1 },
+  { id: 'camera', name: 'Camera', price: 300, kind: 'video', skill: 0, style: 1 },
 ];
 
 export const SKATE_SPONSORS = [
-  { id: 'local-shop', name: 'Local Skate Shop', needScore: 5000, pay: 100, perks: ['free gear'] },
+  { id: 'local-shop', name: 'Local Shop', needScore: 5000, pay: 100, perks: ['free gear'] },
   { id: 'energy', name: 'Bolt Energy', needScore: 20000, pay: 300, perks: ['free gear', 'travel'] },
   { id: 'shoe-brand', name: 'Kickflip Shoes', needScore: 50000, pay: 700, perks: ['free gear', 'signature shoe'] },
   { id: 'board-brand', name: 'Concrete Kings Co.', needScore: 100000, pay: 1500, perks: ['pro model', 'world tour'] },
@@ -71,20 +65,20 @@ export const SKATE_SPONSORS = [
 
 export const SKATE_COMPS = [
   { id: 'saturday-jam', name: 'Saturday Jam', entry: 20, prize: 150, needLevel: 1, day: 6 },
-  { id: 'street-league', name: 'Street League Qualifier', entry: 100, prize: 800, needLevel: 2, day: 3 },
+  { id: 'street-league', name: 'Street League', entry: 100, prize: 800, needLevel: 2, day: 3 },
   { id: 'vert-masters', name: 'Vert Masters', entry: 250, prize: 2500, needLevel: 3, day: 5 },
   { id: 'solara-open', name: 'Solara Open', entry: 500, prize: 8000, needLevel: 4, day: 6 },
 ];
 
 export const SKATE_EVENTS = [
-  { id: 'crowd', name: 'Crowd Gathers', text: 'A crowd gathers to watch you ride.' },
+  { id: 'crowd', name: 'Crowd Gathers', text: 'A crowd gathers to watch.' },
   { id: 'security', name: 'Security', text: 'Security tells you to move along.' },
-  { id: 'kid-fan', name: 'Kid Fan', text: 'A kid asks for your autograph!' },
-  { id: 'rain-park', name: 'Rain', text: 'Rain makes the concrete slick and dangerous.' },
-  { id: 'filmer', name: 'Filmer', text: 'A filmer shows up — land something big!' },
-  { id: 'rival-skater', name: 'Rival Skater', text: 'A rival skater challenges you to a game of S.K.A.T.E.' },
-  { id: 'cop-park', name: 'Cop', text: 'A cop watches you from the edge of the park.' },
-  { id: 'sponsor-scout', name: 'Sponsor Scout', text: 'A sponsor scout is watching from the bleachers.' },
+  { id: 'kid-fan', name: 'Kid Fan', text: 'A kid asks for your autograph.' },
+  { id: 'rain-park', name: 'Rain', text: 'Rain starts falling on the park.' },
+  { id: 'filmer', name: 'Filmer', text: 'A filmer shows up with a camera.' },
+  { id: 'rival-skater', name: 'Rival Skater', text: 'A rival skater challenges you.' },
+  { id: 'cop-park', name: 'Cop', text: 'A cop rolls through the park.' },
+  { id: 'sponsor-scout', name: 'Sponsor Scout', text: 'A sponsor scout watches from the bench.' },
 ];
 
 export const SKATE_RANKS = [
@@ -96,23 +90,43 @@ export const SKATE_RANKS = [
   { rank: 5, name: 'Legend', scoreNeeded: 300000, mult: 2.0 },
 ];
 
+const LESSONS = [
+  { id: 'basics', name: 'Basics Lesson', price: 50, gain: 1, time: 30 },
+  { id: 'flip', name: 'Flip Tricks', price: 120, gain: 2, time: 45 },
+  { id: 'vert', name: 'Vert Riding', price: 200, gain: 3, time: 60 },
+];
+
 export function skateRankFor(totalScore) {
-  let rank = 0;
-  for (let i = 0; i < SKATE_RANKS.length; i++) {
-    if (totalScore >= SKATE_RANKS[i].scoreNeeded) rank = i;
-  }
-  return rank;
+  let out = 0;
+  for (const r of SKATE_RANKS) if (totalScore >= r.scoreNeeded) out = r.rank;
+  return out;
 }
 
-export function createSkateparkSystem(deps = {}) {
-  const rng = deps.rng || Math.random;
-  const getCash = deps.getCash || (() => 0);
-  const addCash = deps.addCash || (() => {});
-  const addHeat = deps.addHeat || (() => {});
-  const log = deps.log || (() => {});
-  const getDay = deps.getDay || (() => 1);
-  const getHour = deps.getHour || (() => 12);
-  const getPlayerPos = deps.getPlayerPos || (() => ({ x: 0, z: 0 }));
+function trickById(id) {
+  for (const t of SKATE_TRICKS) if (t.id === id) return t;
+  for (const t of BMX_TRICKS) if (t.id === id) return t;
+  return null;
+}
+
+function gearById(id) {
+  for (const g of SKATE_GEAR) if (g.id === id) return g;
+  return null;
+}
+
+function parkById(id) {
+  for (const p of SKATE_PARKS) if (p.id === id) return p;
+  return null;
+}
+
+export function createSkateparkSystem(deps) {
+  const d = deps || {};
+  const rnd = typeof d.rng === 'function' ? d.rng : Math.random;
+  const cashOf = typeof d.getCash === 'function' ? d.getCash : () => 0;
+  const moveCash = typeof d.addCash === 'function' ? d.addCash : () => {};
+  const pushHeat = typeof d.addHeat === 'function' ? d.addHeat : () => {};
+  const say = typeof d.log === 'function' ? d.log : () => {};
+  const dayOf = typeof d.getDay === 'function' ? d.getDay : () => 1;
+  const posOf = typeof d.getPlayerPos === 'function' ? d.getPlayerPos : () => ({ x: 0, z: 0 });
 
   const state = {
     rank: 0,
@@ -129,7 +143,7 @@ export function createSkateparkSystem(deps = {}) {
     activeGear: 'board-basic',
     tricksLanded: {},
     tricksLearned: ['ollie'],
-    run: null, // { parkId, tricks: [], combo, score, timeLeft, mode }
+    run: null,
     sponsor: null,
     sponsorPay: 0,
     clips: [],
@@ -150,117 +164,117 @@ export function createSkateparkSystem(deps = {}) {
     protection: 0,
     videoViews: 0,
     currentPark: 'concrete-kings',
+    lessonsTaken: 0,
+    videosEdited: 0,
+    parksCleaned: 0,
+    ledgesWaxed: 0,
+    rivalBeaten: 0,
+    marathons: 0,
+    rampsBuilt: 0,
   };
 
-  function rankInfo() { return SKATE_RANKS[state.rank]; }
+  function rankInfo() {
+    return SKATE_RANKS[state.rank] || SKATE_RANKS[0];
+  }
+
   function gearInfo() {
-    return SKATE_GEAR.find((g) => g.id === state.activeGear) || SKATE_GEAR[0];
+    return gearById(state.activeGear) || SKATE_GEAR[0];
   }
-  function hasGear(id) { return state.gear.includes(id); }
+
+  function hasGear(id) {
+    return state.gear.includes(id);
+  }
+
   function skillBonus() {
-    let s = 0;
-    for (const g of state.gear) {
-      const def = SKATE_GEAR.find((x) => x.id === g);
-      if (def && def.skill) s += def.skill;
-    }
-    return s + state.rank + (state.skillBonus || 0);
-  }
-  function styleBonus() {
-    let s = 0;
-    for (const g of state.gear) {
-      const def = SKATE_GEAR.find((x) => x.id === g);
-      if (def && def.style) s += def.style;
+    let s = state.skillBonus + state.rank;
+    for (const id of state.gear) {
+      const g = gearById(id);
+      if (g) s += g.skill || 0;
     }
     return s;
   }
+
+  function styleBonus() {
+    let s = 0;
+    for (const id of state.gear) {
+      const g = gearById(id);
+      if (g) s += g.style || 0;
+    }
+    return s;
+  }
+
   function protection() {
     let p = 0;
-    for (const g of state.gear) {
-      const def = SKATE_GEAR.find((x) => x.id === g);
-      if (def && def.protection) p += def.protection;
+    for (const id of state.gear) {
+      const g = gearById(id);
+      if (g && g.protection) p += g.protection;
     }
     return Math.min(0.8, p);
   }
+
   function bailChance(trick) {
-    const base = trick.risk;
-    const skill = skillBonus() * 0.02;
-    return Math.max(0.02, base - skill);
+    return Math.max(0.02, trick.risk - skillBonus() * 0.02);
   }
 
-  function startRun(parkId, mode = 'skate') {
+  function startRun(parkId, mode) {
+    const useMode = mode || 'skate';
     if (state.run) return { ok: false, reason: 'run-active' };
-    const park = SKATE_PARKS.find((p) => p.id === parkId);
-    if (!park) return { ok: false, reason: 'no-such-park' };
+    const park = parkById(parkId);
+    if (!park) return { ok: false, reason: 'unknown-park' };
     if (state.energy < 20) return { ok: false, reason: 'too-tired' };
-    if (mode === 'bmx' && !hasGear('bmx-basic') && !hasGear('bmx-pro')) {
-      return { ok: false, reason: 'no-bmx' };
-    }
-    if (mode === 'skate' && gearInfo().kind === 'bmx') {
-      return { ok: false, reason: 'wrong-gear' };
-    }
-    state.run = {
-      parkId, parkName: park.name, mode,
-      tricks: [], combo: 0, score: 0, timeLeft: 60,
-      startedDay: getDay(), bestTrick: null,
-    };
-    state.currentPark = parkId;
-    state.lastParkDay = getDay();
-    log(`Run started at ${park.name} (${mode})! 60 seconds — chain tricks, don't bail!`);
+    const active = gearInfo();
+    if (useMode === 'bmx' && !state.gear.some((id) => (gearById(id) || {}).kind === 'bmx')) return { ok: false, reason: 'no-bmx' };
+    if (useMode === 'skate' && active.kind === 'bmx') return { ok: false, reason: 'wrong-gear' };
+    state.run = { parkId: park.id, parkName: park.name, mode: useMode, tricks: [], combo: 0, score: 0, timeLeft: 60, startedDay: dayOf(), bestTrick: null };
+    state.currentPark = park.id;
+    state.lastParkDay = dayOf();
     return { ok: true, run: { ...state.run, tricks: [] } };
-  }
-
-  function landTrick(trickId) {
-    const run = state.run;
-    if (!run) return { ok: false, reason: 'no-run' };
-    const list = run.mode === 'bmx' ? BMX_TRICKS : SKATE_TRICKS;
-    const trick = list.find((t) => t.id === trickId);
-    if (!trick) return { ok: false, reason: 'no-such-trick' };
-    if (!state.tricksLearned.includes(trickId) && trick.level > 1) {
-      return { ok: false, reason: 'not-learned', trick: trickId };
-    }
-    if (state.energy < 5) return { ok: false, reason: 'too-tired' };
-    state.energy = Math.max(0, state.energy - 4);
-    // Bail check: the combo dies with you.
-    if (rng() < bailChance(trick)) {
-      return bail(trick);
-    }
-    run.combo += 1;
-    const comboMult = 1 + (run.combo - 1) * 0.25;
-    const styleMult = 1 + styleBonus() * 0.05;
-    const rankMult = rankInfo().mult;
-    const points = Math.round(trick.base * comboMult * styleMult * rankMult);
-    run.score += points;
-    run.tricks.push({ trick: trickId, points, combo: run.combo });
-    state.tricksLanded[trickId] = (state.tricksLanded[trickId] || 0) + 1;
-    if (!run.bestTrick || points > run.bestTrick.points) run.bestTrick = { trick: trickId, points };
-    if (run.combo > state.bestCombo) state.bestCombo = run.combo;
-    log(`${trick.name}! +${points} (combo x${run.combo}, total ${run.score})`);
-    return { ok: true, trick: trickId, points, combo: run.combo, score: run.score };
   }
 
   function bail(trick) {
     const run = state.run;
-    const lost = run ? run.score : 0;
     state.run = null;
     state.bails += 1;
     state.runs += 1;
-    const injuryRoll = rng();
+    const pointsLost = run ? run.score : 0;
     let injury = 0;
-    if (injuryRoll < 0.3) {
-      injury = Math.round((10 + rng() * 25) * (1 - protection()));
+    if (rnd() < 0.3) {
+      injury = Math.round((10 + rnd() * 25) * (1 - protection()));
       state.health = Math.max(0, state.health - injury);
       state.injuries += 1;
-      log(`BAIL! You eat concrete on the ${trick.name}. Lost ${lost} points. Injury -${injury} health.`);
+      say('Bailed hard — injured for ' + injury + '.');
     } else {
-      log(`BAIL! You slip out on the ${trick.name}. Lost ${lost} points.`);
+      say('Bailed, but walked away clean.');
     }
     state.energy = Math.max(0, state.energy - 10);
-    return { ok: true, bailed: true, lost, injury, health: Math.round(state.health) };
+    return { ok: true, bailed: true, pointsLost, injury, health: Math.round(state.health) };
+  }
+
+  function landTrick(trickId) {
+    if (!state.run) return { ok: false, reason: 'no-run' };
+    const trick = trickById(trickId);
+    if (!trick) return { ok: false, reason: 'unknown-trick' };
+    if (!state.tricksLearned.includes(trickId) && trick.level > 1) return { ok: false, reason: 'not-learned' };
+    if (state.energy < 5) return { ok: false, reason: 'too-tired' };
+    state.energy -= 4;
+    if (rnd() < bailChance(trick)) return bail(trick);
+    const run = state.run;
+    run.combo += 1;
+    const comboMult = 1 + (run.combo - 1) * 0.25;
+    const styleMult = 1 + styleBonus() * 0.05;
+    const points = Math.round(trick.base * comboMult * styleMult * rankInfo().mult);
+    run.score += points;
+    run.tricks.push({ trickId, points, combo: run.combo });
+    state.tricksLanded[trickId] = (state.tricksLanded[trickId] || 0) + 1;
+    if (!run.bestTrick || points > run.bestTrick.points) run.bestTrick = { trickId, points };
+    if (run.combo > state.bestCombo) state.bestCombo = run.combo;
+    say('Landed ' + trick.name + ' for ' + points + ' pts.');
+    return { ok: true, trickId, points, combo: run.combo, score: run.score };
   }
 
   function endRun() {
+    if (!state.run) return { ok: false, reason: 'no-run' };
     const run = state.run;
-    if (!run) return { ok: false, reason: 'no-run' };
     state.run = null;
     state.runs += 1;
     state.runsLanded += 1;
@@ -268,270 +282,212 @@ export function createSkateparkSystem(deps = {}) {
     state.dayScore += run.score;
     if (run.score > state.bestRun) state.bestRun = run.score;
     const cash = Math.round(run.score / 50);
-    if (cash > 0) {
-      addCash(cash);
-      state.totalEarned += cash;
-      state.tipsEarned += cash;
-    }
+    moveCash(cash);
+    state.totalEarned += cash;
+    state.tipsEarned += cash;
     const fans = Math.floor(run.score / 1000);
     state.fans += fans;
+    const oldRank = state.rank;
     const newRank = skateRankFor(state.totalScore);
-    let promoted = false;
-    if (newRank > state.rank) {
-      state.rank = newRank;
-      promoted = true;
-      log(`RANK UP! You are now ${SKATE_RANKS[newRank].name}! Score multiplier x${SKATE_RANKS[newRank].mult}.`);
-    }
-    // Learn a new trick every few landed runs.
+    const promoted = newRank > oldRank;
+    if (promoted) state.rank = newRank;
     if (state.runsLanded % 3 === 0) {
-      const list = SKATE_TRICKS.filter((t) => !state.tricksLearned.includes(t.id) && t.level <= state.rank + 1);
-      if (list.length > 0) {
-        const next = list[Math.floor(rng() * list.length)];
-        state.tricksLearned.push(next.id);
-        log(`You learned a new trick: ${next.name}!`);
+      const pool = SKATE_TRICKS.filter((t) => !state.tricksLearned.includes(t.id) && t.level <= state.rank + 1);
+      if (pool.length > 0) {
+        const learned = pool[Math.floor(rnd() * pool.length)];
+        state.tricksLearned.push(learned.id);
+        say('Learned a new trick: ' + learned.name + '.');
       }
     }
-    log(`Run over at ${run.parkName}: ${run.score} points, ${run.tricks.length} tricks. Cashed $${cash}, +${fans} fans.`);
-    return { ok: true, score: run.score, tricks: run.tricks.length, cash, fans, promoted, bestTrick: run.bestTrick };
+    say('Run finished — ' + run.score + ' pts, $' + cash + '.');
+    return { ok: true, score: run.score, trickCount: run.tricks.length, cash, fans, promoted, bestTrick: run.bestTrick };
   }
 
   function buyGear(gearId) {
-    const gear = SKATE_GEAR.find((g) => g.id === gearId);
-    if (!gear) return { ok: false, reason: 'no-such-gear' };
+    const gear = gearById(gearId);
+    if (!gear) return { ok: false, reason: 'unknown-gear' };
+    if (cashOf() < gear.price && !hasGear(gearId)) return { ok: false, reason: 'not-enough-cash' };
     if (hasGear(gearId)) {
       state.activeGear = gearId;
-      return { ok: true, gear: gearId, switched: true };
+      return { ok: true, gearId, switched: true };
     }
-    if (getCash() < gear.price) return { ok: false, reason: 'no-cash', need: gear.price };
-    addCash(-gear.price);
+    moveCash(-gear.price);
     state.gear.push(gearId);
     if (gear.kind === 'board' || gear.kind === 'bmx') state.activeGear = gearId;
-    log(`Bought ${gear.name} for $${gear.price}!`);
-    return { ok: true, gear: gearId, price: gear.price };
+    return { ok: true, gearId, price: gear.price };
   }
 
   function filmClip() {
     if (!state.run) return { ok: false, reason: 'no-run' };
     if (!hasGear('camera')) return { ok: false, reason: 'no-camera' };
     const run = state.run;
-    const views = Math.round(run.score * (2 + rng() * 5) * (1 + state.fans * 0.01));
-    const clip = { day: getDay(), score: run.score, views, park: run.parkId };
+    const views = Math.round(run.score * 2 + rnd() * 5 * (1 + state.fans * 0.01));
+    const clip = { day: dayOf(), score: run.score, views, park: run.parkId };
     state.clips.push(clip);
     state.videoViews += views;
     if (views > 50000) {
       state.clipsViral += 1;
-      const bonus = 200;
-      addCash(bonus);
-      state.totalEarned += bonus;
-      log(`CLIP WENT VIRAL! ${views.toLocaleString()} views! Sponsor bonus $${bonus}.`);
-      return { ok: true, views, viral: true, bonus };
+      moveCash(200);
+      state.totalEarned += 200;
+      return { ok: true, views, viral: true, bonus: 200 };
     }
-    log(`Clip filmed: ${views.toLocaleString()} views so far.`);
     return { ok: true, views, viral: false };
   }
 
   function signSponsor(sponsorId) {
-    const sponsor = SKATE_SPONSORS.find((s) => s.id === sponsorId);
-    if (!sponsor) return { ok: false, reason: 'no-such-sponsor' };
-    if (state.sponsor) return { ok: false, reason: 'sponsor-active' };
-    if (state.totalScore < sponsor.needScore) return { ok: false, reason: 'score-too-low', need: sponsor.needScore };
+    const sp = SKATE_SPONSORS.find((s) => s.id === sponsorId);
+    if (!sp) return { ok: false, reason: 'unknown-sponsor' };
+    if (state.sponsor) return { ok: false, reason: 'already-sponsored' };
+    if (state.totalScore < sp.needScore) return { ok: false, reason: 'score-too-low' };
     state.sponsor = sponsorId;
-    state.sponsorPay = sponsor.pay;
-    log(`SIGNED with ${sponsor.name}! $${sponsor.pay}/day. Perks: ${sponsor.perks.join(', ')}.`);
-    return { ok: true, sponsor: sponsorId, pay: sponsor.pay };
+    state.sponsorPay = sp.pay;
+    return { ok: true, sponsorId, pay: sp.pay };
   }
 
   function enterComp(compId) {
     const comp = SKATE_COMPS.find((c) => c.id === compId);
-    if (!comp) return { ok: false, reason: 'no-such-comp' };
-    if (state.rank < comp.needLevel) return { ok: false, reason: 'rank-too-low', need: SKATE_RANKS[comp.needLevel].name };
-    if (getCash() < comp.entry) return { ok: false, reason: 'no-cash', need: comp.entry };
+    if (!comp) return { ok: false, reason: 'unknown-comp' };
+    if (state.rank < comp.needLevel) return { ok: false, reason: 'rank-too-low' };
+    if (cashOf() < comp.entry) return { ok: false, reason: 'not-enough-cash' };
     if (state.energy < 30) return { ok: false, reason: 'too-tired' };
-    addCash(-comp.entry);
+    moveCash(-comp.entry);
     state.compsEntered += 1;
-    state.energy = Math.max(0, state.energy - 30);
-    // Three judged runs: your best run vs the field.
-    const myBest = state.bestRun + Math.round(rng() * 2000);
+    state.energy -= 30;
+    const myBest = state.bestRun + rnd() * 2000;
     const field = [];
-    for (let i = 0; i < 5; i++) {
-      field.push(3000 + Math.floor(rng() * (4000 + comp.needLevel * 3000)));
-    }
-    field.sort((a, b) => b - a);
-    const place = field.filter((s) => s > myBest).length + 1;
-    if (place === 1) {
-      addCash(comp.prize);
-      state.totalEarned += comp.prize;
+    for (let i = 0; i < 5; i++) field.push(Math.round(3000 + rnd() * 4000 + comp.needLevel * 3000));
+    const beaten = field.filter((s) => s > myBest).length;
+    const place = beaten + 1;
+    const won = place === 1;
+    let prize = 0;
+    if (won) {
+      prize = comp.prize;
+      moveCash(prize);
+      state.totalEarned += prize;
       state.compsWon += 1;
       state.fans += 100;
-      log(`COMP WIN! ${comp.name} — first place! Prize $${comp.prize}! +100 fans.`);
-      return { ok: true, won: true, place: 1, score: myBest, prize: comp.prize, field };
     }
-    log(`${comp.name}: placed ${place} of 6 (best ${myBest}). The field was strong.`);
-    return { ok: true, won: false, place, score: myBest, prize: 0, field };
+    return { ok: true, won, place, score: Math.round(myBest), prize, field };
   }
 
-  function playSkate(opponentSkill = 0.5) {
+  function playSkate(opponentSkill) {
+    const opp = opponentSkill === undefined || opponentSkill === null ? 0.5 : opponentSkill;
     if (state.run) return { ok: false, reason: 'run-active' };
     if (state.energy < 15) return { ok: false, reason: 'too-tired' };
-    state.energy = Math.max(0, state.energy - 15);
-    // Game of S.K.A.T.E.: alternate trick calls; first to 5 letters loses.
+    state.energy -= 15;
     let myLetters = 0;
     let oppLetters = 0;
     const rounds = [];
-    while (myLetters < 5 && oppLetters < 5) {
-      const trick = SKATE_TRICKS[Math.floor(rng() * SKATE_TRICKS.length)];
-      const iLand = rng() > bailChance(trick);
-      const oppLands = rng() < opponentSkill;
-      if (iLand && !oppLands) {
-        oppLetters += 1;
-        rounds.push(`${trick.name}: you land, they miss — they get ${'SKATE'[oppLetters - 1]}`);
-      } else if (!iLand && oppLands) {
-        myLetters += 1;
-        rounds.push(`${trick.name}: you bail, they land — you get ${'SKATE'[myLetters - 1]}`);
-      } else {
-        rounds.push(`${trick.name}: both ${iLand ? 'land' : 'bail'} — no letter`);
-      }
-      if (rounds.length > 20) break;
+    for (let r = 0; r < 20 && myLetters < 5 && oppLetters < 5; r++) {
+      const trick = SKATE_TRICKS[Math.floor(rnd() * SKATE_TRICKS.length)];
+      const iLand = rnd() > bailChance(trick);
+      const oLand = rnd() < opp;
+      if (!iLand) myLetters += 1;
+      if (!oLand) oppLetters += 1;
+      rounds.push({ round: r + 1, trickId: trick.id, playerLanded: iLand, opponentLanded: oLand, playerLetters: myLetters, opponentLetters: oppLetters });
     }
-    const won = oppLetters >= 5;
+    const won = oppLetters >= 5 && myLetters < 5;
     if (won) {
-      state.skateGamesWon += 1;
-      const prize = 30;
-      addCash(prize);
-      state.totalEarned += prize;
+      moveCash(30);
+      state.totalEarned += 30;
       state.fans += 10;
-      log(`S.K.A.T.E. WIN! ${rounds.length} rounds. +$${prize}, +10 fans.`);
-      return { ok: true, won: true, rounds, score: `${myLetters}-${oppLetters}` };
+      state.skateGamesWon += 1;
+    } else {
+      state.skateGamesLost += 1;
     }
-    state.skateGamesLost += 1;
-    log(`S.K.A.T.E. loss. ${rounds.length} rounds.`);
-    return { ok: true, won: false, rounds, score: `${myLetters}-${oppLetters}` };
+    const scoreStr = 'S'.repeat(myLetters) + '.' + 'K'.repeat(oppLetters);
+    return { ok: true, won, rounds, score: scoreStr, playerLetters: myLetters, opponentLetters: oppLetters };
   }
 
   function heal() {
-    const cost = 30;
     if (state.health >= 100) return { ok: false, reason: 'full-health' };
-    if (getCash() < cost) return { ok: false, reason: 'no-cash', need: cost };
-    addCash(-cost);
+    if (cashOf() < 30) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-30);
     state.health = 100;
-    log(`Patched up at the skate clinic for $${cost}. Good as new.`);
-    return { ok: true, cost };
+    return { ok: true, cost: 30 };
   }
 
   function rest() {
     state.energy = 100;
     state.health = Math.min(100, state.health + 10);
-    log('You rest on the bench. Energy full, health +10.');
     return { ok: true, energy: 100 };
   }
 
+  function applyParkEvent(eventId) {
+    state.eventsSeen[eventId] = (state.eventsSeen[eventId] || 0) + 1;
+    if (eventId === 'crowd') state.fans += 5;
+    else if (eventId === 'security') pushHeat(5);
+    else if (eventId === 'kid-fan') state.fans += 15;
+    else if (eventId === 'rain-park') { if (state.run) say('Rain makes the park slick.'); }
+    else if (eventId === 'filmer') { if (state.run && hasGear('camera')) filmClip(); }
+    else if (eventId === 'rival-skater') playSkate(0.5 + state.rank * 0.05);
+    else if (eventId === 'cop-park') pushHeat(3);
+    else if (eventId === 'sponsor-scout') { if (state.totalScore > 20000 && !state.sponsor) say('A sponsor scout is watching you.'); }
+    return eventId;
+  }
+
   function tick(dt) {
-    // A live run ticks down; time up ends the run with what you banked.
+    const step = dt || 0;
     if (state.run) {
-      state.run.timeLeft -= dt;
-      if (state.run.timeLeft <= 0) {
-        log('Time! Run over.');
-        endRun();
-      }
+      state.run.timeLeft -= step;
+      if (state.run.timeLeft <= 0) endRun();
+    } else {
+      state.energy = Math.min(100, state.energy + 0.8 * step);
+      state.health = Math.min(100, state.health + 0.2 * step);
     }
-    // Energy recovers slowly when not riding; health recovers slower.
-    if (!state.run) {
-      state.energy = Math.min(100, state.energy + dt * 0.8);
-      if (state.health < 100) state.health = Math.min(100, state.health + dt * 0.2);
-    }
-    // Random park events, rare.
-    if (rng() < dt * 0.002) {
-      const ev = SKATE_EVENTS[Math.floor(rng() * SKATE_EVENTS.length)];
-      state.eventsSeen[ev.id] = (state.eventsSeen[ev.id] || 0) + 1;
-      switch (ev.id) {
-        case 'crowd':
-          state.fans += 5;
-          log('A crowd gathers to watch you ride. +5 fans.');
-          break;
-        case 'security':
-          addHeat(5);
-          log('Security tells you to move along. Heat +5.');
-          break;
-        case 'kid-fan':
-          state.fans += 15;
-          log('A kid asks for your autograph! +15 fans.');
-          break;
-        case 'rain-park':
-          if (state.run) {
-            log('Rain makes the concrete slick — bail risk up!');
-          }
-          break;
-        case 'filmer':
-          if (state.run && hasGear('camera')) {
-            filmClip();
-          } else {
-            log('A filmer shows up — land something big!');
-          }
-          break;
-        case 'rival-skater':
-          playSkate(0.5 + state.rank * 0.05);
-          break;
-        case 'cop-park':
-          addHeat(3);
-          log('A cop watches you from the edge of the park. Heat +3.');
-          break;
-        case 'sponsor-scout':
-          if (state.totalScore > 20000 && !state.sponsor) {
-            log('A sponsor scout is watching from the bleachers. Impress them!');
-          }
-          break;
-        default:
-          log(`Skatepark: ${ev.text}`);
-          break;
-      }
+    if (rnd() < step * 0.002) {
+      const ev = SKATE_EVENTS[Math.floor(rnd() * SKATE_EVENTS.length)];
+      applyParkEvent(ev.id);
     }
   }
 
   function tickDay(day) {
-    // Sponsor pay lands every morning; energy and health reset.
+    const today = day !== undefined && day !== null ? day : dayOf();
     if (state.sponsor) {
-      addCash(state.sponsorPay);
+      moveCash(state.sponsorPay);
       state.totalEarned += state.sponsorPay;
-      log(`Sponsor pay: $${state.sponsorPay} from ${SKATE_SPONSORS.find((s) => s.id === state.sponsor).name}.`);
     }
     state.energy = 100;
     if (state.dayScore > state.bestDay) state.bestDay = state.dayScore;
     state.dayScore = 0;
-    return { day, totalScore: state.totalScore, rank: SKATE_RANKS[state.rank].name };
+    return { day: today, totalScore: state.totalScore, rankName: rankInfo().name };
   }
 
   function interact() {
-    const p = getPlayerPos();
-    const park = SKATE_PARKS.find((s) => Math.hypot(s.x - p.x, s.z - p.z) < 20);
-    if (!park) return false;
-    if (state.run) {
-      // Mid-run: land your best learned trick.
-      const learned = state.tricksLearned[state.tricksLearned.length - 1] || 'ollie';
-      const res = landTrick(learned);
-      return res.ok || res.bailed;
+    const pos = posOf();
+    let near = null;
+    for (const p of SKATE_PARKS) {
+      if (Math.hypot(pos.x - p.x, pos.z - p.z) <= 20) { near = p; break; }
     }
-    const res = startRun(park.id, 'skate');
+    if (!near) return false;
+    if (state.run) {
+      const last = state.tricksLearned[state.tricksLearned.length - 1];
+      const res = landTrick(last);
+      return res.ok || res.reason === 'no-run';
+    }
+    const res = startRun(near.id, 'skate');
     return res.ok || res.reason === 'too-tired';
   }
 
   function hudLine() {
     if (state.run) {
       const r = state.run;
-      return `SKATE ${r.parkName} · ${r.score} pts · combo x${r.combo} · ${Math.ceil(r.timeLeft)}s`;
+      return 'SKATE ' + r.parkName + ' · ' + r.score + ' pts · combo ' + r.combo + ' · ' + Math.ceil(r.timeLeft) + 's';
     }
-    const p = getPlayerPos();
-    const park = SKATE_PARKS.find((s) => Math.hypot(s.x - p.x, s.z - p.z) < 20);
-    if (park) {
-      return `SKATEPARK ${park.name} · ${SKATE_RANKS[state.rank].name} · best ${state.bestRun} · fans ${state.fans}`;
+    const pos = posOf();
+    for (const p of SKATE_PARKS) {
+      if (Math.hypot(pos.x - p.x, pos.z - p.z) <= 20) {
+        return 'SKATEPARK ' + p.name + ' · ' + rankInfo().name + ' · best ' + state.bestRun + ' · ' + state.fans + ' fans';
+      }
     }
-    if (state.health < 30) return 'SKATER hurt — heal at the park!';
+    if (state.health < 30) return 'You are hurt — heal up before skating.';
     return '';
   }
 
   function stats() {
     return {
-      rank: SKATE_RANKS[state.rank].name,
-      rankIndex: state.rank,
+      rankName: rankInfo().name,
+      rank: state.rank,
       totalScore: state.totalScore,
       bestRun: state.bestRun,
       bestCombo: state.bestCombo,
@@ -555,7 +511,7 @@ export function createSkateparkSystem(deps = {}) {
       compsEntered: state.compsEntered,
       skateGamesWon: state.skateGamesWon,
       skateGamesLost: state.skateGamesLost,
-      style: styleBonus(),
+      styleBonus: styleBonus(),
       skillBonus: skillBonus(),
       totalEarned: state.totalEarned,
       tipsEarned: state.tipsEarned,
@@ -599,148 +555,133 @@ export function createSkateparkSystem(deps = {}) {
       lastParkDay: state.lastParkDay,
       currentPark: state.currentPark,
       eventsSeen: { ...state.eventsSeen },
-      lessonsTaken: state.lessonsTaken || 0,
-      videosEdited: state.videosEdited || 0,
-      parksCleaned: state.parksCleaned || 0,
-      ledgesWaxed: state.ledgesWaxed || 0,
-      rivalBeaten: state.rivalBeaten || 0,
-      marathons: state.marathons || 0,
-      rampsBuilt: state.rampsBuilt || 0,
-      skillBonus: state.skillBonus || 0,
+      lessonsTaken: state.lessonsTaken,
+      videosEdited: state.videosEdited,
+      parksCleaned: state.parksCleaned,
+      ledgesWaxed: state.ledgesWaxed,
+      rivalBeaten: state.rivalBeaten,
+      marathons: state.marathons,
+      rampsBuilt: state.rampsBuilt,
+      skillBonus: state.skillBonus,
     };
   }
 
-  function deserialize(d) {
-    if (!d) return;
-    state.rank = d.rank ?? 0;
-    state.totalScore = d.totalScore ?? 0;
-    state.bestRun = d.bestRun ?? 0;
-    state.bestCombo = d.bestCombo ?? 0;
-    state.runs = d.runs ?? 0;
-    state.runsLanded = d.runsLanded ?? 0;
-    state.bails = d.bails ?? 0;
-    state.injuries = d.injuries ?? 0;
-    state.health = d.health ?? 100;
-    state.energy = d.energy ?? 100;
-    state.gear = [...(d.gear || ['board-basic'])];
-    state.activeGear = d.activeGear || 'board-basic';
-    state.tricksLanded = { ...(d.tricksLanded || {}) };
-    state.tricksLearned = [...(d.tricksLearned || ['ollie'])];
-    state.sponsor = d.sponsor ?? null;
-    state.sponsorPay = d.sponsorPay ?? 0;
-    state.clips = (d.clips || []).map((c) => ({ ...c }));
-    state.clipsViral = d.clipsViral ?? 0;
-    state.videoViews = d.videoViews ?? 0;
-    state.compsWon = d.compsWon ?? 0;
-    state.compsEntered = d.compsEntered ?? 0;
-    state.skateGamesWon = d.skateGamesWon ?? 0;
-    state.skateGamesLost = d.skateGamesLost ?? 0;
-    state.totalEarned = d.totalEarned ?? 0;
-    state.tipsEarned = d.tipsEarned ?? 0;
-    state.fans = d.fans ?? 0;
-    state.bestDay = d.bestDay ?? 0;
-    state.lastParkDay = d.lastParkDay ?? 0;
-    state.currentPark = d.currentPark || 'concrete-kings';
-    state.eventsSeen = { ...(d.eventsSeen || {}) };
-    state.lessonsTaken = d.lessonsTaken ?? 0;
-    state.videosEdited = d.videosEdited ?? 0;
-    state.parksCleaned = d.parksCleaned ?? 0;
-    state.ledgesWaxed = d.ledgesWaxed ?? 0;
-    state.rivalBeaten = d.rivalBeaten ?? 0;
-    state.marathons = d.marathons ?? 0;
-    state.rampsBuilt = d.rampsBuilt ?? 0;
-    state.skillBonus = d.skillBonus ?? 0;
+  function deserialize(saved) {
+    const s = saved || {};
+    state.rank = Math.floor(Number(s.rank) || 0);
+    state.totalScore = Number(s.totalScore) || 0;
+    state.bestRun = Math.floor(Number(s.bestRun) || 0);
+    state.bestCombo = Math.floor(Number(s.bestCombo) || 0);
+    state.runs = Math.floor(Number(s.runs) || 0);
+    state.runsLanded = Math.floor(Number(s.runsLanded) || 0);
+    state.bails = Math.floor(Number(s.bails) || 0);
+    state.injuries = Math.floor(Number(s.injuries) || 0);
+    state.health = Number(s.health) || 100;
+    state.energy = Number(s.energy) || 100;
+    state.gear = Array.isArray(s.gear) && s.gear.length > 0 ? [...s.gear] : ['board-basic'];
+    state.activeGear = typeof s.activeGear === 'string' ? s.activeGear : 'board-basic';
+    state.tricksLanded = s.tricksLanded && typeof s.tricksLanded === 'object' ? { ...s.tricksLanded } : {};
+    state.tricksLearned = Array.isArray(s.tricksLearned) && s.tricksLearned.length > 0 ? [...s.tricksLearned] : ['ollie'];
+    state.sponsor = s.sponsor || null;
+    state.sponsorPay = Number(s.sponsorPay) || 0;
+    state.clips = Array.isArray(s.clips) ? s.clips.map((c) => ({ ...c })) : [];
+    state.clipsViral = Math.floor(Number(s.clipsViral) || 0);
+    state.videoViews = Math.floor(Number(s.videoViews) || 0);
+    state.compsWon = Math.floor(Number(s.compsWon) || 0);
+    state.compsEntered = Math.floor(Number(s.compsEntered) || 0);
+    state.skateGamesWon = Math.floor(Number(s.skateGamesWon) || 0);
+    state.skateGamesLost = Math.floor(Number(s.skateGamesLost) || 0);
+    state.totalEarned = Number(s.totalEarned) || 0;
+    state.tipsEarned = Number(s.tipsEarned) || 0;
+    state.fans = Math.floor(Number(s.fans) || 0);
+    state.bestDay = Math.floor(Number(s.bestDay) || 0);
+    state.lastParkDay = Math.floor(Number(s.lastParkDay) || 0);
+    state.currentPark = typeof s.currentPark === 'string' ? s.currentPark : 'concrete-kings';
+    state.eventsSeen = s.eventsSeen && typeof s.eventsSeen === 'object' ? { ...s.eventsSeen } : {};
+    state.lessonsTaken = Math.floor(Number(s.lessonsTaken) || 0);
+    state.videosEdited = Math.floor(Number(s.videosEdited) || 0);
+    state.parksCleaned = Math.floor(Number(s.parksCleaned) || 0);
+    state.ledgesWaxed = Math.floor(Number(s.ledgesWaxed) || 0);
+    state.rivalBeaten = Math.floor(Number(s.rivalBeaten) || 0);
+    state.marathons = Math.floor(Number(s.marathons) || 0);
+    state.rampsBuilt = Math.floor(Number(s.rampsBuilt) || 0);
+    state.skillBonus = Number(s.skillBonus) || 0;
     state.run = null;
     state.dayScore = 0;
+    return { ok: true };
   }
 
-  // --- Round 7 top-up: lessons, video editing, park cleanup, shop ---
-  const SKATE_LESSONS = [
-    { id: 'beginner', name: 'Beginner Lesson', price: 30, gain: 1, time: 20 },
-    { id: 'advanced', name: 'Advanced Coaching', price: 80, gain: 3, time: 40 },
-    { id: 'pro-clinic', name: 'Pro Clinic', price: 200, gain: 6, time: 60 },
-  ];
   function takeLesson(lessonId) {
-    const lesson = SKATE_LESSONS.find((l) => l.id === lessonId);
-    if (!lesson) return { ok: false, reason: 'no-such-lesson' };
-    if (getCash() < lesson.price) return { ok: false, reason: 'no-cash', need: lesson.price };
-    addCash(-lesson.price);
-    state.lessonsTaken = (state.lessonsTaken || 0) + 1;
-    state.skillBonus = (state.skillBonus || 0) + lesson.gain;
-    state.totalScore += lesson.gain * 100;
-    log(`${lesson.name} complete! Skill +${lesson.gain}.`);
-    return { ok: true, lesson: lessonId, gain: lesson.gain };
+    const lesson = LESSONS.find((l) => l.id === lessonId);
+    if (!lesson) return { ok: false, reason: 'unknown-lesson' };
+    if (cashOf() < lesson.price) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-lesson.price);
+    state.lessonsTaken += 1;
+    state.skillBonus += lesson.gain;
+    state.totalScore += 100 * lesson.gain;
+    return { ok: true, lessonId, gain: lesson.gain };
   }
+
   function editVideo(clipIndex) {
-    if (!state.clips[clipIndex]) return { ok: false, reason: 'no-such-clip' };
     const clip = state.clips[clipIndex];
+    if (!clip) return { ok: false, reason: 'no-clip' };
     const boost = Math.round(clip.views * 0.5);
     clip.views += boost;
     state.videoViews += boost;
-    state.videosEdited = (state.videosEdited || 0) + 1;
-    log(`Edited clip ${clipIndex}: +${boost.toLocaleString()} views after the cut!`);
-    return { ok: true, clip: clipIndex, views: clip.views, boost };
+    state.videosEdited += 1;
+    return { ok: true, clipIndex, views: clip.views, boost };
   }
+
   function cleanPark() {
-    const pay = 40;
-    addCash(pay);
-    state.totalEarned += pay;
-    state.parksCleaned = (state.parksCleaned || 0) + 1;
+    if (cashOf() < 40) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-40);
+    state.parksCleaned += 1;
     state.fans += 5;
-    log(`Cleaned up the skatepark. The locals respect it. Pay $${pay}, +5 fans.`);
-    return { ok: true, pay };
+    return { ok: true, pay: 40 };
   }
+
   function waxLedge() {
-    const cost = 10;
-    if (getCash() < cost) return { ok: false, reason: 'no-cash', need: cost };
-    addCash(-cost);
-    state.ledgesWaxed = (state.ledgesWaxed || 0) + 1;
-    log(`Waxed the ledge for $${cost}. Grinds slide like butter now.`);
-    return { ok: true, cost };
+    if (cashOf() < 10) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-10);
+    state.ledgesWaxed += 1;
+    return { ok: true, cost: 10 };
   }
+
   function challengeRivalSkater() {
     const res = playSkate(0.6 + state.rank * 0.05);
-    if (res.ok && res.won) {
-      state.rivalBeaten = (state.rivalBeaten || 0) + 1;
-      const prize = 50;
-      addCash(prize);
-      state.totalEarned += prize;
-      log(`Rival skater beaten! Side bet $${prize}.`);
-      return { ...res, prize };
+    if (!res.ok) return res;
+    if (res.won) {
+      state.rivalBeaten += 1;
+      moveCash(50);
+      state.totalEarned += 50;
+      return { ...res, prize: 50 };
     }
-    return res;
+    return { ...res, prize: 0 };
   }
+
   function skateMarathon() {
     if (state.energy < 50) return { ok: false, reason: 'too-tired' };
-    state.energy = Math.max(0, state.energy - 50);
-    const distance = 5 + Math.floor(rng() * 10);
+    state.energy -= 50;
+    const distance = 5 + Math.floor(rnd() * 10);
     const earned = distance * 8;
-    addCash(earned);
+    moveCash(earned);
     state.totalEarned += earned;
-    state.marathons = (state.marathons || 0) + 1;
     state.totalScore += distance * 50;
-    log(`Skate marathon: ${distance}km across the city! Earned $${earned}.`);
+    state.marathons += 1;
     return { ok: true, distance, earned };
   }
+
   function buildRamp() {
-    const cost = 300;
-    if (getCash() < cost) return { ok: false, reason: 'no-cash', need: cost };
-    addCash(-cost);
-    state.rampsBuilt = (state.rampsBuilt || 0) + 1;
+    if (cashOf() < 300) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-300);
+    state.rampsBuilt += 1;
     state.fans += 20;
-    log(`Built a new ramp at the DIY spot for $${cost}. +20 fans. The scene grows.`);
-    return { ok: true, cost, ramps: state.rampsBuilt };
+    return { ok: true, cost: 300, ramps: state.rampsBuilt };
   }
 
   return {
+    name: 'Skatepark',
     state,
-    tick,
-    tickDay,
-    interact,
-    hudLine,
-    stats,
-    serialize,
-    deserialize,
     startRun,
     landTrick,
     bail,
@@ -752,12 +693,13 @@ export function createSkateparkSystem(deps = {}) {
     playSkate,
     heal,
     rest,
-    skillBonus,
-    styleBonus,
-    protection,
-    hasGear,
-    gearInfo,
-    rankInfo,
+    tick,
+    tickDay,
+    interact,
+    hudLine,
+    stats,
+    serialize,
+    deserialize,
     takeLesson,
     editVideo,
     cleanPark,

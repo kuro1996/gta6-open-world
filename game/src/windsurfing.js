@@ -1,1143 +1,868 @@
-// Windsurfing — Sana rides the wind off Solara Bay.
-// Pay the beach fee, rig the sail, and let the trade wind pull you
-// across the water. Sponsors pay for clean moves on film, the crowd
-// pays for air — jumps, loops, spocks, and the forward loop that
-// only the brave even try. Every gust is a gift you either catch or
-// watch sail past, and every catapult into the drink is a lesson
-// paid for in bruises. Read the wind before you rig. Trust the fin.
-// Pure logic: no rendering, no imports. The game wires it through the
-// standard ctx { rng, getDay, getHour, getCash, addCash, addHeat, log,
-// getPlayerPos, getWeather } and drives tick/tickDay from the main loop.
-
 export const WINDSURF_SPOTS = [
-  { id: 'flatwater-lagoon', name: 'Flatwater Lagoon', fee: 30, difficulty: 1,
-    steps: 4, duration: 25, risk: 0, wind: 2, wave: 0,
-    desc: 'Glass water, steady breeze, perfect to learn.' },
-  { id: 'sunset-shore', name: 'Sunset Shore', fee: 45, difficulty: 1,
-    steps: 5, duration: 30, risk: 0, wind: 2, wave: 1,
-    desc: 'Golden light and a gentle onshore wind.' },
-  { id: 'harbor-mouth', name: 'Harbour Mouth', fee: 60, difficulty: 2,
-    steps: 5, duration: 30, risk: 1, wind: 3, wave: 1,
-    desc: 'Boats, buoys, and a wind that funnels through.' },
-  { id: 'coral-cove', name: 'Coral Cove', fee: 75, difficulty: 2,
-    steps: 5, duration: 35, risk: 1, wind: 3, wave: 2,
-    desc: 'Turquoise water over a living reef.' },
-  { id: 'tradewind-bay', name: 'Tradewind Bay', fee: 95, difficulty: 2,
-    steps: 6, duration: 35, risk: 1, wind: 4, wave: 2,
-    desc: 'The classic bay: steady wind, long reaches.' },
-  { id: 'gusty-point', name: 'Gusty Point', fee: 120, difficulty: 3,
-    steps: 6, duration: 40, risk: 2, wind: 4, wave: 2,
-    desc: 'Gusts that arrive like a slap.' },
-  { id: 'reef-pass', name: 'Reef Pass', fee: 150, difficulty: 3,
-    steps: 7, duration: 40, risk: 2, wind: 4, wave: 3,
-    desc: 'A narrow pass with a standing wave.' },
-  { id: 'wave-break', name: 'Wave Break', fee: 180, difficulty: 4,
-    steps: 7, duration: 45, risk: 3, wind: 5, wave: 4,
-    desc: 'Real waves, real air, real consequences.' },
-  { id: 'storm-beach', name: 'Storm Beach', fee: 210, difficulty: 4,
-    steps: 8, duration: 50, risk: 3, wind: 5, wave: 4,
-    desc: 'Wind that howls and water that bites.' },
-  { id: 'open-ocean', name: 'Open Ocean', fee: 260, difficulty: 5,
-    steps: 8, duration: 60, risk: 3, wind: 5, wave: 5,
-    desc: 'No land, no mercy, no better feeling.' },
+  { id: 'calm-bay', name: 'Calm Bay', fee: 15, difficulty: 1, steps: 5, duration: 110, risk: 0.1, wind: 5, wave: 1, desc: 'Flat water for first rides.' },
+  { id: 'breeze-beach', name: 'Breeze Beach', fee: 20, difficulty: 1, steps: 6, duration: 120, risk: 0.1, wind: 8, wave: 1, desc: 'A steady breeze over the sand.' },
+  { id: 'lagoon', name: 'Lagoon', fee: 30, difficulty: 2, steps: 7, duration: 140, risk: 0.2, wind: 12, wave: 2, desc: 'Warm shallow water in the lagoon.' },
+  { id: 'trade-winds', name: 'Trade Winds', fee: 35, difficulty: 2, steps: 8, duration: 150, risk: 0.2, wind: 15, wave: 2, desc: 'Reliable trade winds all day.' },
+  { id: 'reef-break', name: 'Reef Break', fee: 45, difficulty: 3, steps: 9, duration: 180, risk: 0.3, wind: 18, wave: 3, desc: 'Waves break over the reef.' },
+  { id: 'point-break', name: 'Point Break', fee: 55, difficulty: 3, steps: 9, duration: 190, risk: 0.4, wind: 20, wave: 3, desc: 'A long point break for big rides.' },
+  { id: 'cliff-winds', name: 'Cliff Winds', fee: 60, difficulty: 3, steps: 10, duration: 200, risk: 0.4, wind: 22, wave: 4, desc: 'Wind funnels past the cliffs.' },
+  { id: 'open-sea', name: 'Open Sea', fee: 70, difficulty: 4, steps: 10, duration: 220, risk: 0.5, wind: 25, wave: 4, desc: 'Open sea swells and strong wind.' },
+  { id: 'storm-surf', name: 'Storm Surf', fee: 80, difficulty: 4, steps: 11, duration: 240, risk: 0.5, wind: 28, wave: 5, desc: 'Storm swells for brave riders.' },
+  { id: 'sunset-surf', name: 'Sunset Surf', fee: 90, difficulty: 5, steps: 12, duration: 260, risk: 0.5, wind: 30, wave: 5, desc: 'The famous sunset surf session.' },
 ];
 
 export const WINDSURF_MOVES = [
-  { id: 'carve-360', name: 'Carve 360', value: 22, rarity: 0.26,
-    risk: 0, desc: 'A full turn on the face of the wave.' },
-  { id: 'jump', name: 'Jump', value: 32, rarity: 0.18,
-    risk: 1, desc: 'Air off the chop, clean landing.' },
-  { id: 'duck-jibe', name: 'Duck Jibe', value: 45, rarity: 0.13,
-    risk: 1, desc: 'Duck under the sail and turn.' },
-  { id: 'speed-run', name: 'Speed Run', value: 60, rarity: 0.1,
-    risk: 1, desc: 'Flat out, sail pinned, spray flying.' },
-  { id: 'wave-ride', name: 'Wave Ride', value: 75, rarity: 0.08,
-    risk: 2, desc: 'Riding the wave like it was made for you.' },
-  { id: 'freestyle-spin', name: 'Freestyle Spin', value: 95, rarity: 0.06,
-    risk: 2, desc: 'A spin in the air, sail and all.' },
-  { id: 'vulcan', name: 'Vulcan', value: 130, rarity: 0.05,
-    risk: 2, desc: 'A sliding 180 that looks impossible.' },
-  { id: 'spock', name: 'Spock', value: 170, rarity: 0.04,
-    risk: 2, desc: 'A full 360 slide, nose to tail.' },
-  { id: 'flaka', name: 'Flaka', value: 230, rarity: 0.02,
-    risk: 3, desc: 'Sail flying, body spinning, crowd gasping.' },
-  { id: 'loop', name: 'Forward Loop', value: 320, rarity: 0.01,
-    risk: 3, desc: 'Over the top and around. The big one.' },
+  { id: 'tack', name: 'Tack', value: 5, rarity: 0.55, risk: 0.1, desc: 'A clean turn through the wind.' },
+  { id: 'jibe', name: 'Jibe', value: 8, rarity: 0.48, risk: 0.15, desc: 'A smooth turn downwind.' },
+  { id: 'jump', name: 'Jump', value: 13, rarity: 0.36, risk: 0.2, desc: 'Air off a wave lip.' },
+  { id: 'spin', name: 'Spin', value: 20, rarity: 0.28, risk: 0.25, desc: 'A fast spin on the board.' },
+  { id: 'duck-jibe', name: 'Duck Jibe', value: 28, rarity: 0.2, risk: 0.3, desc: 'Ducking under the sail mid-turn.' },
+  { id: 'forward-loop', name: 'Forward Loop', value: 45, rarity: 0.13, risk: 0.35, desc: 'A full forward loop in the air.' },
+  { id: 'back-loop', name: 'Back Loop', value: 65, rarity: 0.09, risk: 0.35, desc: 'A backward loop off a wave.' },
+  { id: 'vulcan', name: 'Vulcan', value: 100, rarity: 0.06, risk: 0.4, desc: 'A sliding vulcan turn.' },
+  { id: 'shaka', name: 'Shaka', value: 170, rarity: 0.04, risk: 0.4, desc: 'The shaka, a freestyle classic.' },
+  { id: 'storm-ride', name: 'Storm Ride', value: 300, rarity: 0.02, risk: 0.5, desc: 'Riding a storm wave to the beach.' },
 ];
 
 export const WINDSURF_UPGRADES = [
-  { id: 'board', name: 'Carbon Board', cost: 150,
-    desc: 'Lighter board, +6 move slots, +30 energy.', effect: 'board-plus' },
-  { id: 'sail', name: 'Race Sail', cost: 220,
-    desc: 'More power in light wind.', effect: 'power-plus' },
-  { id: 'mast', name: 'Stiff Mast', cost: 180,
-    desc: 'Holds its shape in the gusts.', effect: 'gust-plus' },
-  { id: 'harness', name: 'Pro Harness', cost: 120,
-    desc: 'Hook in and rest: +4 move slots.', effect: 'carry-plus' },
-  { id: 'wetsuit', name: 'Flex Wetsuit', cost: 140,
-    desc: 'Warm and flexible in cold water.', effect: 'warmth' },
-  { id: 'helmet', name: 'Impact Helmet', cost: 130,
-    desc: 'Hazards hurt half as much.', effect: 'safety' },
-  { id: 'gps', name: 'Speed GPS', cost: 400,
-    desc: 'Moves pay +20% and are 25% easier to chain.', effect: 'price-plus' },
-  { id: 'fin', name: 'Race Fin', cost: 320,
-    desc: 'Faster, straighter, higher jumps.', effect: 'speed-plus' },
+  { id: 'board', name: 'Pro Board', cost: 380, desc: 'A lighter board holds more energy.', effect: 'energy max +30' },
+  { id: 'find-plus', name: 'Move Spotter', cost: 250, desc: 'Spots rare moves more often.', effect: 'rare move boost 1.25' },
+  { id: 'price-plus', name: 'Clip License', cost: 300, desc: 'Sells move clips for more cash.', effect: 'sell price +20%' },
+  { id: 'carry-plus', name: 'Gear Rack', cost: 200, desc: 'Carry more clips per session.', effect: 'carry cap +10' },
+  { id: 'sail-pro', name: 'Pro Sail', cost: 340, desc: 'A sail that catches every gust.', effect: 'move chance up' },
+  { id: 'harness', name: 'Pro Harness', cost: 210, desc: 'A harness that saves energy.', effect: 'energy use down' },
+  { id: 'mast-carbon', name: 'Carbon Mast', cost: 320, desc: 'A stiff carbon mast.', effect: 'loop chance up' },
+  { id: 'wetsuit-wind', name: 'Wind Wetsuit', cost: 180, desc: 'Warm in cold wind and spray.', effect: 'hazard down' },
 ];
 
 export const WINDSURF_RANKS = [
-  { level: 0, name: 'Beach Beginner', xp: 0,
-    perk: 'Calm water pays base rate.' },
-  { level: 1, name: 'Bay Sailor', xp: 120,
-    perk: '+10% move pay.' },
-  { level: 2, name: 'Wave Rider', xp: 300,
-    perk: 'Wave spots open up.' },
-  { level: 3, name: 'Freestyler', xp: 620,
-    perk: '+20% move pay, freestyle unlocked.' },
-  { level: 4, name: 'Wind Master', xp: 1100,
-    perk: '+30% move pay, loops land clean.' },
+  { level: 0, name: 'Beach Starter', xp: 0, perk: 'Bay sessions unlocked' },
+  { level: 1, name: 'Breeze Rider', xp: 120, perk: 'Trade wind spots open up' },
+  { level: 2, name: 'Wave Dancer', xp: 300, perk: 'Reef breaks pay better' },
+  { level: 3, name: 'Storm Sailor', xp: 620, perk: 'Rare moves appear more often' },
+  { level: 4, name: 'Wind Master', xp: 1100, perk: 'The sunset surf holds no fear' },
 ];
 
 export const WINDSURF_EVENTS = [
-  { id: 'tradewind-week', name: 'Tradewind Week',
-    desc: 'A week of perfect, steady wind.' },
-  { id: 'flat-calm', name: 'Flat Calm',
-    desc: 'Not a breath of wind all morning.' },
-  { id: 'swell-arrives', name: 'Swell Arrives',
-    desc: 'A long-period swell rolls into the bay.' },
-  { id: 'squall-line', name: 'Squall Line',
-    desc: 'A line of squalls crosses the water.' },
-  { id: 'surf-comp', name: 'Surf Competition',
-    desc: 'The bay fills with boards and judges.' },
-  { id: 'dolphin-day', name: 'Dolphin Day',
-    desc: 'Dolphins surf the same waves you do.' },
-  { id: 'sunset-session', name: 'Sunset Session',
-    desc: 'Everyone stays out for the last light.' },
-  { id: 'wind-drops', name: 'Wind Drops',
-    desc: 'The wind dies at noon.' },
-  { id: 'big-air-day', name: 'Big Air Day',
-    desc: 'Gusts to forty knots and brave sailors.' },
-  { id: 'glass-morning', name: 'Glass Morning',
-    desc: 'The water is a mirror at dawn.' },
+  { id: 'steady-breeze', name: 'Steady Breeze', desc: 'A perfect steady breeze.' },
+  { id: 'wind-fest', name: 'Wind Fest', desc: 'Riders arrive from everywhere.' },
+  { id: 'glass-off', name: 'Glass Off', desc: 'The wind drops to glass.' },
+  { id: 'gust-front', name: 'Gust Front', desc: 'Gusts sweep across the bay.' },
+  { id: 'big-swell', name: 'Big Swell', desc: 'A big swell rolls in.' },
+  { id: 'sunny-wind', name: 'Sunny Wind', desc: 'Sun and wind together.' },
+  { id: 'rain-squall', name: 'Rain Squall', desc: 'A squall passes through fast.' },
+  { id: 'new-sail', name: 'New Sail', desc: 'A bright new sail arrives.' },
+  { id: 'dolphin-wave', name: 'Dolphin Wave', desc: 'Dolphins surf the same waves.' },
+  { id: 'night-wind', name: 'Night Wind', desc: 'Glow boards light the night.' },
 ];
 
 export const WINDSURF_CONTRACTS = [
-  { id: 'jumps-10', name: 'Jump Reel', material: 'jump', qty: 10,
-    pay: 360, days: 1, rep: 1,
-    desc: 'A sponsor needs ten clean jumps on film.' },
-  { id: 'carves-12', name: 'Carve Reel', material: 'carve-360', qty: 12,
-    pay: 300, days: 1, rep: 1,
-    desc: 'A board brand wants twelve carves.' },
-  { id: 'speed-6', name: 'Speed Reel', material: 'speed-run', qty: 6,
-    pay: 420, days: 2, rep: 2,
-    desc: 'A GPS brand wants six speed runs.' },
-  { id: 'spocks-4', name: 'Spock Reel', material: 'spock', qty: 4,
-    pay: 700, days: 2, rep: 3,
-    desc: 'A freestyle label wants four spocks.' },
-  { id: 'loops-2', name: 'Loop Film', material: 'loop', qty: 2,
-    pay: 800, days: 3, rep: 4,
-    desc: 'A film crew needs two forward loops.' },
-  { id: 'mixed-25', name: 'Showreel', material: 'mixed', qty: 25,
-    pay: 550, days: 2, rep: 2,
-    desc: 'Any twenty-five moves for the season reel.' },
+  { id: 'tack-order', name: 'Tack Clips', material: 'tack', qty: 6, pay: 120, days: 3, rep: 10, desc: 'A school wants tack clips.' },
+  { id: 'jump-order', name: 'Jump Clips', material: 'jump', qty: 4, pay: 200, days: 3, rep: 15, desc: 'A channel wants jump clips.' },
+  { id: 'loop-order', name: 'Loop Clips', material: 'forward-loop', qty: 2, pay: 350, days: 4, rep: 25, desc: 'A brand wants forward loops.' },
+  { id: 'vulcan-order', name: 'Vulcan Clips', material: 'vulcan', qty: 2, pay: 480, days: 5, rep: 30, desc: 'A film wants vulcan clips.' },
+  { id: 'spin-order', name: 'Spin Clips', material: 'spin', qty: 5, pay: 220, days: 3, rep: 15, desc: 'A magazine wants spin clips.' },
+  { id: 'storm-order', name: 'Storm Clips', material: 'storm-ride', qty: 1, pay: 650, days: 5, rep: 35, desc: 'A sponsor wants one storm ride.' },
 ];
 
 export const WINDSURF_CHALLENGES = [
-  { id: 'spots-10', name: 'Ten Spots', target: 'sessions', goal: 10, xp: 90,
-    desc: 'Finish 10 sessions.' },
-  { id: 'moves-100', name: 'Century of Moves', target: 'findsFound', goal: 100, xp: 110,
-    desc: 'Land 100 moves.' },
-  { id: 'earn-1000', name: 'Grand on the Wind', target: 'earned', goal: 1000, xp: 130,
-    desc: 'Earn $1,000 from windsurfing.' },
-  { id: 'streak-8', name: 'Clean Eight', target: 'bestStreak', goal: 8, xp: 100,
-    desc: 'Eight clean steps in a row.' },
-  { id: 'contracts-3', name: 'Reliable Rider', target: 'contractsDone', goal: 3, xp: 120,
-    desc: 'Complete 3 sponsor contracts.' },
-  { id: 'actions-200', name: 'Two Hundred Moves', target: 'actions', goal: 200, xp: 140,
-    desc: 'Take 200 riding steps.' },
-  { id: 'first-move', name: 'First Move', target: 'findsFound', goal: 1, xp: 60,
-    desc: 'Land your first move.' },
-  { id: 'wave-5', name: 'Wave Five', target: 'sessions', goal: 5, xp: 80,
-    desc: 'Finish 5 sessions.' },
+  { id: 'first-ride', name: 'First Ride', target: 'sessions', goal: 1, xp: 20, desc: 'Finish one surf session.' },
+  { id: 'five-rides', name: 'Five Rides', target: 'sessions', goal: 5, xp: 60, desc: 'Finish five surf sessions.' },
+  { id: 'move-ten', name: 'Move Ten', target: 'findsFound', goal: 10, xp: 40, desc: 'Land ten moves.' },
+  { id: 'move-fifty', name: 'Move Fifty', target: 'findsFound', goal: 50, xp: 120, desc: 'Land fifty moves.' },
+  { id: 'earn-five-hundred', name: 'Earn Five Hundred', target: 'earned', goal: 500, xp: 100, desc: 'Earn 500 cash in total.' },
+  { id: 'sell-twenty', name: 'Sell Twenty', target: 'findsSold', goal: 20, xp: 80, desc: 'Sell twenty clips.' },
+  { id: 'contract-three', name: 'Contract Three', target: 'contractsDone', goal: 3, xp: 90, desc: 'Deliver three contracts.' },
+  { id: 'steps-hundred', name: 'Hundred Steps', target: 'stepsDone', goal: 100, xp: 110, desc: 'Take a hundred session steps.' },
 ];
 
 export const WINDSURF_ACHIEVEMENTS = [
-  { id: 'first-session', name: 'First Session', check: (s) => s.sessions >= 1,
-    desc: 'Finish your first session.' },
-  { id: 'loop-club', name: 'Loop Club', check: (s) => (s.inventory.loop || 0) + s.findsSold >= 1,
-    desc: 'Land a forward loop.' },
-  { id: 'rank-3', name: 'Freestyler', check: (s) => s.rank >= 3,
-    desc: 'Reach rank Freestyler.' },
-  { id: 'rich-wind', name: 'Wind Rich', check: (s) => s.earned >= 3000,
-    desc: 'Earn $3,000 from windsurfing.' },
-  { id: 'full-kit', name: 'Full Kit', check: (s) => s.upgrades.length >= 8,
-    desc: 'Own every windsurfing upgrade.' },
-  { id: 'no-hazard', name: 'Dry Sail', check: (s) => s.sessions >= 10 && s.hazardsTaken === 0,
-    desc: 'Ten sessions with zero hazards.' },
-  { id: 'big-yield', name: 'Big Yield', check: (s) => s.bestSessionYield >= 500,
-    desc: 'One session worth $500 or more.' },
-  { id: 'moves-50', name: 'Fifty Moves', check: (s) => s.actions >= 50,
-    desc: 'Fifty riding steps on the water.' },
+  { id: 'wet-board', name: 'Wet Board', check: (s) => s.sessions >= 1, desc: 'Finish your first session.' },
+  { id: 'surf-regular', name: 'Surf Regular', check: (s) => s.sessions >= 10, desc: 'Finish ten sessions.' },
+  { id: 'mover', name: 'Mover', check: (s) => s.findsFound >= 25, desc: 'Land twenty-five moves.' },
+  { id: 'wave-artist', name: 'Wave Artist', check: (s) => s.findsFound >= 100, desc: 'Land a hundred moves.' },
+  { id: 'rich-rider', name: 'Rich Rider', check: (s) => s.earned >= 1000, desc: 'Earn a thousand cash.' },
+  { id: 'deal-maker', name: 'Deal Maker', check: (s) => s.contractsDone >= 5, desc: 'Deliver five contracts.' },
+  { id: 'streak-five', name: 'Streak Five', check: (s) => s.bestStreak >= 5, desc: 'Reach a streak of five.' },
+  { id: 'wind-master', name: 'Wind Master', check: (s) => s.rank >= 4, desc: 'Reach the top rank.' },
 ];
 
 export const WINDSURF_TIPS = [
-  { id: 'wind-first', name: 'Wind First',
-    text: 'Read the wind before you rig. The wind decides everything.' },
-  { id: 'energy-watch', name: 'Energy Watch',
-    text: 'Energy is your session. Rest in the lulls.' },
-  { id: 'gps-money', name: 'GPS Money',
-    text: 'Sponsors pay for speed numbers. Record everything.' },
-  { id: 'gust-catch', name: 'Gust Catch',
-    text: 'Catch the gust at its edge, not its middle.' },
-  { id: 'wave-read', name: 'Wave Read',
-    text: 'Watch three waves before you ride one.' },
-  { id: 'contract-first', name: 'Contracts First',
-    text: 'Take a sponsor contract, then sail its moves.' },
-  { id: 'helmet-early', name: 'Helmet Early',
-    text: 'Buy the helmet before the wave spots.' },
-  { id: 'harness-rest', name: 'Harness Rest',
-    text: 'Hook in and let the harness carry the sail.' },
+  { id: 'tip-energy', name: 'Watch Energy', text: 'Beach before your energy runs out.' },
+  { id: 'tip-rare', name: 'Rare Moves', text: 'Strong wind spots hide rare moves.' },
+  { id: 'tip-rank', name: 'Rank Up', text: 'Higher rank boosts rare moves.' },
+  { id: 'tip-sell', name: 'Sell Often', text: 'Sell clips before the drift turns.' },
+  { id: 'tip-contract', name: 'Contracts Pay', text: 'Contracts pay more than raw sales.' },
+  { id: 'tip-weather', name: 'Storm Watch', text: 'Storms and hurricanes block surfing.' },
+  { id: 'tip-cap', name: 'Carry Cap', text: 'Upgrade your rack to carry more.' },
+  { id: 'tip-season', name: 'Season Prices', text: 'Summer prices beat winter prices.' },
 ];
 
 export const WINDSURF_LEADERBOARD = [
-  { name: 'Kai the King', value: 8800, desc: 'Loops in his sleep, allegedly.' },
-  { name: 'Mara', value: 6600, desc: 'Freestyle queen of the bay.' },
-  { name: 'Sana', value: 0, desc: 'You. Climbing.' },
-  { name: 'Jett', value: 3900, desc: 'Fastest speed run in the bay.' },
-  { name: 'Pip', value: 2000, desc: 'Young, fearless, often wet.' },
+  { name: 'Gale', value: 900, desc: 'Top rider of the season.' },
+  { name: 'Zoe', value: 700, desc: 'Loop queen of the bay.' },
+  { name: 'Kai', value: 520, desc: 'Wave rider extraordinaire.' },
+  { name: 'Ana', value: 310, desc: 'Steady rider, steady hands.' },
+  { name: 'You', value: 0, desc: 'Your score on the board.' },
 ];
 
 export const WINDSURF_RECORDS = [
-  { id: 'most-sessions', name: 'Most Sessions', stat: 'sessions', unit: 'sessions',
-    desc: 'Most sessions finished.' },
-  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$',
-    desc: 'Most money earned from windsurfing.' },
-  { id: 'most-moves', name: 'Most Moves', stat: 'findsFound', unit: 'moves',
-    desc: 'Most moves landed.' },
-  { id: 'best-streak', name: 'Best Streak', stat: 'bestStreak', unit: 'steps',
-    desc: 'Longest clean streak.' },
-  { id: 'best-session', name: 'Best Session', stat: 'bestSessionYield', unit: '$',
-    desc: 'Best single-session yield.' },
+  { id: 'most-sessions', name: 'Most Sessions', stat: 'sessions', unit: 'sessions', desc: 'Most surf sessions finished.' },
+  { id: 'most-moves', name: 'Most Moves', stat: 'findsFound', unit: 'moves', desc: 'Most moves landed.' },
+  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: 'cash', desc: 'Most cash earned.' },
+  { id: 'best-yield', name: 'Best Yield', stat: 'bestSessionYield', unit: 'cash', desc: 'Best single session yield.' },
+  { id: 'best-streak', name: 'Best Streak', stat: 'bestStreak', unit: 'streak', desc: 'Longest good streak.' },
 ];
 
 export const WINDSURF_MARKET = [
-  { id: 'jump-boom', name: 'Jump Boom', finds: ['jump'], mult: 1.35,
-    desc: 'A sponsor wants jump footage.' },
-  { id: 'loop-rush', name: 'Loop Rush', finds: ['loop'], mult: 1.6,
-    desc: 'A film crew pays double for loops.' },
-  { id: 'spock-week', name: 'Spock Week', finds: ['spock'], mult: 1.45,
-    desc: 'Freestyle labels want spocks.' },
-  { id: 'wave-season', name: 'Wave Season', finds: ['wave-ride'], mult: 1.4,
-    desc: 'Wave riders are in demand.' },
-  { id: 'speed-day', name: 'Speed Day', finds: ['speed-run'], mult: 1.35,
-    desc: 'GPS brands are bidding up speed.' },
-  { id: 'flaka-film', name: 'Flaka Film', finds: ['flaka'], mult: 1.5,
-    desc: 'A magazine wants flaka shots.' },
-  { id: 'carve-glut', name: 'Carve Glut', finds: ['carve-360'], mult: 0.7,
-    desc: 'Everyone carves; sponsors yawn.' },
-  { id: 'jibe-dip', name: 'Jibe Dip', finds: ['duck-jibe'], mult: 0.75,
-    desc: 'Duck jibes are out of fashion.' },
+  { id: 'clip-shop', name: 'Clip Shop', finds: ['tack', 'jibe', 'jump'], mult: 1.1, desc: 'Buys common move clips.' },
+  { id: 'surf-channel', name: 'Surf Channel', finds: ['spin', 'duck-jibe'], mult: 1.25, desc: 'Pays well for trick clips.' },
+  { id: 'loop-brand', name: 'Loop Brand', finds: ['forward-loop', 'back-loop'], mult: 1.4, desc: 'Top price for loops.' },
+  { id: 'vulcan-film', name: 'Vulcan Film', finds: ['vulcan'], mult: 1.5, desc: 'Best buyer for vulcans.' },
+  { id: 'storm-sponsor', name: 'Storm Sponsor', finds: ['storm-ride', 'shaka'], mult: 1.6, desc: 'Pays a premium for storm rides.' },
+  { id: 'surf-magazine', name: 'Surf Magazine', finds: ['jump', 'forward-loop'], mult: 1.3, desc: 'Magazine buys jump shots.' },
+  { id: 'beach-stall', name: 'Beach Stall', finds: ['tack', 'jibe'], mult: 1.05, desc: 'Quick sales to tourists.' },
+  { id: 'rare-buyer', name: 'Rare Buyer', finds: ['storm-ride', 'shaka', 'vulcan'], mult: 1.45, desc: 'Buys only the rarest clips.' },
 ];
 
 export const WINDSURF_SEASONS = [
-  { id: 'spring', name: 'Spring', mult: 1.1,
-    desc: 'Fresh winds and full bookings.' },
-  { id: 'summer', name: 'Summer', mult: 1.2,
-    desc: 'Peak season, everyone is sailing.' },
-  { id: 'autumn', name: 'Autumn', mult: 1.0,
-    desc: 'Steady work, thinner crowds.' },
-  { id: 'winter', name: 'Winter', mult: 0.85,
-    desc: 'Cold water, quiet days.' },
+  { id: 'spring', name: 'Spring', mult: 1.0, desc: 'Mild wind, steady prices.' },
+  { id: 'summer', name: 'Summer', mult: 1.2, desc: 'Peak season, best prices.' },
+  { id: 'autumn', name: 'Autumn', mult: 0.95, desc: 'Cooling wind, softer prices.' },
+  { id: 'winter', name: 'Winter', mult: 0.85, desc: 'Cold wind, lowest prices.' },
 ];
 
 export const WINDSURF_SEASONAL = [
-  { season: 'summer', find: 'wave-ride', mult: 1.3 },
-  { season: 'summer', find: 'jump', mult: 1.25 },
-  { season: 'spring', find: 'speed-run', mult: 1.2 },
-  { season: 'autumn', find: 'loop', mult: 1.35 },
-  { season: 'autumn', find: 'flaka', mult: 1.3 },
-  { season: 'winter', find: 'freestyle-spin', mult: 1.25 },
-  { season: 'winter', find: 'spock', mult: 1.3 },
-  { season: 'spring', find: 'carve-360', mult: 1.15 },
+  { season: 'summer', find: 'storm-ride', mult: 1.3 },
+  { season: 'summer', find: 'tack', mult: 1.2 },
+  { season: 'spring', find: 'forward-loop', mult: 1.2 },
+  { season: 'spring', find: 'jump', mult: 1.15 },
+  { season: 'autumn', find: 'shaka', mult: 1.25 },
+  { season: 'autumn', find: 'spin', mult: 1.1 },
+  { season: 'winter', find: 'vulcan', mult: 1.4 },
+  { season: 'winter', find: 'back-loop', mult: 1.2 },
 ];
 
 export const WINDSURF_QUICK_START = [
-  'Sail the lagoon first and learn your energy burn.',
-  'Film every move — sponsors pay for footage.',
-  'Buy the harness before the wave spots.',
-  'Read the wind before you rig.',
-  'Take sponsor contracts for moves you already land.',
-  'Save for the carbon board — it changes every session.',
+  'Launch at Calm Bay.',
+  'Ride waves until energy runs low.',
+  'Sell clips at the Clip Shop.',
+  'Buy the Gear Rack upgrade early.',
+  'Take a tack clips contract.',
+  'Save up for the Pro Board.',
 ];
 
 export const WINDSURF_HELPERS = [
-  { id: 'coach', name: 'Mara the Coach', wage: 35, skill: 'collect', bonus: 0.15,
-    desc: 'Coaching from the beach: +15% move yield.' },
-  { id: 'cameraman', name: 'Jett the Cameraman', wage: 45, skill: 'find', bonus: 0.25,
-    desc: 'Films from the boat: +25% rare moves.' },
-  { id: 'rigger', name: 'Pip the Rigger', wage: 55, skill: 'carry', bonus: 0.4,
-    desc: 'Rigs fast: +40% move slots.' },
-  { id: 'agent', name: 'Quiet Ana', wage: 75, skill: 'sell', bonus: 0.12,
-    desc: 'Knows the sponsors: +12% move pay.' },
+  { id: 'beach-buddy', name: 'Beach Buddy', wage: 20, skill: 'sailing', bonus: 0.1, desc: 'A steady partner on the beach.' },
+  { id: 'surf-coach', name: 'Surf Coach', wage: 40, skill: 'coaching', bonus: 0.25, desc: 'Teaches moves that sell.' },
+  { id: 'repair-tech', name: 'Repair Tech', wage: 30, skill: 'repair', bonus: 0.15, desc: 'Fixes boards and sails fast.' },
+  { id: 'clip-photographer', name: 'Clip Photographer', wage: 35, skill: 'photography', bonus: 0.2, desc: 'Shoots clips buyers love.' },
 ];
 
+export const WINDSURFING_META = { system: 'windsurfing', version: '7c-B2', author: 'builder-2', dataCount: 10, findCount: 10, upgradeCount: 8, rankCount: 5 };
+
+let spotOf = (id) => {
+  let out = null;
+  for (let i = 0; i < WINDSURF_SPOTS.length; i++) if (WINDSURF_SPOTS[i].id === id) out = WINDSURF_SPOTS[i];
+  return out;
+};
+let moveOf = (id) => {
+  for (let i = 0; i < WINDSURF_MOVES.length; i++) if (WINDSURF_MOVES[i].id === id) return WINDSURF_MOVES[i];
+  return null;
+};
+let ownedOf = (v) => {
+  if (Array.isArray(v)) return v;
+  if (v && Array.isArray(v.upgrades)) return v.upgrades;
+  return [];
+};
+let rankOf = (v) => {
+  if (typeof v === 'number') return v;
+  if (v && typeof v.rank === 'number') return v.rank;
+  return 0;
+};
+
 export function windsurfRankFor(xp) {
-  let rank = 0;
-  for (let i = 0; i < WINDSURF_RANKS.length; i++) {
-    if (xp >= WINDSURF_RANKS[i].xp) rank = i;
+  let lvl = 0;
+  let i = 0;
+  while (i < WINDSURF_RANKS.length) {
+    if (xp >= WINDSURF_RANKS[i].xp) lvl = WINDSURF_RANKS[i].level;
+    i++;
   }
-  return rank;
-}
-
-export function windsurfPriceFor(moveId, dayDrift, rank, upgrades) {
-  const f = WINDSURF_MOVES.find((x) => x.id === moveId);
-  if (!f) return 0;
-  let price = f.value;
-  price *= 1 + (dayDrift[moveId] || 0);
-  price *= 1 + rank * 0.1;
-  if (upgrades.includes('gps')) price *= 1.2;
-  return Math.max(1, Math.round(price * 10) / 10);
-}
-
-export function windsurfCarryCap(upgrades) {
-  let cap = 12;
-  if (upgrades.includes('harness')) cap += 4;
-  if (upgrades.includes('board')) cap += 6;
-  return cap;
+  return lvl;
 }
 
 export function windsurfEnergyMax(upgrades) {
   let max = 100;
-  if (upgrades.includes('board')) max += 30;
+  if (ownedOf(upgrades).indexOf('board') !== -1) max += 30;
   return max;
 }
 
-export function windsurfEventMult(eventId, moveId) {
-  const ev = WINDSURF_MARKET.find((x) => x.id === eventId);
-  if (!ev) return 1;
-  return ev.finds.includes(moveId) ? ev.mult : 1;
+export function windsurfPriceFor(moveId, drift, rank, upgrades) {
+  let mv = moveOf(moveId);
+  if (!mv) return 0;
+  let d = typeof drift === 'number' ? drift : 0;
+  let owned = Array.isArray(upgrades) ? upgrades : ownedOf(rank);
+  let p = mv.value * (1 + d) * (1 + rankOf(rank) * 0.1);
+  if (owned.indexOf('price-plus') !== -1) p *= 1.2;
+  if (p < 1) p = 1;
+  return Math.round(p * 10) / 10;
 }
 
-export function windsurfSeasonMult(seasonId) {
-  const s = WINDSURF_SEASONS.find((x) => x.id === seasonId);
-  return s ? s.mult : 1;
+export function windsurfCarryCap(rank, upgrades) {
+  let owned = Array.isArray(upgrades) ? upgrades : ownedOf(rank);
+  let cap = 12 + rankOf(rank) * 2;
+  if (owned.indexOf('carry-plus') !== -1) cap += 10;
+  return cap;
 }
 
-export function windsurfEventFor(day) {
-  return WINDSURF_MARKET[day % WINDSURF_MARKET.length];
+export function windsurfScore(sessions, yld, hazards) {
+  let v = sessions * 10 + Math.round(yld) - hazards * 5;
+  return v > 0 ? v : 0;
 }
 
-export function windsurfSeasonalPriceMult(seasonId, moveId) {
-  const row = WINDSURF_SEASONAL.find((x) => x.season === seasonId && x.find === moveId);
-  return row ? row.mult : 1;
-}
-
-export function windsurfBestSeason(moveId) {
-  let best = null;
-  let bestMult = 0;
-  for (const row of WINDSURF_SEASONAL) {
-    if (row.find === moveId && row.mult > bestMult) { bestMult = row.mult; best = row.season; }
-  }
-  return best ? { season: best, mult: bestMult } : null;
-}
-
-export function windsurfBestBuyer(moveId, dayDrift, rank, upgrades) {
-  const base = windsurfPriceFor(moveId, dayDrift, rank, upgrades);
-  return { price: base, note: 'Sponsors pay best for filmed moves in strong wind.' };
-}
-
-export function windsurfScore(sessions, yieldTotal, hazards) {
-  const base = sessions * 10 + Math.round(yieldTotal);
-  const penalty = hazards * 5;
-  return Math.max(0, base - penalty);
-}
-
-export function windsurfGrade(sessions, yieldTotal, hazards) {
-  const score = windsurfScore(sessions, yieldTotal, hazards);
+export function windsurfGrade(score) {
   if (score >= 400) return 'S';
-  if (score >= 250) return 'A';
-  if (score >= 140) return 'B';
-  if (score >= 60) return 'C';
-  return 'D';
+  else if (score >= 250) return 'A';
+  else if (score >= 140) return 'B';
+  else if (score >= 60) return 'C';
+  else return 'D';
 }
 
-export function windsurfWeeklyGoal(sessions, sold, earned) {
-  const goal = { sessions: 5, sold: 40, earned: 600 };
-  return {
-    sessions: { have: sessions, goal: goal.sessions, done: sessions >= goal.sessions },
-    sold: { have: sold, goal: goal.sold, done: sold >= goal.sold },
-    earned: { have: Math.round(earned), goal: goal.earned, done: earned >= goal.earned },
-    allDone: sessions >= goal.sessions && sold >= goal.sold && earned >= goal.earned,
-  };
+export function windsurfWeeklyGoal(state) {
+  let s = state || {};
+  let mk = (have, goal) => ({ have, goal, done: have >= goal });
+  let sessions = mk(s.sessions || 0, 5);
+  let sold = mk(s.findsSold || 0, 40);
+  let earned = mk(s.earned || 0, 600);
+  return { sessions, sold, earned, allDone: sessions.done && sold.done && earned.done };
 }
 
-export function windsurfTipFor(day) {
-  return WINDSURF_TIPS[day % WINDSURF_TIPS.length];
+export function windsurfEfficiency(state) {
+  let s = state || {};
+  if (!s.sessions) return 100;
+  let good = s.sessions - (s.contractsFailed || 0);
+  if (good < 0) good = 0;
+  return Math.round((good / s.sessions) * 100);
 }
 
-export function windsurfLeaderboardWith(playerValue) {
-  const board = WINDSURF_LEADERBOARD.map((e) => ({
-    name: e.name, value: e.name === 'Sana' ? playerValue : e.value, desc: e.desc,
-  }));
-  board.sort((a, b) => b.value - a.value);
-  return board.map((e, i) => ({ rank: i + 1, ...e }));
+export function windsurfProfitPerSession(state) {
+  let s = state || {};
+  if (!s.sessions) return 0;
+  return Math.round(((s.earned || 0) / s.sessions) * 10) / 10;
 }
 
-export function windsurfRecordFor(recordId, state) {
-  const r = WINDSURF_RECORDS.find((x) => x.id === recordId);
-  if (!r) return null;
-  return { id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit };
-}
-
-export function windsurfAllRecords(state) {
-  return WINDSURF_RECORDS.map((r) => ({
-    id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit, desc: r.desc,
-  }));
-}
-
-export function windsurfEfficiency(actions, hazards) {
-  const total = actions + hazards;
-  if (total === 0) return 100;
-  return Math.round((actions / total) * 100);
-}
-
-export function windsurfProfitPerSession(earned, sessions) {
-  if (sessions === 0) return 0;
-  return Math.round((earned / sessions) * 10) / 10;
-}
-
-export function windsurfInventoryValue(inventory) {
+export function windsurfInventoryValue(state) {
+  let s = state || {};
   let total = 0;
-  for (const [id, qty] of Object.entries(inventory)) {
-    const f = WINDSURF_MOVES.find((x) => x.id === id);
-    if (f) total += f.value * qty;
-  }
+  let entries = Object.entries(s.inventory || {});
+  for (let [id, n] of entries) total += (n || 0) * windsurfPriceFor(id, s.dayDrift || 0, s.rank || 0, s.upgrades || []);
   return Math.round(total * 10) / 10;
 }
 
-export function windsurfTotalValue(state) {
-  return windsurfInventoryValue(state.inventory);
-}
-
-export function windsurfProgressPercent(state) {
-  const total = state.actions + state.findsSold;
-  if (total === 0) return 0;
-  return Math.round((state.actions / total) * 100);
-}
-
-export function windsurfQuickStart(step) {
-  return WINDSURF_QUICK_START[step] || null;
-}
-
 export function windsurfSummary(state) {
-  return `Windsurfing ${WINDSURF_RANKS[state.rank].name}: ${state.sessions} sessions, ${state.actions} moves, $${Math.round(state.earned)} earned, ${state.findsFound} moves landed.`;
+  let s = state || {};
+  let rn = (WINDSURF_RANKS[s.rank || 0] || {}).name || 'Beach Starter';
+  return 'Windsurfing: ' + rn + ' with ' + (s.sessions || 0) + ' sessions, ' + (s.findsFound || 0) + ' moves and ' + (s.earned || 0) + ' cash earned.';
 }
 
 export function windsurfNextGoal(state) {
-  if (state.sessions < 3) return 'Sail 3 spots.';
-  if (state.actions < 50) return 'Land 50 moves.';
-  if (state.rank < 2) return 'Reach rank Wave Rider.';
-  return 'Become the Wind Master.';
+  let s = state || {};
+  if (!(s.sessions || 0)) return 'Finish your first session.';
+  if ((s.sessions || 0) < 5) return 'Finish 5 sessions.';
+  if ((s.earned || 0) < 500) return 'Earn 500 cash in total.';
+  if ((s.rank || 0) < 4) return 'Reach rank ' + WINDSURF_RANKS[(s.rank || 0) + 1].name + '.';
+  return 'Become a legend of Windsurfing.';
 }
 
-export function windsurfChallengeProgress(challenge, state) {
-  const v = state[challenge.target] || 0;
-  return { id: challenge.id, name: challenge.name, have: Math.floor(v), goal: challenge.goal, done: v >= challenge.goal };
+export function windsurfRecordFor(id, state) {
+  let rec = null;
+  for (let r of WINDSURF_RECORDS) if (r.id === id) rec = r;
+  if (!rec) return null;
+  return { id: rec.id, name: rec.name, stat: rec.stat, unit: rec.unit, desc: rec.desc, value: (state && state[rec.stat]) || 0 };
 }
 
-export function windsurfHelperBonus(helpers, skill) {
-  let bonus = 0;
-  for (const h of WINDSURF_HELPERS) {
-    if (helpers.includes(h.id) && h.skill === skill) bonus += h.bonus;
-  }
-  return bonus;
+export function windsurfAllRecords(state) {
+  let out = [];
+  for (let r of WINDSURF_RECORDS) out.push(windsurfRecordFor(r.id, state));
+  return out;
 }
 
-export function windsurfSpotByWind(wind) {
-  let best = null;
-  for (const s of WINDSURF_SPOTS) {
-    if (s.wind <= wind && (!best || s.wind > best.wind)) best = s;
-  }
+export function windsurfLeaderboardWith(playerScore) {
+  let board = WINDSURF_LEADERBOARD.map((e) => ({ name: e.name, value: e.name === 'You' ? playerScore : e.value, desc: e.desc }));
+  board.sort((a, b) => b.value - a.value);
+  let out = [];
+  board.forEach((e, i) => out.push({ rank: i + 1, name: e.name, value: e.value, desc: e.desc }));
+  return out;
+}
+
+export function windsurfEventFor(day) {
+  let idx = ((day || 0) % WINDSURF_MARKET.length + WINDSURF_MARKET.length) % WINDSURF_MARKET.length;
+  return WINDSURF_MARKET[idx];
+}
+
+export function windsurfEventMult(eventId, moveId) {
+  let ev = WINDSURF_MARKET.find((m) => m.id === eventId);
+  if (!ev) return 1;
+  return ev.finds.indexOf(moveId) !== -1 ? ev.mult : 1;
+}
+
+export function windsurfSeasonMult(seasonId) {
+  let s = WINDSURF_SEASONS.find((x) => x.id === seasonId);
+  return s ? s.mult : 1;
+}
+
+export function windsurfSeasonalPriceMult(seasonId, moveId) {
+  let row = WINDSURF_SEASONAL.find((x) => x.season === seasonId && x.find === moveId);
+  return row ? row.mult : 1;
+}
+
+export function windsurfBestBuyer() {
+  let best = WINDSURF_MARKET[0];
+  for (let m of WINDSURF_MARKET) if (m.mult > best.mult) best = m;
   return best;
 }
 
+export function windsurfBestSeason() {
+  let best = WINDSURF_SEASONS[0];
+  for (let s of WINDSURF_SEASONS) if (s.mult > best.mult) best = s;
+  return best;
+}
+
+export function windsurfTipFor(day) {
+  let idx = ((day || 0) % WINDSURF_TIPS.length + WINDSURF_TIPS.length) % WINDSURF_TIPS.length;
+  return WINDSURF_TIPS[idx];
+}
+
+export function windsurfQuickStart() {
+  return WINDSURF_QUICK_START.slice();
+}
+
+export function windsurfChallengeProgress(challenge, state) {
+  let have = (state && state[challenge.target]) || 0;
+  return { id: challenge.id, name: challenge.name, have, goal: challenge.goal, done: have >= challenge.goal, xp: challenge.xp };
+}
+
+export function windsurfProgressPercent(state) {
+  let s = state || {};
+  if (!s.sessions) return 0;
+  let good = s.sessions - (s.contractsFailed || 0);
+  if (good < 0) good = 0;
+  return Math.round((good / s.sessions) * 100);
+}
+
+export function windsurfTotalValue(state) {
+  let s = state || {};
+  return Math.round((windsurfInventoryValue(s) + (s.earned || 0)) * 10) / 10;
+}
+
+export function windsurfHelperBonus(helperIds, skill) {
+  let sum = 0;
+  for (let id of (helperIds || [])) {
+    let h = WINDSURF_HELPERS.find((x) => x.id === id);
+    if (h && h.skill === skill) sum += h.bonus;
+  }
+  return sum;
+}
+
 export function windsurfMovesByRarity(maxRarity) {
-  return WINDSURF_MOVES.filter((f) => f.rarity <= maxRarity).map((f) => f.id);
+  let out = [];
+  for (let mv of WINDSURF_MOVES) if (mv.rarity <= maxRarity) out.push(mv.id);
+  return out;
+}
+
+export function windsurfSpotByWind(wind) {
+  let pick = WINDSURF_SPOTS[WINDSURF_SPOTS.length - 1];
+  for (let s of WINDSURF_SPOTS) {
+    if (s.wind >= wind) { pick = s; break; }
+  }
+  return pick;
+}
+
+function windState() {
+  return {
+    xp: 0, rank: 0, sessions: 0, actions: 0, stepsDone: 0, earned: 0, spent: 0,
+    findsFound: 0, findsSold: 0, contractsDone: 0, contractsFailed: 0, hazardsTaken: 0,
+    heatGained: 0, inventory: {}, upgrades: [], activeContract: null, contractProgress: 0,
+    contractDeadline: null, session: null, sessionStepsLeft: 0, sessionTimeLeft: 0,
+    resource: 0, dayDrift: 0, lastDay: 1, bestSession: null, bestSessionYield: 0,
+    dailyEarned: 0, dailySessions: 0, totalYield: 0, bestStreak: 0, streak: 0,
+    specialsUsed: 0, weatherStops: 0, sessionYield: 0, sessionFinds: [], season: 'summer',
+    event: null, wagesPaid: 0, challengesClaimed: [],
+  };
 }
 
 export function createWindsurfingSystem(ctx) {
-  const c = ctx || {};
-  const rng = typeof c.rng === 'function' ? c.rng : Math.random;
-  const getCash = typeof c.getCash === 'function' ? c.getCash : () => 0;
-  const addCash = typeof c.addCash === 'function' ? c.addCash : () => {};
-  const addHeat = typeof c.addHeat === 'function' ? c.addHeat : () => {};
-  const log = typeof c.log === 'function' ? c.log : () => {};
-  const getDay = typeof c.getDay === 'function' ? c.getDay : () => 1;
-  const getHour = typeof c.getHour === 'function' ? c.getHour : () => 12;
-  const getPos = typeof c.getPlayerPos === 'function' ? c.getPlayerPos : () => ({ x: 0, z: 0 });
-  const getWeather = typeof c.getWeather === 'function' ? c.getWeather : () => ({ condition: 'clear' });
+  let c = ctx || {};
+  let rng = c.rng || Math.random;
+  let getDay = c.getDay || (() => 1);
+  let getHour = c.getHour || (() => 12);
+  let getCash = c.getCash || (() => 0);
+  let addCash = c.addCash || (() => {});
+  let addHeat = c.addHeat || (() => {});
+  let log = c.log || (() => {});
+  let getPlayerPos = c.getPlayerPos || (() => ({ x: 0, z: 0 }));
+  let getWeather = c.getWeather || (() => ({ condition: 'clear' }));
+  let state = windState();
 
-  const state = {
-    xp: 0,
-    rank: 0,
-    sessions: 0,
-    actions: 0,
-    stepsDone: 0,
-    earned: 0,
-    spent: 0,
-    findsFound: 0,
-    findsSold: 0,
-    contractsDone: 0,
-    contractsFailed: 0,
-    hazardsTaken: 0,
-    heatGained: 0,
-    inventory: {},
-    upgrades: [],
-    activeContract: null,
-    contractProgress: 0,
-    session: null,
-    sessionStepsLeft: 0,
-    sessionTimeLeft: 0,
-    resource: 100,
-    dayDrift: {},
-    lastDay: 1,
-    bestSession: null,
-    bestSessionYield: 0,
-    dailyEarned: 0,
-    dailySessions: 0,
-    totalYield: 0,
-    bestStreak: 0,
-    streak: 0,
-    specialsUsed: 0,
-    weatherStops: 0,
-    sessionYield: 0,
-    sessionFinds: 0,
-    season: 'summer',
-    event: null,
+  let sync = () => {
+    let lvl = windsurfRankFor(state.xp);
+    if (lvl > state.rank) log('Rank up: ' + WINDSURF_RANKS[lvl].name);
+    state.rank = lvl;
   };
-  for (const f of WINDSURF_MOVES) { state.inventory[f.id] = 0; state.dayDrift[f.id] = 0; }
 
-  function refreshRank() {
-    const r = windsurfRankFor(state.xp);
-    if (r > state.rank) {
-      state.rank = r;
-      log(`Windsurfing rank up: ${WINDSURF_RANKS[r].name} — ${WINDSURF_RANKS[r].perk}`);
-    }
-  }
-
-  function gainXp(n) {
-    state.xp += n;
-    refreshRank();
-  }
-
-  function driftPrices() {
-    for (const f of WINDSURF_MOVES) {
-      const roll = rng();
-      if (roll < 0.3) state.dayDrift[f.id] = Math.round((rng() * 0.5 - 0.2) * 100) / 100;
-      else if (roll < 0.4) state.dayDrift[f.id] = 0;
-    }
-  }
-
-  function weather() {
-    try {
-      const w = getWeather();
-      if (w && typeof w.condition === 'string') return w.condition;
-    } catch (e) { /* ignore */ }
-    return 'clear';
-  }
-
-  function weatherBlocks() {
-    const cond = weather();
-    return cond === 'storm' || cond === 'hurricane';
-  }
-
-  function pickMove(spot) {
-    const bag = [];
-    for (const f of WINDSURF_MOVES) {
-      let w = f.rarity;
-      if (state.rank >= 3 && f.rarity < 0.08) w *= 1.6;
-      if (state.upgrades.includes('gps')) w *= 1.25;
-      bag.push({ f, w });
-    }
-    let total = 0;
-    for (const b of bag) total += b.w;
-    let roll = rng() * total;
-    for (const b of bag) {
-      roll -= b.w;
-      if (roll <= 0) return b.f;
-    }
-    return WINDSURF_MOVES[0];
-  }
-
-  function finishSession(reason) {
-    const done = state.session;
+  let close = () => {
+    let yld = state.sessionYield;
+    let sid = state.session;
+    state.totalYield += yld;
+    if (yld > state.bestSessionYield) { state.bestSessionYield = yld; state.bestSession = sid; }
+    if (yld > 0) {
+      state.streak += 1;
+      if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+    } else state.streak = 0;
     state.session = null;
     state.sessionStepsLeft = 0;
     state.sessionTimeLeft = 0;
-    state.sessions += 1;
-    state.dailySessions += 1;
-    if (state.sessionYield > state.bestSessionYield) {
-      state.bestSessionYield = state.sessionYield;
-      state.bestSession = done;
-    }
-    log(`Windsurfing ${done} ${reason} — yield $${Math.round(state.sessionYield)}, ${state.sessionFinds} moves.`);
-    state.sessionYield = 0;
-    state.sessionFinds = 0;
-  }
+  };
 
-  function launch(spotId) {
-    const spot = WINDSURF_SPOTS.find((s) => s.id === spotId);
-    if (!spot) return { ok: false, reason: 'no-such-site' };
-    if (state.session) return { ok: false, reason: 'session-active' };
-    if (weatherBlocks()) {
-      state.weatherStops += 1;
-      return { ok: false, reason: 'bad-weather', condition: weather() };
-    }
-    const hour = getHour();
-    if (hour < 8 || hour >= 18) return { ok: false, reason: 'too-late', hour };
-    if (getCash() < spot.fee) return { ok: false, reason: 'not-enough-cash', cost: spot.fee };
-    if (spot.fee > 0) { addCash(-spot.fee); state.spent += spot.fee; }
-    state.session = spotId;
-    state.sessionStepsLeft = spot.steps;
-    state.sessionTimeLeft = spot.duration * 60;
-    state.resource = windsurfEnergyMax(state.upgrades);
-    log(`Windsurfing started: ${spot.name} — ${spot.steps} moves, ${spot.duration} min, wind ${spot.wind}, waves ${spot.wave}.`);
-    return { ok: true, site: spotId, steps: spot.steps, duration: spot.duration };
-  }
-
-  function rideWave() {
-    if (!state.session) return { ok: false, reason: 'no-session' };
-    if (state.sessionStepsLeft <= 0) return { ok: false, reason: 'session-done' };
-    const spot = WINDSURF_SPOTS.find((s) => s.id === state.session);
-    state.resource -= 8;
-    if (state.resource < 0) state.resource = 0;
-    const cap = windsurfCarryCap(state.upgrades);
-    const held = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-    if (held >= cap) return { ok: false, reason: 'carry-full', cap };
-    const f = pickMove(spot);
-    const qty = 1 + Math.floor(rng() * 2);
-    const add = Math.min(qty, Math.max(0, cap - held));
-    if (add <= 0) return { ok: false, reason: 'carry-full', cap };
-    state.inventory[f.id] += add;
-    state.findsFound += add;
-    state.totalYield += f.value * add;
-    state.sessionYield += f.value * add;
-    state.sessionFinds += add;
-    state.actions += 1;
-    state.stepsDone += 1;
-    state.sessionStepsLeft -= 1;
-    state.streak += 1;
-    state.bestStreak = Math.max(state.bestStreak, state.streak);
-    gainXp(4 + add);
-    const got = [{ id: f.id, name: f.name, qty: add, value: f.value }];
-    if (rng() < 0.05 + (state.rank >= 4 ? 0.05 : 0)) {
-      const rare = WINDSURF_MOVES.filter((x) => x.rarity < 0.06);
-      const pick = rare[Math.floor(rng() * rare.length)];
-      state.inventory[pick.id] += 1;
-      state.findsFound += 1;
-      state.sessionYield += pick.value;
-      state.totalYield += pick.value;
-      got.push({ id: pick.id, name: pick.name, qty: 1, value: pick.value, rare: true });
-      log(`Windsurfing rare move! ${pick.name} worth $${pick.value}.`);
-    }
-    if (rng() < spot.risk * 0.04) {
-      state.hazardsTaken += 1;
-      state.streak = 0;
-      state.resource -= 15;
-      if (rng() < 0.25) { addCash(-20); state.spent += 20; }
-      log(`Windsurfing hazard at ${spot.name}: a gust catapulted you over the sail and into the drink.`);
-    }
-    if (state.resource <= 0) {
-      finishSession('cut short — energy ran out');
-      return { ok: true, got, stepsLeft: 0, ended: 'resource-empty' };
-    }
-    if (state.sessionStepsLeft <= 0) {
-      finishSession('finished');
-      return { ok: true, got, stepsLeft: 0, ended: 'done' };
-    }
-    return { ok: true, got, stepsLeft: state.sessionStepsLeft, resource: state.resource };
-  }
-
-  function beachEarly() {
-    if (!state.session) return { ok: false, reason: 'no-session' };
-    finishSession('ended early');
-    return { ok: true, ended: 'early' };
-  }
-
-  function catchGust() {
-    if (!state.session) return { ok: false, reason: 'no-session' };
-    const cost = 12;
-    if (state.resource < cost) return { ok: false, reason: 'not-enough-resource', need: cost };
-    state.resource -= cost;
-    state.specialsUsed += 1;
-    if (rng() < 0.55) {
-      const f = pickMove(WINDSURF_SPOTS[0]);
-      state.inventory[f.id] += 1;
-      state.findsFound += 1;
-      state.sessionYield += f.value;
-      gainXp(10);
-      log(`Windsurfing catch gust: caught a perfect gust and rode past ${f.name}.`);
-      return { ok: true, success: true, find: f.id, name: f.name };
-    }
-    log('Windsurfing catch gust: the gust died before you could use it.');
-    return { ok: true, success: false };
-  }
-
-  function sellFind(moveId, qty) {
-    const f = WINDSURF_MOVES.find((x) => x.id === moveId);
-    if (!f) return { ok: false, reason: 'no-such-find' };
-    if (qty <= 0) return { ok: false, reason: 'bad-qty' };
-    const have = state.inventory[moveId] || 0;
-    if (have < qty) return { ok: false, reason: 'not-enough', have };
-    const unit = windsurfPriceFor(moveId, state.dayDrift, state.rank, state.upgrades);
-    const total = Math.round(unit * qty * 10) / 10;
-    state.inventory[moveId] -= qty;
-    state.findsSold += qty;
-    state.earned += total;
-    state.dailyEarned += total;
-    addCash(total);
-    gainXp(qty);
-    log(`Cashed in ${qty}x ${f.name} for $${total}.`);
-    return { ok: true, total, unit, qty };
-  }
-
-  function sellAllFinds() {
-    let total = 0;
-    let units = 0;
-    const lines = [];
-    for (const f of WINDSURF_MOVES) {
-      const have = state.inventory[f.id] || 0;
-      if (have <= 0) continue;
-      const unit = windsurfPriceFor(f.id, state.dayDrift, state.rank, state.upgrades);
-      const line = Math.round(unit * have * 10) / 10;
-      total += line;
-      units += have;
-      lines.push({ id: f.id, qty: have, total: line });
-      state.inventory[f.id] = 0;
-    }
-    if (units === 0) return { ok: false, reason: 'nothing-to-sell' };
-    total = Math.round(total * 10) / 10;
-    state.findsSold += units;
-    state.earned += total;
-    state.dailyEarned += total;
-    addCash(total);
-    gainXp(units);
-    log(`Cashed in everything (${units} moves) for $${total}.`);
-    return { ok: true, total, units, lines };
-  }
-
-  function buyUpgrade(id) {
-    const u = WINDSURF_UPGRADES.find((x) => x.id === id);
-    if (!u) return { ok: false, reason: 'no-such-upgrade' };
-    if (state.upgrades.includes(id)) return { ok: false, reason: 'already-owned' };
-    if (getCash() < u.cost) return { ok: false, reason: 'not-enough-cash', cost: u.cost };
-    addCash(-u.cost);
-    state.spent += u.cost;
-    state.upgrades.push(id);
-    gainXp(20);
-    log(`Bought ${u.name} for $${u.cost}.`);
-    return { ok: true, id };
-  }
-
-  function takeContract(id) {
-    const ct = WINDSURF_CONTRACTS.find((x) => x.id === id);
-    if (!ct) return { ok: false, reason: 'no-such-contract' };
-    if (state.activeContract) return { ok: false, reason: 'contract-active' };
-    state.activeContract = { ...ct, dayTaken: getDay(), deadlineDay: getDay() + ct.days };
-    state.contractProgress = 0;
-    log(`Contract taken: ${ct.name} — deliver ${ct.qty}x ${ct.material} by day ${state.activeContract.deadlineDay}.`);
-    return { ok: true, contract: state.activeContract };
-  }
-
-  function deliverContract() {
-    const ct = state.activeContract;
-    if (!ct) return { ok: false, reason: 'no-contract' };
-    if (ct.material === 'mixed') {
-      const total = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-      if (total < ct.qty) return { ok: false, reason: 'not-enough', have: total, need: ct.qty };
-      let left = ct.qty;
-      for (const f of WINDSURF_MOVES) {
-        if (left <= 0) break;
-        const take = Math.min(state.inventory[f.id], left);
-        state.inventory[f.id] -= take;
-        left -= take;
-      }
-    } else {
-      const have = state.inventory[ct.material] || 0;
-      if (have < ct.qty) return { ok: false, reason: 'not-enough', have, need: ct.qty };
-      state.inventory[ct.material] -= ct.qty;
-      state.contractProgress = ct.qty;
-    }
-    const bonus = ct.pay + state.rank * 40;
-    state.activeContract = null;
-    state.contractProgress = 0;
-    state.contractsDone += 1;
-    state.earned += bonus;
-    addCash(bonus);
-    gainXp(60);
-    log(`Contract delivered: ${ct.name} paid $${bonus}.`);
-    return { ok: true, pay: bonus };
-  }
-
-  function abandonContract() {
-    if (!state.activeContract) return { ok: false, reason: 'no-contract' };
-    state.activeContract = null;
-    state.contractProgress = 0;
-    state.contractsFailed += 1;
-    log('Contract abandoned — the client will remember that.');
-    return { ok: true };
-  }
-
-  function priceBoard() {
-    return WINDSURF_MOVES.map((f) => ({
-      id: f.id,
-      name: f.name,
-      price: windsurfPriceFor(f.id, state.dayDrift, state.rank, state.upgrades),
-      drift: state.dayDrift[f.id],
-      held: state.inventory[f.id],
-    }));
-  }
-
-  function siteReport() {
-    return WINDSURF_SPOTS.map((s) => ({
-      id: s.id, name: s.name, fee: s.fee, difficulty: s.difficulty, steps: s.steps, risk: s.risk,
-    }));
-  }
-
-  function dailyEvent() {
-    const roll = rng();
-    if (roll < 0.16) {
-      const f = WINDSURF_MOVES[Math.floor(rng() * WINDSURF_MOVES.length)];
-      state.dayDrift[f.id] = Math.round((state.dayDrift[f.id] + 0.3) * 100) / 100;
-      log(`Windsurfing news: ${f.name} is in demand — sponsors pay up today!`);
-      return { event: 'demand-spike', find: f.id };
-    }
-    if (roll < 0.28) {
-      const f = WINDSURF_MOVES[Math.floor(rng() * WINDSURF_MOVES.length)];
-      state.dayDrift[f.id] = Math.round((state.dayDrift[f.id] - 0.15) * 100) / 100;
-      log(`Windsurfing news: too much ${f.name} around — sponsors pay less.`);
-      return { event: 'price-dip', find: f.id };
-    }
-    if (roll < 0.38) {
-      const f = WINDSURF_MOVES[Math.floor(rng() * WINDSURF_MOVES.length)];
-      state.inventory[f.id] += 3;
+  let handlers = [
+    () => {
+      state.dayDrift = Math.round((state.dayDrift + 0.3) * 100) / 100;
+      state.event = 'demand-spike';
+      return { ok: true, event: 'demand-spike', name: 'Demand Spike', kind: 'demand' };
+    },
+    () => {
+      state.dayDrift = Math.round((state.dayDrift - 0.15) * 100) / 100;
+      state.event = 'price-dip';
+      return { ok: true, event: 'price-dip', name: 'Price Dip', kind: 'dip' };
+    },
+    () => {
+      let pick = WINDSURF_MOVES[Math.floor(rng() * WINDSURF_MOVES.length)];
+      state.inventory[pick.id] = (state.inventory[pick.id] || 0) + 3;
       state.findsFound += 3;
-      log(`Windsurfing gift: a coach gifts you 3x ${f.name} on film.`);
-      return { event: 'gift', find: f.id };
-    }
-    if (roll < 0.46) {
-      const ev = WINDSURF_EVENTS[Math.floor(rng() * WINDSURF_EVENTS.length)];
-      log(`Windsurfing event: ${ev.name} — ${ev.desc}`);
-      return { event: ev.id, name: ev.name };
-    }
-    return { event: 'none' };
-  }
+      state.event = 'gift';
+      return { ok: true, event: 'gift', name: 'Gift', kind: 'gift', find: pick.id, qty: 3 };
+    },
+    () => {
+      let ev = WINDSURF_EVENTS[Math.floor(rng() * WINDSURF_EVENTS.length)];
+      state.event = ev.id;
+      return { ok: true, event: ev.id, name: ev.name, kind: 'named' };
+    },
+    () => {
+      state.event = null;
+      return { ok: true, event: null, name: 'none', kind: 'none' };
+    },
+  ];
 
-  function tick(dt) {
-    if (state.session) {
-      state.sessionTimeLeft -= dt;
-      state.resource -= dt * 0.05;
-      if (state.sessionTimeLeft <= 0) {
-        finishSession('timed out — the shift ended');
-      } else if (state.resource <= 0) {
-        state.resource = 0;
-        finishSession('cut short — energy ran out');
-      }
-    }
-  }
+  let runEvent = () => {
+    let roll = rng();
+    let idx = roll < 0.16 ? 0 : roll < 0.28 ? 1 : roll < 0.38 ? 2 : roll < 0.46 ? 3 : 4;
+    return handlers[idx]();
+  };
 
-  function tickDay(day) {
-    if (day === state.lastDay) return;
-    state.lastDay = day;
-    driftPrices();
-    state.dailyEarned = 0;
-    state.dailySessions = 0;
-    if (state.activeContract && day >= state.activeContract.deadlineDay && state.contractProgress < state.activeContract.qty) {
-      log(`Contract ${state.activeContract.name} expired — the client walked away.`);
-      state.activeContract = null;
-      state.contractProgress = 0;
-      state.contractsFailed += 1;
-    }
-    dailyEvent();
-  }
-
-  function serialize() {
-    return JSON.parse(JSON.stringify({
-      xp: state.xp, rank: state.rank, sessions: state.sessions,
-      actions: state.actions, stepsDone: state.stepsDone,
-      earned: state.earned, spent: state.spent,
-      findsFound: state.findsFound, findsSold: state.findsSold,
-      contractsDone: state.contractsDone, contractsFailed: state.contractsFailed,
-      hazardsTaken: state.hazardsTaken, heatGained: state.heatGained,
-      inventory: state.inventory, upgrades: state.upgrades,
-      activeContract: state.activeContract,
-      contractProgress: state.contractProgress, session: state.session,
-      sessionStepsLeft: state.sessionStepsLeft,
-      sessionTimeLeft: state.sessionTimeLeft, resource: state.resource,
-      dayDrift: state.dayDrift, lastDay: state.lastDay,
-      bestSession: state.bestSession,
-      bestSessionYield: state.bestSessionYield,
-      dailyEarned: state.dailyEarned, dailySessions: state.dailySessions,
-      totalYield: state.totalYield, bestStreak: state.bestStreak,
-      streak: state.streak, specialsUsed: state.specialsUsed,
-      weatherStops: state.weatherStops, sessionYield: state.sessionYield,
-      sessionFinds: state.sessionFinds, season: state.season,
-      event: state.event,
-    }));
-  }
-
-  function deserialize(d) {
-    if (!d || typeof d !== 'object') return;
-    for (const k of Object.keys(state)) {
-      if (d[k] !== undefined) state[k] = d[k];
-    }
-    for (const f of WINDSURF_MOVES) {
-      if (state.inventory[f.id] === undefined) state.inventory[f.id] = 0;
-      if (state.dayDrift[f.id] === undefined) state.dayDrift[f.id] = 0;
-    }
-    refreshRank();
-  }
-
-  function stats() {
-    return {
-      rank: WINDSURF_RANKS[state.rank].name,
-      xp: state.xp,
-      sessions: state.sessions,
-      actions: state.actions,
-      stepsDone: state.stepsDone,
-      earned: Math.round(state.earned),
-      spent: state.spent,
-      findsFound: state.findsFound,
-      findsSold: state.findsSold,
-      contractsDone: state.contractsDone,
-      contractsFailed: state.contractsFailed,
-      hazardsTaken: state.hazardsTaken,
-      heatGained: state.heatGained,
-      upgrades: state.upgrades.length,
-      activeContract: state.activeContract ? state.activeContract.id : null,
-      contractProgress: state.contractProgress,
-      session: state.session,
-      stepsLeft: state.sessionStepsLeft,
-      resource: Math.round(state.resource * 10) / 10,
-      resourceMax: windsurfEnergyMax(state.upgrades),
-      dailyEarned: Math.round(state.dailyEarned),
-      totalYield: Math.round(state.totalYield),
-      bestStreak: state.bestStreak,
-      bestSession: state.bestSession,
-      bestSessionYield: Math.round(state.bestSessionYield),
-      specialsUsed: state.specialsUsed,
-      weatherStops: state.weatherStops,
-      season: state.season,
-      event: state.event,
-    };
-  }
-
-  function hudLine() {
-    if (state.session) return `Windsurfing: ${state.session} — ${state.sessionStepsLeft} moves left, energy ${Math.round(state.resource)}`;
-    if (state.activeContract) return `Windsurfing: ${state.activeContract.name} ${state.contractProgress}/${state.activeContract.qty}`;
-    const held = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-    if (held > 0) return `Windsurfing: ${held} moves on film`;
-    return '';
-  }
-
-  function interact() {
-    const pos = getPos();
-    const near = Math.hypot(pos.x - (-420), pos.z - 300) < 30;
-    if (!near) return false;
-    if (state.session) { rideWave(); return true; }
-    const held = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-    if (held > 0) { sellAllFinds(); return true; }
-    launch(WINDSURF_SPOTS[0].id);
-    return true;
-  }
-
-  return {
+  let sys = {
     name: 'Windsurfing',
     state,
-    launch, rideWave, beachEarly, catchGust,
-    sellFind, sellAllFinds, buyUpgrade, takeContract,
-    deliverContract, abandonContract, priceBoard, siteReport,
-    dailyEvent, tick, tickDay, serialize, deserialize,
-    stats, hudLine, interact,
+    launch(spotId) {
+      let spot = spotOf(spotId);
+      if (!spot) return { ok: false, reason: 'no-such-site' };
+      if (state.session) return { ok: false, reason: 'already-in-session' };
+      let cond = (getWeather() || {}).condition || 'clear';
+      if (cond === 'storm' || cond === 'hurricane') {
+        state.weatherStops += 1;
+        return { ok: false, reason: 'bad-weather', condition: cond };
+      }
+      let hour = getHour();
+      if (hour < 8 || hour >= 18) return { ok: false, reason: 'closed', hour };
+      if (getCash() < spot.fee) return { ok: false, reason: 'not-enough-cash', cost: spot.fee };
+      addCash(-spot.fee);
+      state.spent += spot.fee;
+      state.session = spot.id;
+      state.sessionStepsLeft = spot.steps;
+      state.sessionTimeLeft = spot.duration;
+      state.resource = windsurfEnergyMax(state.upgrades);
+      state.sessionYield = 0;
+      state.sessionFinds = [];
+      state.sessions += 1;
+      state.dailySessions += 1;
+      log('Launching at ' + spot.name);
+      return { ok: true, id: spot.id, name: spot.name, fee: spot.fee, steps: spot.steps, duration: spot.duration };
+    },
+    rideWave() {
+      if (!state.session) return { ok: false, reason: 'no-session' };
+      let spot = spotOf(state.session);
+      state.resource -= 8;
+      state.sessionStepsLeft -= 1;
+      state.stepsDone += 1;
+      state.actions += 1;
+      let held = 0;
+      for (let k of Object.keys(state.inventory)) held += state.inventory[k];
+      let cap = windsurfCarryCap(state.rank, state.upgrades);
+      let qty = 1 + Math.floor(rng() * 2);
+      if (held + qty > cap) qty = cap - held;
+      let mv = null;
+      let bonus = false;
+      let hazard = false;
+      if (qty > 0) {
+        let ws = [];
+        let tot = 0;
+        for (let m of WINDSURF_MOVES) {
+          let w = 1 / m.rarity;
+          if (m.rarity < 0.08 && state.rank >= 3) w *= 1.6;
+          if (m.rarity < 0.08 && state.upgrades.indexOf('find-plus') !== -1) w *= 1.25;
+          ws.push(w);
+          tot += w;
+        }
+        let roll = rng() * tot;
+        let idx = WINDSURF_MOVES.length - 1;
+        for (let i = 0; i < ws.length; i++) {
+          roll -= ws[i];
+          if (roll <= 0) { idx = i; break; }
+        }
+        mv = WINDSURF_MOVES[idx];
+        if (rng() < 0.05) { qty += 1; bonus = true; }
+        state.inventory[mv.id] = (state.inventory[mv.id] || 0) + qty;
+        state.findsFound += qty;
+        state.sessionFinds.push(mv.id);
+        state.sessionYield += qty * mv.value;
+      }
+      if (spot && rng() < spot.risk * 0.04) {
+        hazard = true;
+        state.hazardsTaken += 1;
+        if (rng() < 0.25) addCash(-20);
+      }
+      let ended = false;
+      if (state.resource <= 0 || state.sessionStepsLeft <= 0) {
+        if (state.resource < 0) state.resource = 0;
+        close();
+        ended = true;
+      }
+      return { ok: true, find: mv ? { id: mv.id, name: mv.name, qty } : null, qty, bonus, hazard, stepsLeft: state.sessionStepsLeft, resource: state.resource, ended };
+    },
+    beachEarly() {
+      if (!state.session) return { ok: false, reason: 'no-session' };
+      let id = state.session;
+      close();
+      log('Beached early from ' + id);
+      return { ok: true, id, yield: state.totalYield };
+    },
+    catchGust() {
+      let spot = state.session ? spotOf(state.session) : null;
+      return { ok: true, site: spot ? spot.id : null, siteName: spot ? spot.name : null, weather: (getWeather() || {}).condition || 'clear', hour: getHour(), resource: state.resource, resourceMax: windsurfEnergyMax(state.upgrades), stepsLeft: state.sessionStepsLeft };
+    },
+    sellFind(moveId) {
+      let mv = moveOf(moveId);
+      if (!mv) return { ok: false, reason: 'no-such-find' };
+      let held = state.inventory[moveId] || 0;
+      if (held <= 0) return { ok: false, reason: 'not-held', id: moveId };
+      let price = windsurfPriceFor(moveId, state.dayDrift, state.rank, state.upgrades);
+      state.inventory[moveId] = held - 1;
+      if (state.inventory[moveId] <= 0) delete state.inventory[moveId];
+      state.findsSold += 1;
+      state.earned += price;
+      state.dailyEarned += price;
+      addCash(price);
+      return { ok: true, id: moveId, name: mv.name, qty: 1, price, total: price };
+    },
+    sellAllFinds() {
+      let ids = Object.keys(state.inventory);
+      if (ids.length === 0) return { ok: false, reason: 'nothing-held' };
+      let total = 0;
+      let count = 0;
+      for (let id of ids) {
+        total += windsurfPriceFor(id, state.dayDrift, state.rank, state.upgrades) * state.inventory[id];
+        count += state.inventory[id];
+      }
+      total = Math.round(total * 10) / 10;
+      state.inventory = {};
+      state.findsSold += count;
+      state.earned += total;
+      state.dailyEarned += total;
+      addCash(total);
+      return { ok: true, total, sold: count, count };
+    },
+    buyUpgrade(upId) {
+      let up = WINDSURF_UPGRADES.find((u) => u.id === upId);
+      if (!up) return { ok: false, reason: 'no-such-upgrade' };
+      if (state.upgrades.indexOf(upId) !== -1) return { ok: false, reason: 'already-owned', id: upId };
+      if (getCash() < up.cost) return { ok: false, reason: 'not-enough-cash', cost: up.cost };
+      addCash(-up.cost);
+      state.spent += up.cost;
+      state.upgrades.push(upId);
+      log('Bought upgrade ' + up.name);
+      return { ok: true, id: up.id, name: up.name, cost: up.cost };
+    },
+    takeContract(contractId) {
+      let ct = WINDSURF_CONTRACTS.find((x) => x.id === contractId);
+      if (!ct) return { ok: false, reason: 'no-such-contract' };
+      if (state.activeContract) return { ok: false, reason: 'already-active', id: state.activeContract };
+      state.activeContract = ct.id;
+      state.contractProgress = 0;
+      state.contractDeadline = getDay() + ct.days;
+      log('Took contract ' + ct.name);
+      return { ok: true, id: ct.id, name: ct.name, qty: ct.qty, pay: ct.pay };
+    },
+    deliverContract() {
+      if (!state.activeContract) return { ok: false, reason: 'no-active-contract' };
+      let ct = WINDSURF_CONTRACTS.find((x) => x.id === state.activeContract);
+      let have = state.inventory[ct.material] || 0;
+      if (have < ct.qty) return { ok: false, reason: 'not-enough', have, need: ct.qty, material: ct.material };
+      state.inventory[ct.material] = have - ct.qty;
+      if (state.inventory[ct.material] <= 0) delete state.inventory[ct.material];
+      state.contractsDone += 1;
+      state.earned += ct.pay;
+      state.dailyEarned += ct.pay;
+      addCash(ct.pay);
+      state.xp += ct.rep;
+      sync();
+      let done = ct;
+      state.activeContract = null;
+      state.contractProgress = 0;
+      state.contractDeadline = null;
+      return { ok: true, id: done.id, name: done.name, pay: done.pay, rep: done.rep };
+    },
+    abandonContract() {
+      if (!state.activeContract) return { ok: false, reason: 'no-active-contract' };
+      let id = state.activeContract;
+      state.activeContract = null;
+      state.contractProgress = 0;
+      state.contractDeadline = null;
+      state.contractsFailed += 1;
+      return { ok: true, id };
+    },
+    priceBoard() {
+      let rows = [];
+      for (let mv of WINDSURF_MOVES) rows.push({ id: mv.id, name: mv.name, price: windsurfPriceFor(mv.id, state.dayDrift, state.rank, state.upgrades), base: mv.value, drift: state.dayDrift, held: state.inventory[mv.id] || 0 });
+      return rows;
+    },
+    siteReport(spotId) {
+      let spot = spotOf(spotId);
+      if (!spot) return { ok: false, reason: 'no-such-site' };
+      return { ok: true, id: spot.id, name: spot.name, fee: spot.fee, difficulty: spot.difficulty, steps: spot.steps, duration: spot.duration, risk: spot.risk, wind: spot.wind, wave: spot.wave, desc: spot.desc };
+    },
+    dailyEvent() {
+      return runEvent();
+    },
+    tick(dt) {
+      if (!state.session) return;
+      state.sessionTimeLeft -= dt;
+      state.resource -= dt * 0.05;
+      if (state.sessionTimeLeft <= 0 || state.resource <= 0) {
+        if (state.resource < 0) state.resource = 0;
+        if (state.sessionTimeLeft < 0) state.sessionTimeLeft = 0;
+        close();
+      }
+    },
+    tickDay(day) {
+      if (day === state.lastDay) return null;
+      state.lastDay = day;
+      state.dayDrift = Math.round((state.dayDrift + (rng() * 0.24 - 0.12)) * 100) / 100;
+      state.dailyEarned = 0;
+      state.dailySessions = 0;
+      if (state.activeContract && state.contractDeadline !== null && day >= state.contractDeadline) {
+        state.activeContract = null;
+        state.contractProgress = 0;
+        state.contractDeadline = null;
+        state.contractsFailed += 1;
+        log('Contract expired.');
+      }
+      return runEvent();
+    },
+    serialize() {
+      return JSON.parse(JSON.stringify(state));
+    },
+    deserialize(saved) {
+      if (!saved || typeof saved !== 'object') return;
+      for (let k of Object.keys(saved)) state[k] = saved[k];
+      if (!state.inventory || typeof state.inventory !== 'object') state.inventory = {};
+      if (!Array.isArray(state.upgrades)) state.upgrades = [];
+      if (!Array.isArray(state.sessionFinds)) state.sessionFinds = [];
+      if (!Array.isArray(state.challengesClaimed)) state.challengesClaimed = [];
+      if (typeof state.wagesPaid !== 'number') state.wagesPaid = 0;
+      sync();
+    },
+    stats() {
+      let rn = (WINDSURF_RANKS[state.rank] || {}).name || 'Beach Starter';
+      return { rank: rn, xp: state.xp, sessions: state.sessions, actions: state.actions, stepsDone: state.stepsDone, earned: state.earned, spent: state.spent, findsFound: state.findsFound, findsSold: state.findsSold, contractsDone: state.contractsDone, contractsFailed: state.contractsFailed, hazardsTaken: state.hazardsTaken, heatGained: state.heatGained, upgrades: state.upgrades.length, activeContract: state.activeContract, contractProgress: state.contractProgress, session: state.session, stepsLeft: state.sessionStepsLeft, resource: state.resource, resourceMax: windsurfEnergyMax(state.upgrades), dailyEarned: state.dailyEarned, totalYield: state.totalYield, bestStreak: state.bestStreak, bestSession: state.bestSession, bestSessionYield: state.bestSessionYield, specialsUsed: state.specialsUsed, weatherStops: state.weatherStops, season: state.season, event: state.event };
+    },
+    hudLine() {
+      if (!state.session) return '';
+      return 'Windsurfing: ' + state.session + ' — ' + state.sessionStepsLeft + ' steps left, energy ' + state.resource;
+    },
+    interact() {
+      let pos = getPlayerPos() || { x: 0, z: 0 };
+      let dx = pos.x - (-420);
+      let dz = pos.z - 300;
+      if (Math.sqrt(dx * dx + dz * dz) > 30) return false;
+      if (state.session) { sys.rideWave(); return true; }
+      let held = 0;
+      for (let k of Object.keys(state.inventory)) held += state.inventory[k];
+      if (held > 0) { sys.sellAllFinds(); return true; }
+      sys.launch(WINDSURF_SPOTS[0].id);
+      return true;
+    },
   };
+  return sys;
 }
 
 export function createWindsurfingExtras(system) {
-  const helpers = [];
-  const claimed = [];
-  let helperWagesPaid = 0;
+  let st = system.state;
+  let hired = [];
+  let claimed = [];
+  let wages = 0;
 
-  function hireHelper(id) {
-    const h = WINDSURF_HELPERS.find((x) => x.id === id);
-    if (!h) return { ok: false, reason: 'no-such-helper' };
-    if (helpers.includes(id)) return { ok: false, reason: 'already-hired' };
-    helpers.push(id);
-    return { ok: true, id, name: h.name, wage: h.wage };
-  }
-
-  function fireHelper(id) {
-    const i = helpers.indexOf(id);
-    if (i < 0) return { ok: false, reason: 'not-hired' };
-    helpers.splice(i, 1);
-    return { ok: true, id };
-  }
-
-  function payWages() {
-    let due = 0;
-    for (const id of helpers) {
-      const h = WINDSURF_HELPERS.find((x) => x.id === id);
-      due += h.wage;
+  let bonusOf = (skill) => {
+    let sum = 0;
+    for (let id of hired) {
+      let h = WINDSURF_HELPERS.find((x) => x.id === id);
+      if (h && h.skill === skill) sum += h.bonus;
     }
-    helperWagesPaid += due;
-    return { due, helpers: [...helpers], totalPaid: helperWagesPaid };
-  }
-
-  function helperBonus(skill) {
-    return windsurfHelperBonus(helpers, skill);
-  }
-
-  function challenges() {
-    return WINDSURF_CHALLENGES.map((ch) => windsurfChallengeProgress(ch, system.state));
-  }
-
-  function claimChallenge(id) {
-    const ch = WINDSURF_CHALLENGES.find((x) => x.id === id);
-    if (!ch) return { ok: false, reason: 'no-such-challenge' };
-    if (claimed.includes(id)) return { ok: false, reason: 'already-claimed' };
-    const p = windsurfChallengeProgress(ch, system.state);
-    if (!p.done) return { ok: false, reason: 'not-done', have: p.have, goal: p.goal };
-    claimed.push(id);
-    return { ok: true, id, xp: ch.xp };
-  }
-
-  function achievements() {
-    return WINDSURF_ACHIEVEMENTS.map((a) => ({
-      id: a.id, name: a.name, desc: a.desc, done: !!a.check(system.state),
-    }));
-  }
-
-  function donateFinds(moveId, qty) {
-    const have = system.state.inventory[moveId] || 0;
-    if (have < qty || qty <= 0) return { ok: false, reason: 'not-enough', have };
-    system.state.inventory[moveId] -= qty;
-    const rep = Math.floor(qty / 5);
-    return { ok: true, qty, rep, note: 'The surf club thanks you. The wind remembers.' };
-  }
-
-  function bundleSale(moveId, qty) {
-    const have = system.state.inventory[moveId] || 0;
-    if (have < qty || qty < 10) return { ok: false, reason: 'need-10-plus', have };
-    const unit = windsurfPriceFor(moveId, system.state.dayDrift, system.state.rank, system.state.upgrades);
-    const total = Math.round(unit * qty * 1.1 * 10) / 10;
-    system.state.inventory[moveId] -= qty;
-    system.state.findsSold += qty;
-    system.state.earned += total;
-    return { ok: true, total, qty, bonus: 'bundle +10%' };
-  }
-
-  function checkEnergy() {
-    const max = windsurfEnergyMax(system.state.upgrades);
-    return {
-      resource: Math.round(system.state.resource * 10) / 10,
-      max,
-      pct: Math.round((system.state.resource / max) * 100),
-    };
-  }
-
-  function restUp() {
-    system.state.resource = windsurfEnergyMax(system.state.upgrades);
-    return { ok: true, resource: system.state.resource };
-  }
-
-  function countMoves() {
-    const held = Object.values(system.state.inventory).reduce((a, b) => a + b, 0);
-    return { moves: held, cap: windsurfCarryCap(system.state.upgrades) };
-  }
+    return sum;
+  };
 
   return {
-    hireHelper, fireHelper, payWages, helperBonus, challenges,
-    claimChallenge, achievements, donateFinds, bundleSale,
-    checkEnergy, restUp, countMoves,
-    get helpers() { return [...helpers]; },
-    get claimed() { return [...claimed]; },
-    get wagesPaid() { return helperWagesPaid; },
+    hireHelper(id) {
+      let h = WINDSURF_HELPERS.find((x) => x.id === id);
+      if (!h) return { ok: false, reason: 'no-such-helper' };
+      if (hired.indexOf(id) !== -1) return { ok: false, reason: 'already-hired', id };
+      hired.push(id);
+      return { ok: true, id: h.id, name: h.name, wage: h.wage };
+    },
+    fireHelper(id) {
+      if (hired.indexOf(id) === -1) return { ok: false, reason: 'not-hired', id };
+      hired = hired.filter((x) => x !== id);
+      return { ok: true, id };
+    },
+    payWages() {
+      let due = 0;
+      for (let id of hired) {
+        let h = WINDSURF_HELPERS.find((x) => x.id === id);
+        if (h) due += h.wage;
+      }
+      wages += due;
+      st.wagesPaid = (st.wagesPaid || 0) + due;
+      return { ok: true, due, helpers: hired.length, totalPaid: due };
+    },
+    helperBonus(skill) {
+      return bonusOf(skill);
+    },
+    challenges() {
+      let out = [];
+      for (let ch of WINDSURF_CHALLENGES) out.push(windsurfChallengeProgress(ch, st));
+      return out;
+    },
+    claimChallenge(id) {
+      let ch = WINDSURF_CHALLENGES.find((x) => x.id === id);
+      if (!ch) return { ok: false, reason: 'no-such-challenge' };
+      if (claimed.indexOf(id) !== -1) return { ok: false, reason: 'already-claimed', id };
+      let prog = windsurfChallengeProgress(ch, st);
+      if (!prog.done) return { ok: false, reason: 'not-done', have: prog.have, goal: prog.goal };
+      claimed.push(id);
+      st.challengesClaimed.push(id);
+      st.xp += ch.xp;
+      st.rank = windsurfRankFor(st.xp);
+      return { ok: true, id: ch.id, xp: ch.xp };
+    },
+    achievements() {
+      let out = [];
+      for (let a of WINDSURF_ACHIEVEMENTS) out.push({ id: a.id, name: a.name, desc: a.desc, done: !!a.check(st) });
+      return out;
+    },
+    donateFinds() {
+      let ids = Object.keys(st.inventory);
+      let donated = 0;
+      for (let id of ids) donated += st.inventory[id];
+      st.inventory = {};
+      return { ok: true, donated, finds: ids };
+    },
+    bundleSale() {
+      let count = 0;
+      for (let k of Object.keys(st.inventory)) count += st.inventory[k];
+      if (count < 10) return { ok: false, reason: 'not-enough', have: count, need: 10 };
+      let total = 0;
+      for (let id of Object.keys(st.inventory)) total += windsurfPriceFor(id, st.dayDrift, st.rank, st.upgrades) * st.inventory[id];
+      total = Math.round(total * 1.1 * 10) / 10;
+      st.inventory = {};
+      st.findsSold += count;
+      st.earned += total;
+      st.dailyEarned += total;
+      return { ok: true, total, count, bonus: 'bundle +10%' };
+    },
+    checkEnergy() {
+      let max = windsurfEnergyMax(st.upgrades);
+      return { ok: true, resource: st.resource, max, name: 'energy', percent: max ? Math.round((st.resource / max) * 100) : 0 };
+    },
+    restUp() {
+      st.resource = windsurfEnergyMax(st.upgrades);
+      return { ok: true, resource: st.resource, max: st.resource };
+    },
+    countMoves() {
+      let count = 0;
+      for (let k of Object.keys(st.inventory)) count += st.inventory[k];
+      return { ok: true, count, total: count };
+    },
+    get helpers() { return hired.slice(); },
+    get claimed() { return claimed.slice(); },
+    get wagesPaid() { return wages; },
   };
 }
 
 export function createWindsurfingMarket(system) {
+  let st = system.state;
   let currentEvent = null;
-  let currentSeason = 'summer';
+  let currentSeason = st.season || 'summer';
   let dealsClaimed = 0;
-  let bulkSold = 0;
+  let bulkTraded = 0;
 
-  function setEvent(eventId) {
-    const ev = WINDSURF_MARKET.find((x) => x.id === eventId);
-    if (!ev) return { ok: false, reason: 'no-such-event' };
-    currentEvent = eventId;
-    return { ok: true, event: eventId, name: ev.name };
-  }
-
-  function setSeason(seasonId) {
-    const s = WINDSURF_SEASONS.find((x) => x.id === seasonId);
-    if (!s) return { ok: false, reason: 'no-such-season' };
-    currentSeason = seasonId;
-    system.state.season = seasonId;
-    return { ok: true, season: seasonId };
-  }
-
-  function eventPrice(moveId, basePrice) {
-    let price = basePrice;
-    price *= windsurfEventMult(currentEvent, moveId);
-    price *= windsurfSeasonMult(currentSeason);
-    return Math.round(price * 10) / 10;
-  }
-
-  function bulkDeal(moveId, qty) {
-    const have = system.state.inventory[moveId] || 0;
-    if (have < qty || qty < 20) return { ok: false, reason: 'need-20-plus', have };
-    const unit = windsurfPriceFor(moveId, system.state.dayDrift, system.state.rank, system.state.upgrades);
-    const total = Math.round(eventPrice(moveId, unit) * qty * 1.1 * 10) / 10;
-    system.state.inventory[moveId] -= qty;
-    system.state.findsSold += qty;
-    system.state.earned += total;
-    bulkSold += qty;
-    dealsClaimed += 1;
-    return { ok: true, total, qty, bonus: 'bulk +10%' };
-  }
-
-  function dailyDeals() {
-    const deals = [];
-    for (const f of WINDSURF_MOVES) {
-      const mult = windsurfEventMult(currentEvent, f.id);
-      if (mult !== 1) {
-        deals.push({ find: f.id, name: f.name, mult, event: currentEvent });
-      }
-    }
-    return deals;
-  }
-
-  function marketSummary() {
-    return {
-      event: currentEvent,
-      season: currentSeason,
-      dealsClaimed,
-      bulkSold,
-      deals: dailyDeals(),
-    };
-  }
+  let calcPrice = (itemId, basePrice) => {
+    let em = currentEvent ? windsurfEventMult(currentEvent, itemId) : 1;
+    let sm = windsurfSeasonMult(currentSeason);
+    return Math.round(basePrice * em * sm * 10) / 10;
+  };
 
   return {
-    setEvent, setSeason, eventPrice, bulkDeal, dailyDeals, marketSummary,
+    setEvent(id) {
+      let ev = WINDSURF_MARKET.find((m) => m.id === id);
+      if (!ev) return { ok: false, reason: 'no-such-event' };
+      currentEvent = id;
+      st.event = id;
+      return { ok: true, event: id };
+    },
+    setSeason(id) {
+      let s = WINDSURF_SEASONS.find((x) => x.id === id);
+      if (!s) return { ok: false, reason: 'no-such-season' };
+      currentSeason = id;
+      st.season = id;
+      return { ok: true, season: id };
+    },
+    eventPrice(itemId, basePrice) {
+      return calcPrice(itemId, basePrice);
+    },
+    bulkDeal(moveId, qty) {
+      if (!qty || qty < 20) return { ok: false, reason: 'not-enough', qty: qty || 0, need: 20 };
+      let held = st.inventory[moveId] || 0;
+      if (held < qty) return { ok: false, reason: 'not-enough-held', have: held, need: qty };
+      let mv = moveOf(moveId);
+      if (!mv) return { ok: false, reason: 'no-such-find' };
+      let unit = calcPrice(moveId, mv.value);
+      let total = Math.round(unit * qty * 1.1 * 10) / 10;
+      st.inventory[moveId] = held - qty;
+      if (st.inventory[moveId] <= 0) delete st.inventory[moveId];
+      st.findsSold += qty;
+      st.earned += total;
+      st.dailyEarned += total;
+      bulkTraded += qty;
+      dealsClaimed += 1;
+      return { ok: true, total, qty, unit, bonus: 'bulk +10%' };
+    },
+    dailyDeals() {
+      let out = [];
+      for (let m of WINDSURF_MARKET) out.push({ id: m.id, name: m.name, finds: m.finds.slice(), mult: m.mult, desc: m.desc });
+      return out;
+    },
+    marketSummary() {
+      return { event: currentEvent, season: currentSeason, dealsClaimed, bulkTraded, deals: this.dailyDeals() };
+    },
     get event() { return currentEvent; },
     get season() { return currentSeason; },
   };
 }
-
-export const WINDSURFING_META = {
-  system: 'windsurfing',
-  version: '7c-B2',
-  author: 'builder-2',
-  dataCount: WINDSURF_SPOTS.length,
-  findCount: WINDSURF_MOVES.length,
-  upgradeCount: WINDSURF_UPGRADES.length,
-  rankCount: WINDSURF_RANKS.length,
-};

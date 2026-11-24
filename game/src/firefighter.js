@@ -1,10 +1,3 @@
-// Solara Fire Department — fire calls, the engine truck, water pressure,
-// rescues and arson investigation. Round 7, all-new system. Fires break
-// out across the city; answer the call, drive the engine (or run on foot),
-// spray water until the blaze is out, pull civilians from the smoke, and
-// earn your pay per call. Rank up from Probie to Captain, buy better gear,
-// and work out which fires were arson — the arsonist pays, one way or
-// another.
 export const FIRE_STATION = { id: 'station-7', name: 'Station 7', x: -60, z: 80, district: 'Downtown' };
 
 export const FIRE_TYPES = [
@@ -13,7 +6,7 @@ export const FIRE_TYPES = [
   { id: 'warehouse', name: 'Warehouse Fire', baseIntensity: 70, spread: 0.8, smoke: 0.9, pay: 320, civilians: 2 },
   { id: 'apartment', name: 'Apartment Fire', baseIntensity: 55, spread: 0.6, smoke: 0.8, pay: 260, civilians: 3 },
   { id: 'forest', name: 'Brush Fire', baseIntensity: 45, spread: 1.0, smoke: 0.6, pay: 200, civilians: 0 },
-  { id: 'gas', name: 'Gas Station Fire', baseIntensity: 85, spread: 0.5, smoke: 1.0, pay: 450, civilians: 2 },
+  { id: 'gas', name: 'Gas Fire', baseIntensity: 85, spread: 0.5, smoke: 1.0, pay: 450, civilians: 2 },
   { id: 'electrical', name: 'Electrical Fire', baseIntensity: 35, spread: 0.35, smoke: 0.7, pay: 150, civilians: 1 },
   { id: 'dumpster', name: 'Dumpster Fire', baseIntensity: 15, spread: 0.15, smoke: 0.3, pay: 60, civilians: 0 },
 ];
@@ -40,23 +33,23 @@ export const FIRE_RANKS = [
 ];
 
 export const FIRE_GEAR = [
-  { id: 'hose-pro', name: 'Pro Hose Nozzle', price: 300, power: 0.25, desc: '+25% water power' },
-  { id: 'tank-xl', name: 'XL Water Tank', price: 450, power: 0, tank: 150, desc: '+150L tank capacity' },
-  { id: 'suit-thermal', name: 'Thermal Suit', price: 600, power: 0, heatResist: 0.4, desc: '40% less heat damage' },
-  { id: 'axe', name: 'Rescue Axe', price: 200, power: 0, rescueSpeed: 0.5, desc: 'rescue 50% faster' },
-  { id: 'mask', name: 'SCBA Mask', price: 350, power: 0, smokeResist: 0.5, desc: '50% less smoke damage' },
-  { id: 'foam', name: 'Foam Cannon', price: 800, power: 0.4, desc: '+40% water power, gas fires' },
-  { id: 'ladder', name: 'Extension Ladder', price: 500, power: 0, rescue: 1, desc: 'rescue from upper floors' },
-  { id: 'radio', name: 'Command Radio', price: 250, power: 0, callBonus: 0.2, desc: '+20% call pay' },
+  { id: 'hose-pro', name: 'Pro Hose Nozzle', price: 300, power: 0.25, desc: 'Stronger spray, faster knockdown.' },
+  { id: 'tank-xl', name: 'XL Water Tank', price: 450, power: 0, tank: 150, desc: 'Carry much more water.' },
+  { id: 'suit-thermal', name: 'Thermal Suit', price: 600, power: 0, heatResist: 0.4, desc: 'Shrug off the worst heat.' },
+  { id: 'axe', name: 'Rescue Axe', price: 200, power: 0, rescueSpeed: 0.5, desc: 'Cut through doors fast.' },
+  { id: 'mask', name: 'SCBA Mask', price: 350, power: 0, smokeResist: 0.5, desc: 'Breathe easy in thick smoke.' },
+  { id: 'foam', name: 'Foam Cannon', price: 800, power: 0.4, desc: 'Smother fuel fires with foam.' },
+  { id: 'ladder', name: 'Extension Ladder', price: 500, power: 0, rescue: 1, desc: 'Reach the high windows.' },
+  { id: 'radio', name: 'Command Radio', price: 250, power: 0, callBonus: 0.2, desc: 'Hear every call first.' },
 ];
 
 export const FIRE_ARSON_CLUES = [
-  { id: 'accelerant', name: 'Accelerant Smell', text: 'Gasoline smell near the origin point.' },
-  { id: 'timer', name: 'Timer Device', text: 'A melted timer — someone set this fire.' },
-  { id: 'footprints', name: 'Fresh Footprints', text: 'Footprints leading away, still smoking.' },
-  { id: 'cut-wire', name: 'Cut Alarm Wire', text: 'The alarm wire was cut before the fire.' },
-  { id: 'insurance', name: 'Insurance Papers', text: 'A fresh insurance policy on the building.' },
-  { id: 'threat', name: 'Threat Note', text: 'A note: "Pay up or burn."' },
+  { id: 'accelerant', name: 'Accelerant', text: 'A sharp chemical smell near the door.' },
+  { id: 'timer', name: 'Timer', text: 'A broken timer device in the rubble.' },
+  { id: 'footprints', name: 'Footprints', text: 'Fresh prints leading away from the scene.' },
+  { id: 'cut-wire', name: 'Cut Wire', text: 'Wires cut clean, not burned through.' },
+  { id: 'insurance', name: 'Insurance Papers', text: 'A fresh policy, signed days ago.' },
+  { id: 'threat', name: 'Threat Note', text: 'A note warning the owner to pay up.' },
 ];
 
 export const FIRE_SHIFT_TYPES = [
@@ -65,30 +58,62 @@ export const FIRE_SHIFT_TYPES = [
   { id: 'weekend', name: 'Weekend Duty', hourStart: 0, hourEnd: 24, callRate: 1.2, payBonus: 15 },
 ];
 
+const INSPECTION_TARGETS = [
+  { id: 'diner', name: "Ria's Diner", risk: 0.3 },
+  { id: 'mall', name: 'Solara Mall', risk: 0.5 },
+  { id: 'hotel', name: 'Grand Solara Hotel', risk: 0.4 },
+  { id: 'warehouse', name: 'Harbor Warehouse 9', risk: 0.7 },
+  { id: 'factory', name: 'Crown Textile Factory', risk: 0.8 },
+  { id: 'school', name: 'Northside High', risk: 0.2 },
+  { id: 'apartments', name: 'Palm Court Apartments', risk: 0.45 },
+  { id: 'garage', name: 'Voss Garage', risk: 0.6 },
+];
+
+const DOG_TRICKS = [
+  { id: 'sit', name: 'Sit', difficulty: 1 },
+  { id: 'roll', name: 'Roll Over', difficulty: 2 },
+  { id: 'fetch', name: 'Fetch Hose', difficulty: 2 },
+  { id: 'bark', name: 'Bark Alarm', difficulty: 3 },
+];
+
 export function fireRankFor(callsDone) {
-  let rank = 0;
-  for (let i = 0; i < FIRE_RANKS.length; i++) {
-    if (callsDone >= FIRE_RANKS[i].callsNeeded) rank = i;
-  }
-  return rank;
+  let out = 0;
+  for (const r of FIRE_RANKS) if (callsDone >= r.callsNeeded) out = r.rank;
+  return out;
 }
 
-export function firePayFor(typeId, rank, gearBonus = 0) {
+export function firePayFor(typeId, rank, gearBonus) {
   const type = FIRE_TYPES.find((t) => t.id === typeId);
   if (!type) return 0;
-  const mult = FIRE_RANKS[fireRankFor(rank)].payMult;
-  return Math.round(type.pay * mult * (1 + gearBonus));
+  const rec = FIRE_RANKS[rank] || FIRE_RANKS[0];
+  return Math.round(type.pay * rec.payMult * (1 + (gearBonus || 0)));
 }
 
-export function createFirefighterSystem(deps = {}) {
-  const rng = deps.rng || Math.random;
-  const getCash = deps.getCash || (() => 0);
-  const addCash = deps.addCash || (() => {});
-  const addHeat = deps.addHeat || (() => {});
-  const log = deps.log || (() => {});
-  const getDay = deps.getDay || (() => 1);
-  const getHour = deps.getHour || (() => 12);
-  const getPlayerPos = deps.getPlayerPos || (() => ({ x: 0, z: 0 }));
+function typeById(id) {
+  for (const t of FIRE_TYPES) if (t.id === id) return t;
+  return null;
+}
+
+function locById(id) {
+  for (const l of FIRE_LOCATIONS) if (l.id === id) return l;
+  return null;
+}
+
+function gearById(id) {
+  for (const g of FIRE_GEAR) if (g.id === id) return g;
+  return null;
+}
+
+export function createFirefighterSystem(deps) {
+  const d = deps || {};
+  const rnd = typeof d.rng === 'function' ? d.rng : Math.random;
+  const cashOf = typeof d.getCash === 'function' ? d.getCash : () => 0;
+  const moveCash = typeof d.addCash === 'function' ? d.addCash : () => {};
+  const pushHeat = typeof d.addHeat === 'function' ? d.addHeat : () => {};
+  const say = typeof d.log === 'function' ? d.log : () => {};
+  const dayOf = typeof d.getDay === 'function' ? d.getDay : () => 1;
+  const hourOf = typeof d.getHour === 'function' ? d.getHour : () => 12;
+  const posOf = typeof d.getPlayerPos === 'function' ? d.getPlayerPos : () => ({ x: 0, z: 0 });
 
   const state = {
     rank: 0,
@@ -101,7 +126,7 @@ export function createFirefighterSystem(deps = {}) {
     waterMax: 300,
     health: 100,
     gear: [],
-    activeFire: null, // { id, typeId, locationId, intensity, maxIntensity, civilians, rescued, arson, cluesFound, timeLeft, spreadTimer }
+    activeFire: null,
     callQueue: [],
     nextCallIn: 45,
     onShift: false,
@@ -121,86 +146,105 @@ export function createFirefighterSystem(deps = {}) {
     falseAlarms: 0,
     commendations: 0,
     lastCallDay: 0,
+    inspections: 0,
+    violationsFound: 0,
+    alarmsInstalled: 0,
+    firehouseDog: null,
+    calendarsSold: 0,
+    rookiesTrained: 0,
+    hydrantsChecked: 0,
+    openHouses: 0,
+    talksGiven: 0,
   };
 
-  function rankInfo() { return FIRE_RANKS[state.rank]; }
-  function hosePower() {
-    let power = rankInfo().hosePower;
-    for (const g of state.gear) {
-      const def = FIRE_GEAR.find((d) => d.id === g);
-      if (def && def.power) power += def.power;
-    }
-    return power;
+  function rankInfo() {
+    return FIRE_RANKS[state.rank] || FIRE_RANKS[0];
   }
+
+  function hasGear(id) {
+    return state.gear.includes(id);
+  }
+
+  function hosePower() {
+    let p = rankInfo().hosePower;
+    for (const id of state.gear) {
+      const g = gearById(id);
+      if (g) p += g.power || 0;
+    }
+    return p;
+  }
+
   function tankCapacity() {
     let cap = 300;
-    for (const g of state.gear) {
-      const def = FIRE_GEAR.find((d) => d.id === g);
-      if (def && def.tank) cap += def.tank;
+    for (const id of state.gear) {
+      const g = gearById(id);
+      if (g && g.tank) cap += g.tank;
     }
     return cap;
   }
+
   function heatResist() {
     let r = 0;
-    for (const g of state.gear) {
-      const def = FIRE_GEAR.find((d) => d.id === g);
-      if (def && def.heatResist) r += def.heatResist;
+    for (const id of state.gear) {
+      const g = gearById(id);
+      if (g && g.heatResist) r += g.heatResist;
     }
     return Math.min(0.8, r);
   }
+
   function smokeResist() {
     let r = 0;
-    for (const g of state.gear) {
-      const def = FIRE_GEAR.find((d) => d.id === g);
-      if (def && def.smokeResist) r += def.smokeResist;
+    for (const id of state.gear) {
+      const g = gearById(id);
+      if (g && g.smokeResist) r += g.smokeResist;
     }
     return Math.min(0.8, r);
   }
+
   function rescueSpeed() {
     let s = 1;
-    for (const g of state.gear) {
-      const def = FIRE_GEAR.find((d) => d.id === g);
-      if (def && def.rescueSpeed) s += def.rescueSpeed;
+    for (const id of state.gear) {
+      const g = gearById(id);
+      if (g && g.rescueSpeed) s += g.rescueSpeed;
     }
     return s;
   }
+
   function callPayBonus() {
     let b = 0;
-    for (const g of state.gear) {
-      const def = FIRE_GEAR.find((d) => d.id === g);
-      if (def && def.callBonus) b += def.callBonus;
+    for (const id of state.gear) {
+      const g = gearById(id);
+      if (g && g.callBonus) b += g.callBonus;
     }
     return b;
   }
-  function hasGear(id) { return state.gear.includes(id); }
 
-  function spawnFire(forceType) {
-    const type = forceType
-      ? FIRE_TYPES.find((t) => t.id === forceType)
-      : FIRE_TYPES[Math.floor(rng() * FIRE_TYPES.length)];
-    const loc = FIRE_LOCATIONS[Math.floor(rng() * FIRE_LOCATIONS.length)];
-    const isArson = rng() < 0.22;
+  function spawnFire(forcedType) {
+    const type = forcedType ? typeById(forcedType) : FIRE_TYPES[Math.floor(rnd() * FIRE_TYPES.length)];
+    const picked = type || FIRE_TYPES[Math.floor(rnd() * FIRE_TYPES.length)];
+    const loc = FIRE_LOCATIONS[Math.floor(rnd() * FIRE_LOCATIONS.length)];
+    const arson = rnd() < 0.22;
     const fire = {
-      id: `fire-${getDay()}-${state.callsDone + state.callsFailed + 1}`,
-      typeId: type.id,
-      typeName: type.name,
+      id: 'fire-' + dayOf() + '-' + (state.callsDone + state.callsFailed + state.callQueue.length + 1),
+      typeId: picked.id,
+      typeName: picked.name,
       locationId: loc.id,
       locationName: loc.name,
-      intensity: type.baseIntensity,
-      maxIntensity: type.baseIntensity,
-      civilians: type.civilians,
+      intensity: picked.baseIntensity,
+      maxIntensity: picked.baseIntensity,
+      civilians: picked.civilians,
       rescued: 0,
-      arson: isArson,
+      arson,
       cluesFound: 0,
-      cluesTotal: isArson ? 2 + Math.floor(rng() * 2) : 0,
+      cluesTotal: arson ? 2 + Math.floor(rnd() * 2) : 0,
       timeLeft: 240,
       spreadTimer: 0,
-      responseStartedAt: Date.now(),
+      responseStart: Date.now(),
       waterUsed: 0,
-      smoke: type.smoke,
+      smoke: picked.smoke,
     };
     state.callQueue.push(fire);
-    log(`FIRE CALL: ${type.name} at ${loc.name}! ${type.civilians > 0 ? `${type.civilians} civilians inside!` : ''}`);
+    say('Fire call: ' + picked.name + ' at ' + loc.name + '.');
     return fire;
   }
 
@@ -209,26 +253,22 @@ export function createFirefighterSystem(deps = {}) {
     if (state.callQueue.length === 0) return { ok: false, reason: 'no-calls' };
     const fire = state.callQueue.shift();
     state.activeFire = fire;
-    state.lastCallDay = getDay();
-    log(`Responding to ${fire.typeName} at ${fire.locationName}.`);
+    state.lastCallDay = dayOf();
     return { ok: true, fire: { ...fire } };
   }
 
-  function sprayWater(seconds = 1) {
-    const fire = state.activeFire;
-    if (!fire) return { ok: false, reason: 'no-active-fire' };
+  function sprayWater(seconds) {
+    const secs = seconds === undefined || seconds === null ? 1 : seconds;
+    if (!state.activeFire) return { ok: false, reason: 'no-active-fire' };
     if (state.water <= 0) return { ok: false, reason: 'tank-empty' };
-    const use = Math.min(state.water, 12 * seconds);
-    state.water -= use;
-    fire.waterUsed += use;
-    const power = hosePower();
-    const reduction = use * 0.55 * power;
-    fire.intensity = Math.max(0, fire.intensity - reduction);
-    // Standing close to a big fire hurts.
-    const heatDmg = fire.intensity * 0.02 * seconds * (1 - heatResist());
-    state.health = Math.max(0, state.health - heatDmg);
+    const used = Math.min(state.water, 12 * secs);
+    state.water -= used;
+    const fire = state.activeFire;
+    fire.waterUsed += used;
+    fire.intensity -= used * 0.55 * hosePower();
+    const heatDmg = fire.intensity * 0.02 * secs * (1 - heatResist());
+    const smokeDmg = fire.smoke * 1.5 * secs * (1 - smokeResist());
     state.heatDamage += heatDmg;
-    const smokeDmg = fire.smoke * 1.5 * seconds * (1 - smokeResist());
     state.smokeExposure += smokeDmg;
     state.health = Math.max(0, state.health - smokeDmg * 0.1);
     if (fire.intensity <= 0) return extinguishFire();
@@ -236,120 +276,111 @@ export function createFirefighterSystem(deps = {}) {
   }
 
   function extinguishFire() {
+    if (!state.activeFire) return { ok: false, reason: 'no-active-fire' };
     const fire = state.activeFire;
-    if (!fire) return { ok: false, reason: 'no-active-fire' };
     state.activeFire = null;
     state.callsDone += 1;
     state.shiftCalls += 1;
-    const pay = firePayFor(fire.typeId, state.callsDone, callPayBonus());
+    const base = firePayFor(fire.typeId, state.callsDone, callPayBonus());
     const rescueBonus = fire.rescued * 40;
     const speedBonus = fire.timeLeft > 120 ? 30 : 0;
-    const total = pay + rescueBonus + speedBonus;
-    addCash(total);
-    state.totalEarned += total;
-    const responseSecs = Math.round((Date.now() - fire.responseStartedAt) / 1000);
+    const pay = base + rescueBonus + speedBonus;
+    moveCash(pay);
+    state.totalEarned += pay;
+    const responseSecs = Math.round((Date.now() - fire.responseStart) / 1000);
     state.responseTotal += responseSecs;
     state.responseCount += 1;
     if (state.responseBest === null || responseSecs < state.responseBest) state.responseBest = responseSecs;
+    const oldRank = state.rank;
     const newRank = fireRankFor(state.callsDone);
-    let promoted = false;
-    if (newRank > state.rank) {
-      state.rank = newRank;
-      promoted = true;
-      state.commendations += 1;
-      log(`PROMOTED to ${FIRE_RANKS[newRank].name}! Pay x${FIRE_RANKS[newRank].payMult}, hose x${FIRE_RANKS[newRank].hosePower}.`);
-    }
-    log(`Fire out at ${fire.locationName}! Pay $${pay} + rescue $${rescueBonus} + speed $${speedBonus} = $${total}.`);
-    if (fire.arson) {
-      state.arsonCases += 1;
-      log('Arson suspected at this scene — look for clues before you leave.');
-    }
-    return { ok: true, pay: total, base: pay, rescueBonus, speedBonus, promoted, arson: fire.arson, responseSecs };
+    const promoted = newRank > oldRank;
+    if (promoted) { state.rank = newRank; state.commendations += 1; }
+    if (fire.arson) state.arsonCases += 1;
+    say('Fire out at ' + fire.locationName + ' — $' + pay + '.');
+    return { ok: true, pay, basePay: base, rescueBonus, speedBonus, promoted, arson: fire.arson, responseSeconds: responseSecs };
   }
 
   function rescueCivilian() {
+    if (!state.activeFire) return { ok: false, reason: 'no-active-fire' };
     const fire = state.activeFire;
-    if (!fire) return { ok: false, reason: 'no-active-fire' };
-    if (fire.rescued >= fire.civilians) return { ok: false, reason: 'no-civilians-left' };
-    if (fire.intensity > 60) return { ok: false, reason: 'too-hot', intensity: Math.round(fire.intensity) };
+    if (fire.rescued >= fire.civilians) return { ok: false, reason: 'no-civilians' };
+    if (fire.intensity > 60) return { ok: false, reason: 'too-hot' };
     fire.rescued += 1;
     state.rescues += 1;
     state.civiliansSaved += 1;
     const dmg = (8 + fire.intensity * 0.1) * (1 - heatResist()) / rescueSpeed();
     state.health = Math.max(0, state.health - dmg);
-    log(`Civilian rescued from ${fire.locationName}! (${fire.rescued}/${fire.civilians})`);
-    return { ok: true, rescued: fire.rescued, total: fire.civilians, health: Math.round(state.health) };
+    say('Rescued a civilian from ' + fire.locationName + '.');
+    return { ok: true, rescued: fire.rescued, civilians: fire.civilians, health: Math.round(state.health) };
   }
 
   function investigateClue() {
+    if (!state.activeFire) return { ok: false, reason: 'no-active-fire' };
     const fire = state.activeFire;
-    if (!fire) return { ok: false, reason: 'no-active-fire' };
     if (!fire.arson) return { ok: false, reason: 'not-arson' };
     if (fire.cluesFound >= fire.cluesTotal) return { ok: false, reason: 'all-clues-found' };
-    const clue = FIRE_ARSON_CLUES[Math.floor(rng() * FIRE_ARSON_CLUES.length)];
+    const clue = FIRE_ARSON_CLUES[Math.floor(rnd() * FIRE_ARSON_CLUES.length)];
+    state.clues.push({ ...clue });
     fire.cluesFound += 1;
-    state.clues.push({ fireId: fire.id, clue: clue.id, text: clue.text });
-    log(`Clue found: ${clue.text}`);
     if (fire.cluesFound >= fire.cluesTotal) {
       state.arsonSolved += 1;
       const reward = 150 + fire.cluesTotal * 50;
-      addCash(reward);
+      moveCash(reward);
       state.totalEarned += reward;
       state.commendations += 1;
-      log(`ARSON CASE SOLVED! The evidence nails the arsonist. Reward $${reward}.`);
-      return { ok: true, clue: clue.id, solved: true, reward };
+      return { ok: true, clueId: clue.id, solved: true, reward };
     }
-    return { ok: true, clue: clue.id, solved: false, found: fire.cluesFound, total: fire.cluesTotal };
+    return { ok: true, clueId: clue.id, solved: false, found: fire.cluesFound, total: fire.cluesTotal };
   }
 
   function refillWater() {
-    const p = getPlayerPos();
-    const stationD = Math.hypot(FIRE_STATION.x - p.x, FIRE_STATION.z - p.z);
-    const nearHydrant = stationD < 20;
-    if (!nearHydrant && state.water > 0) return { ok: false, reason: 'no-hydrant-nearby' };
-    const missing = tankCapacity() - state.water;
-    if (missing <= 0) return { ok: false, reason: 'tank-full' };
+    const pos = posOf();
+    const near = Math.hypot(pos.x - FIRE_STATION.x, pos.z - FIRE_STATION.z) <= 20;
+    if (!near && state.water > 0) return { ok: false, reason: 'no-hydrant-nearby' };
+    if (state.water >= tankCapacity()) return { ok: false, reason: 'tank-full' };
+    const refilled = tankCapacity() - state.water;
     state.water = tankCapacity();
     state.hydrantRefills += 1;
-    log(`Water tank refilled to ${tankCapacity()}L at the hydrant.`);
-    return { ok: true, refilled: missing, water: state.water };
+    return { ok: true, refilled: Math.round(refilled), water: Math.round(state.water) };
   }
 
   function buyGear(gearId) {
-    const def = FIRE_GEAR.find((g) => g.id === gearId);
-    if (!def) return { ok: false, reason: 'no-such-gear' };
+    const gear = gearById(gearId);
+    if (!gear) return { ok: false, reason: 'unknown-gear' };
     if (hasGear(gearId)) return { ok: false, reason: 'already-owned' };
-    if (getCash() < def.price) return { ok: false, reason: 'no-cash', need: def.price };
-    addCash(-def.price);
+    if (cashOf() < gear.price) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-gear.price);
     state.gear.push(gearId);
-    log(`Bought ${def.name} for $${def.price}. ${def.desc}.`);
-    return { ok: true, gear: gearId, price: def.price };
+    return { ok: true, gearId, price: gear.price };
+  }
+
+  function hourInShift(shift, hour) {
+    if (shift.hourStart <= shift.hourEnd) return hour >= shift.hourStart && hour < shift.hourEnd;
+    return hour >= shift.hourStart || hour < shift.hourEnd;
   }
 
   function startShift(shiftId) {
-    if (state.onShift) return { ok: false, reason: 'shift-active' };
-    const shift = FIRE_SHIFT_TYPES.find((s) => s.id === shiftId) || FIRE_SHIFT_TYPES[0];
-    const hour = getHour();
-    if (shift.id === 'day' && (hour < 6 || hour >= 18)) return { ok: false, reason: 'wrong-hours', shift: shift.name };
-    if (shift.id === 'night' && hour >= 6 && hour < 18) return { ok: false, reason: 'wrong-hours', shift: shift.name };
+    const id = shiftId || 'day';
+    const shift = FIRE_SHIFT_TYPES.find((s) => s.id === id);
+    if (!shift) return { ok: false, reason: 'unknown-shift' };
+    if (state.onShift) return { ok: false, reason: 'already-on-shift' };
+    if (!hourInShift(shift, hourOf())) return { ok: false, reason: 'wrong-hour' };
+    state.shift = { id: shift.id, name: shift.name, calls: 0, startedDay: dayOf(), payBonus: shift.payBonus };
     state.onShift = true;
-    state.shift = { id: shift.id, name: shift.name, calls: 0, startedDay: getDay(), payBonus: shift.payBonus };
     state.shiftCalls = 0;
-    log(`${shift.name} started at Station 7. Stay ready — calls come in.`);
     return { ok: true, shift: { ...state.shift } };
   }
 
   function endShift() {
-    if (!state.onShift) return { ok: false, reason: 'no-shift' };
+    if (!state.onShift || !state.shift) return { ok: false, reason: 'no-shift' };
     const calls = state.shiftCalls;
     const bonus = state.shift.payBonus * calls;
     if (bonus > 0) {
-      addCash(bonus);
+      moveCash(bonus);
       state.totalEarned += bonus;
     }
-    state.onShift = false;
     state.shift = null;
-    log(`Shift over: ${calls} calls answered, shift bonus $${bonus}.`);
+    state.onShift = false;
     return { ok: true, calls, bonus };
   }
 
@@ -357,125 +388,110 @@ export function createFirefighterSystem(deps = {}) {
     if (state.callQueue.length === 0) return { ok: false, reason: 'no-calls' };
     const fire = state.callQueue.shift();
     state.falseAlarms += 1;
-    log(`False alarm at ${fire.locationName} — someone burned toast.`);
-    return { ok: true, fire: fire.id };
+    return { ok: true, fireId: fire.id };
   }
 
   function tick(dt) {
-    // Off-shift, calls trickle in slowly; on shift they come faster.
+    const step = dt || 0;
     const rate = state.onShift ? 1.6 : 0.5;
-    state.nextCallIn -= dt * rate;
+    state.nextCallIn -= step * rate;
     if (state.nextCallIn <= 0) {
-      state.nextCallIn = 90 + rng() * 180;
+      state.nextCallIn = 90 + rnd() * 180;
       if (state.callQueue.length < 3) spawnFire();
     }
-    const fire = state.activeFire;
-    if (fire) {
-      fire.timeLeft -= dt;
-      fire.spreadTimer += dt;
-      const type = FIRE_TYPES.find((t) => t.id === fire.typeId);
-      // Unattended fire grows: intensity climbs, smoke thickens.
-      if (fire.spreadTimer > 8) {
+    if (state.activeFire) {
+      const fire = state.activeFire;
+      const type = typeById(fire.typeId);
+      fire.timeLeft -= step;
+      fire.spreadTimer += step;
+      if (fire.spreadTimer >= 8) {
         fire.spreadTimer = 0;
-        const growth = type.spread * 2.5;
-        fire.intensity = Math.min(fire.maxIntensity * 1.6, fire.intensity + growth);
-        if (rng() < 0.25 && fire.civilians > fire.rescued) {
-          log(`Smoke thickens at ${fire.locationName} — a civilian is in trouble!`);
-        }
+        fire.intensity = Math.min(fire.maxIntensity * 1.6, fire.intensity + (type ? type.spread : 0.5) * 2.5);
       }
-      // Out of time: the building is lost, the call fails.
+      if (fire.civilians - fire.rescued > 0 && rnd() < 0.25 * step) say('Smoke thickens — civilians still inside!');
       if (fire.timeLeft <= 0) {
         state.activeFire = null;
         state.callsFailed += 1;
-        if (state.onShift) state.shiftCalls = Math.max(0, state.shiftCalls - 1);
-        addHeat(0);
-        log(`Too late — ${fire.locationName} is a total loss. Call failed.`);
+        state.shiftCalls = Math.max(0, state.shiftCalls - 1);
+        pushHeat(0);
+        say('The fire at ' + fire.locationName + ' got away.');
       }
-      // Health slowly recovers once the fire is out, never mid-blaze.
-      if (fire.intensity < 20 && state.health < 100) {
-        state.health = Math.min(100, state.health + dt * 0.5);
-      }
-    } else if (state.health < 100) {
-      // At the station or on the street, you catch your breath.
-      state.health = Math.min(100, state.health + dt * 1.2);
     }
-    // The engine truck wears down with every call; fix it at the station.
+    if (!state.activeFire) {
+      state.health = Math.min(100, state.health + step * 0.5);
+    } else if (state.activeFire.intensity < 20) {
+      state.health = Math.min(100, state.health + step * 0.1);
+    }
     if (state.truckCondition < 100 && state.callsDone > 0) {
-      state.truckCondition = Math.min(100, state.truckCondition + dt * 0.02);
+      state.truckCondition = Math.min(100, state.truckCondition + 0.02 * step);
     }
   }
 
   function tickDay(day) {
-    // A new day: a fresh shift board, water topped up, truck serviced.
+    const today = day !== undefined && day !== null ? day : dayOf();
     state.water = tankCapacity();
     state.truckCondition = 100;
-    state.nextCallIn = 30 + rng() * 60;
-    if (state.onShift && state.shift && state.shift.startedDay !== day) {
-      endShift();
+    state.nextCallIn = 30 + rnd() * 60;
+    if (state.shift && state.shift.startedDay !== today) {
+      state.shift = null;
+      state.onShift = false;
     }
-    // Weekend: the city burns more. Monday: quiet.
-    if (day % 7 === 0 || day % 7 === 6) {
-      spawnFire();
-    }
-    return { day, water: state.water, callsDone: state.callsDone };
+    if (today % 7 === 0 || today % 7 === 6) spawnFire();
+    return { day: today, water: Math.round(state.water), callsDone: state.callsDone };
   }
 
   function repairTruck() {
-    const p = getPlayerPos();
-    const d = Math.hypot(FIRE_STATION.x - p.x, FIRE_STATION.z - p.z);
-    if (d > 20) return { ok: false, reason: 'not-at-station' };
-    const missing = 100 - state.truckCondition;
-    if (missing <= 0) return { ok: false, reason: 'truck-fine' };
-    const cost = Math.ceil(missing * 2);
-    if (getCash() < cost) return { ok: false, reason: 'no-cash', need: cost };
-    addCash(-cost);
+    const pos = posOf();
+    if (Math.hypot(pos.x - FIRE_STATION.x, pos.z - FIRE_STATION.z) > 20) return { ok: false, reason: 'too-far' };
+    if (state.truckCondition >= 100) return { ok: false, reason: 'truck-fine' };
+    const cost = Math.ceil((100 - state.truckCondition) * 2);
+    if (cashOf() < cost) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-cost);
     state.truckCondition = 100;
-    log(`Engine truck serviced at Station 7 for $${cost}.`);
     return { ok: true, cost };
   }
 
   function upgradeStation() {
-    const cost = 1000 * (state.stationUpgrades + 1);
-    if (getCash() < cost) return { ok: false, reason: 'no-cash', need: cost };
-    addCash(-cost);
-    state.stationUpgrades += 1;
+    const level = state.stationUpgrades + 1;
+    const cost = 1000 * level;
+    if (cashOf() < cost) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-cost);
+    state.stationUpgrades = level;
     state.waterMax += 100;
-    log(`Station 7 upgraded (level ${state.stationUpgrades}) — tank +100L, calls come faster.`);
-    return { ok: true, level: state.stationUpgrades, cost };
+    return { ok: true, level, cost };
   }
 
   function interact() {
-    const p = getPlayerPos();
-    // At the station: refill, or clock in for a shift.
-    const stationD = Math.hypot(FIRE_STATION.x - p.x, FIRE_STATION.z - p.z);
-    if (stationD < 20) {
-      if (state.water < tankCapacity() * 0.5) return refillWater().ok;
-      if (!state.onShift) return startShift(getHour() >= 18 || getHour() < 6 ? 'night' : 'day').ok;
+    const pos = posOf();
+    if (Math.hypot(pos.x - FIRE_STATION.x, pos.z - FIRE_STATION.z) <= 20) {
+      if (state.water < tankCapacity() / 2) {
+        refillWater();
+        return true;
+      }
+      if (!state.onShift) {
+        const hour = hourOf();
+        const res = startShift(hour >= 18 || hour < 6 ? 'night' : 'day');
+        return res.ok;
+      }
       return true;
     }
-    // At an active fire: spray, rescue, or investigate.
-    const fire = state.activeFire;
-    if (fire) {
-      const loc = FIRE_LOCATIONS.find((l) => l.id === fire.locationId);
-      if (loc && Math.hypot(loc.x - p.x, loc.z - p.z) < 25) {
-        if (fire.civilians > fire.rescued && fire.intensity <= 60) {
-          const r = rescueCivilian();
-          return r.ok;
-        }
-        if (fire.arson && fire.cluesFound < fire.cluesTotal && fire.intensity <= 10) {
-          const r = investigateClue();
-          return r.ok;
-        }
-        const r = sprayWater(1);
-        return r.ok;
+    if (state.activeFire) {
+      const loc = locById(state.activeFire.locationId);
+      if (loc && Math.hypot(pos.x - loc.x, pos.z - loc.z) <= 25) {
+        const fire = state.activeFire;
+        if (fire.rescued < fire.civilians && fire.intensity <= 60) { rescueCivilian(); return true; }
+        if (fire.arson && fire.cluesFound < fire.cluesTotal && fire.intensity <= 10) { investigateClue(); return true; }
+        sprayWater(1);
+        return true;
       }
     }
-    // Near a queued call location: answer it.
-    if (state.callQueue.length > 0 && !state.activeFire) {
-      const next = state.callQueue[0];
-      const loc = FIRE_LOCATIONS.find((l) => l.id === next.locationId);
-      if (loc && Math.hypot(loc.x - p.x, loc.z - p.z) < 30) {
-        return answerCall().ok;
+    if (!state.activeFire) {
+      for (const call of state.callQueue) {
+        const loc = locById(call.locationId);
+        if (loc && Math.hypot(pos.x - loc.x, pos.z - loc.z) <= 30) {
+          answerCall();
+          return true;
+        }
       }
     }
     return false;
@@ -484,24 +500,25 @@ export function createFirefighterSystem(deps = {}) {
   function hudLine() {
     if (state.activeFire) {
       const f = state.activeFire;
-      return `FIRE ${f.typeName} @ ${f.locationName} ${Math.round(f.intensity)}% · water ${Math.round(state.water)}L · ${Math.ceil(f.timeLeft)}s`;
+      return 'FIRE ' + f.typeName + ' at ' + f.locationName + ' · ' + Math.round(f.intensity) + '% · ' + Math.round(state.water) + 'L · ' + Math.ceil(f.timeLeft) + 's';
     }
     if (state.callQueue.length > 0) {
       const f = state.callQueue[0];
-      return `FIRE CALL: ${f.typeName} @ ${f.locationName} — answer it!`;
+      return 'FIRE CALL ' + f.typeName + ' at ' + f.locationName + ' — answer it!';
     }
-    if (state.onShift) return `FIRE DEPT on shift · ${state.callsDone} calls · ${FIRE_RANKS[state.rank].name}`;
-    const p = getPlayerPos();
-    if (Math.hypot(FIRE_STATION.x - p.x, FIRE_STATION.z - p.z) < 20) {
-      return `STATION 7 · ${FIRE_RANKS[state.rank].name} · water ${Math.round(state.water)}L`;
+    if (state.onShift) return 'FIRE DEPT on shift · ' + state.callsDone + ' calls · ' + rankInfo().name;
+    const pos = posOf();
+    if (Math.hypot(pos.x - FIRE_STATION.x, pos.z - FIRE_STATION.z) <= 20) {
+      return 'STATION 7 · ' + rankInfo().name + ' · ' + Math.round(state.water) + 'L water';
     }
     return '';
   }
 
   function stats() {
+    const avg = state.responseCount > 0 ? Math.round(state.responseTotal / state.responseCount) : null;
     return {
-      rank: FIRE_RANKS[state.rank].name,
-      rankIndex: state.rank,
+      rankName: rankInfo().name,
+      rank: state.rank,
       callsDone: state.callsDone,
       callsFailed: state.callsFailed,
       rescues: state.rescues,
@@ -511,11 +528,11 @@ export function createFirefighterSystem(deps = {}) {
       waterMax: tankCapacity(),
       health: Math.round(state.health),
       gear: [...state.gear],
-      hosePower: Number(hosePower().toFixed(2)),
-      activeFire: state.activeFire ? state.activeFire.typeId : null,
+      hosePower: Math.round(hosePower() * 100) / 100,
+      activeFireType: state.activeFire ? state.activeFire.typeId : null,
       queuedCalls: state.callQueue.length,
       onShift: state.onShift,
-      shift: state.shift ? state.shift.id : null,
+      shiftId: state.shift ? state.shift.id : null,
       arsonCases: state.arsonCases,
       arsonSolved: state.arsonSolved,
       cluesFound: state.clues.length,
@@ -524,8 +541,8 @@ export function createFirefighterSystem(deps = {}) {
       hydrantRefills: state.hydrantRefills,
       stationUpgrades: state.stationUpgrades,
       truckCondition: Math.round(state.truckCondition),
-      responseBest: state.responseBest,
-      avgResponse: state.responseCount > 0 ? Math.round(state.responseTotal / state.responseCount) : null,
+      bestResponse: state.responseBest,
+      averageResponse: avg,
       falseAlarms: state.falseAlarms,
       commendations: state.commendations,
     };
@@ -556,189 +573,152 @@ export function createFirefighterSystem(deps = {}) {
       falseAlarms: state.falseAlarms,
       commendations: state.commendations,
       lastCallDay: state.lastCallDay,
-      inspections: state.inspections || 0,
-      violationsFound: state.violationsFound || 0,
-      alarmsInstalled: state.alarmsInstalled || 0,
-      firehouseDog: state.firehouseDog ? { ...state.firehouseDog } : null,
-      calendarsSold: state.calendarsSold || 0,
-      rookiesTrained: state.rookiesTrained || 0,
-      hydrantsChecked: state.hydrantsChecked || 0,
-      openHouses: state.openHouses || 0,
-      talksGiven: state.talksGiven || 0,
+      inspections: state.inspections,
+      violationsFound: state.violationsFound,
+      alarmsInstalled: state.alarmsInstalled,
+      firehouseDog: state.firehouseDog ? { ...state.firehouseDog, tricks: [...(state.firehouseDog.tricks || [])] } : null,
+      calendarsSold: state.calendarsSold,
+      rookiesTrained: state.rookiesTrained,
+      hydrantsChecked: state.hydrantsChecked,
+      openHouses: state.openHouses,
+      talksGiven: state.talksGiven,
     };
   }
 
-  function deserialize(d) {
-    if (!d) return;
-    state.rank = d.rank ?? 0;
-    state.callsDone = d.callsDone ?? 0;
-    state.callsFailed = d.callsFailed ?? 0;
-    state.rescues = d.rescues ?? 0;
-    state.civiliansSaved = d.civiliansSaved ?? 0;
-    state.totalEarned = d.totalEarned ?? 0;
-    state.water = d.water ?? 300;
-    state.health = d.health ?? 100;
-    state.gear = [...(d.gear || [])];
-    state.arsonCases = d.arsonCases ?? 0;
-    state.arsonSolved = d.arsonSolved ?? 0;
-    state.clues = (d.clues || []).map((c) => ({ ...c }));
-    state.smokeExposure = d.smokeExposure ?? 0;
-    state.heatDamage = d.heatDamage ?? 0;
-    state.hydrantRefills = d.hydrantRefills ?? 0;
-    state.stationUpgrades = d.stationUpgrades ?? 0;
-    state.truckCondition = d.truckCondition ?? 100;
-    state.responseBest = d.responseBest ?? null;
-    state.responseTotal = d.responseTotal ?? 0;
-    state.responseCount = d.responseCount ?? 0;
-    state.falseAlarms = d.falseAlarms ?? 0;
-    state.commendations = d.commendations ?? 0;
-    state.lastCallDay = d.lastCallDay ?? 0;
-    state.inspections = d.inspections ?? 0;
-    state.violationsFound = d.violationsFound ?? 0;
-    state.alarmsInstalled = d.alarmsInstalled ?? 0;
-    state.firehouseDog = d.firehouseDog ? { ...d.firehouseDog } : null;
-    state.calendarsSold = d.calendarsSold ?? 0;
-    state.rookiesTrained = d.rookiesTrained ?? 0;
-    state.hydrantsChecked = d.hydrantsChecked ?? 0;
-    state.openHouses = d.openHouses ?? 0;
-    state.talksGiven = d.talksGiven ?? 0;
+  function deserialize(saved) {
+    const s = saved || {};
+    state.rank = Math.floor(Number(s.rank) || 0);
+    state.callsDone = Math.floor(Number(s.callsDone) || 0);
+    state.callsFailed = Math.floor(Number(s.callsFailed) || 0);
+    state.rescues = Math.floor(Number(s.rescues) || 0);
+    state.civiliansSaved = Math.floor(Number(s.civiliansSaved) || 0);
+    state.totalEarned = Number(s.totalEarned) || 0;
+    state.water = Number(s.water) || 300;
+    state.health = Number(s.health) || 100;
+    state.gear = Array.isArray(s.gear) ? [...s.gear] : [];
+    state.arsonCases = Math.floor(Number(s.arsonCases) || 0);
+    state.arsonSolved = Math.floor(Number(s.arsonSolved) || 0);
+    state.clues = Array.isArray(s.clues) ? s.clues.map((c) => ({ ...c })) : [];
+    state.smokeExposure = Number(s.smokeExposure) || 0;
+    state.heatDamage = Number(s.heatDamage) || 0;
+    state.hydrantRefills = Math.floor(Number(s.hydrantRefills) || 0);
+    state.stationUpgrades = Math.floor(Number(s.stationUpgrades) || 0);
+    state.truckCondition = Number(s.truckCondition) || 100;
+    state.responseBest = s.responseBest === null || s.responseBest === undefined ? null : Number(s.responseBest);
+    state.responseTotal = Number(s.responseTotal) || 0;
+    state.responseCount = Math.floor(Number(s.responseCount) || 0);
+    state.falseAlarms = Math.floor(Number(s.falseAlarms) || 0);
+    state.commendations = Math.floor(Number(s.commendations) || 0);
+    state.lastCallDay = Math.floor(Number(s.lastCallDay) || 0);
+    state.inspections = Math.floor(Number(s.inspections) || 0);
+    state.violationsFound = Math.floor(Number(s.violationsFound) || 0);
+    state.alarmsInstalled = Math.floor(Number(s.alarmsInstalled) || 0);
+    state.firehouseDog = s.firehouseDog ? { ...s.firehouseDog } : null;
+    state.calendarsSold = Math.floor(Number(s.calendarsSold) || 0);
+    state.rookiesTrained = Math.floor(Number(s.rookiesTrained) || 0);
+    state.hydrantsChecked = Math.floor(Number(s.hydrantsChecked) || 0);
+    state.openHouses = Math.floor(Number(s.openHouses) || 0);
+    state.talksGiven = Math.floor(Number(s.talksGiven) || 0);
     state.activeFire = null;
     state.callQueue = [];
     state.onShift = false;
     state.shift = null;
+    return { ok: true };
   }
 
-  // --- Round 7 top-up: prevention inspections, firehouse dog, calendar ---
-  const FIRE_INSPECTION_TARGETS = [
-    { id: 'diner', name: "Ria's Diner", risk: 0.6 },
-    { id: 'mall', name: 'Solara Mall', risk: 0.4 },
-    { id: 'school', name: 'Northside High', risk: 0.3 },
-    { id: 'hotel', name: 'Grand Solara Hotel', risk: 0.5 },
-    { id: 'factory', name: 'Crown Textile Factory', risk: 0.8 },
-    { id: 'warehouse', name: 'Harbor Warehouse 9', risk: 0.7 },
-    { id: 'gas', name: 'FuelMax Station', risk: 0.9 },
-    { id: 'apartments', name: 'Palm Court Apartments', risk: 0.55 },
-  ];
-  const FIREHOUSE_DOG_TRICKS = [
-    { id: 'fetch-hose', name: 'Fetch the Hose', difficulty: 1 },
-    { id: 'slide', name: 'Slide Down the Pole', difficulty: 2 },
-    { id: 'alarm', name: 'Bark at the Alarm', difficulty: 1 },
-    { id: 'rescue-dummy', name: 'Rescue Dummy Drag', difficulty: 3 },
-  ];
   function inspectBuilding(targetId) {
-    const target = FIRE_INSPECTION_TARGETS.find((t) => t.id === targetId);
-    if (!target) return { ok: false, reason: 'no-such-building' };
-    const found = [];
-    if (rng() < target.risk) found.push('blocked exit');
-    if (rng() < target.risk * 0.7) found.push('expired extinguisher');
-    if (rng() < target.risk * 0.5) found.push('faulty wiring');
-    if (rng() < 0.2) found.push('no smoke alarm');
-    const pay = 40 + found.length * 30;
-    addCash(pay);
+    const target = INSPECTION_TARGETS.find((t) => t.id === targetId);
+    if (!target) return { ok: false, reason: 'unknown-building' };
+    const violations = [];
+    if (rnd() < target.risk) violations.push('blocked-exit');
+    if (rnd() < target.risk) violations.push('expired-extinguisher');
+    if (rnd() < target.risk) violations.push('faulty-wiring');
+    if (rnd() < target.risk) violations.push('no-smoke-alarm');
+    const pay = 40 + violations.length * 30;
+    moveCash(pay);
     state.totalEarned += pay;
-    state.inspections = (state.inspections || 0) + 1;
-    state.violationsFound = (state.violationsFound || 0) + found.length;
-    if (found.length === 0) {
-      log(`${target.name} passes inspection clean. Pay $${pay}.`);
-    } else {
-      log(`Inspection at ${target.name}: ${found.join(', ')}. Pay $${pay}.`);
-    }
-    return { ok: true, building: targetId, violations: found, pay };
+    state.inspections += 1;
+    state.violationsFound += violations.length;
+    return { ok: true, buildingId: targetId, violations, pay };
   }
+
   function installSmokeAlarm(targetId) {
-    const target = FIRE_INSPECTION_TARGETS.find((t) => t.id === targetId);
-    if (!target) return { ok: false, reason: 'no-such-building' };
-    const cost = 25;
-    if (getCash() < cost) return { ok: false, reason: 'no-cash', need: cost };
-    addCash(-cost);
-    state.alarmsInstalled = (state.alarmsInstalled || 0) + 1;
-    state.commendations += 0;
-    log(`Smoke alarm installed at ${target.name} for $${cost}. One less fire waiting to happen.`);
-    return { ok: true, building: targetId, cost };
+    const target = INSPECTION_TARGETS.find((t) => t.id === targetId);
+    if (!target) return { ok: false, reason: 'unknown-building' };
+    if (cashOf() < 25) return { ok: false, reason: 'not-enough-cash' };
+    moveCash(-25);
+    state.alarmsInstalled += 1;
+    return { ok: true, buildingId: targetId, cost: 25 };
   }
+
   function adoptFirehouseDog(name) {
-    if (state.firehouseDog) return { ok: false, reason: 'already-have-dog' };
-    state.firehouseDog = { name: name || 'Sparky', tricks: [], morale: 50 };
-    log(`Station 7 adopts a firehouse dog: ${state.firehouseDog.name}! Morale at the station jumps.`);
-    return { ok: true, dog: state.firehouseDog.name };
+    if (state.firehouseDog) return { ok: false, reason: 'already-has-dog' };
+    const dogName = name || 'Sparky';
+    state.firehouseDog = { name: dogName, tricks: [], morale: 50 };
+    return { ok: true, dogName };
   }
+
   function trainFirehouseDog(trickId) {
     if (!state.firehouseDog) return { ok: false, reason: 'no-dog' };
-    const trick = FIREHOUSE_DOG_TRICKS.find((t) => t.id === trickId);
-    if (!trick) return { ok: false, reason: 'no-such-trick' };
+    const trick = DOG_TRICKS.find((t) => t.id === trickId);
+    if (!trick) return { ok: false, reason: 'unknown-trick' };
     if (state.firehouseDog.tricks.includes(trickId)) return { ok: false, reason: 'already-known' };
-    if (rng() < 0.3 + trick.difficulty * 0.1) {
-      log(`${state.firehouseDog.name} just doesn't get ${trick.name} today. Try again tomorrow.`);
-      return { ok: true, learned: false, trick: trickId };
-    }
+    if (rnd() < 0.3 + trick.difficulty * 0.1) return { ok: true, learned: false, trickId };
     state.firehouseDog.tricks.push(trickId);
     state.firehouseDog.morale = Math.min(100, state.firehouseDog.morale + 10);
-    log(`${state.firehouseDog.name} learned ${trick.name}! Station morale up.`);
-    return { ok: true, learned: true, trick: trickId };
+    return { ok: true, learned: true, trickId };
   }
+
   function sellCharityCalendar() {
-    if (state.callsDone < 10) return { ok: false, reason: 'need-10-calls', have: state.callsDone };
-    const sold = 5 + Math.floor(rng() * 20);
+    if (state.callsDone < 10) return { ok: false, reason: 'not-enough-calls' };
+    const sold = 5 + Math.floor(rnd() * 20);
     const earned = sold * 15;
-    addCash(earned);
+    moveCash(earned);
     state.totalEarned += earned;
-    state.calendarsSold = (state.calendarsSold || 0) + sold;
-    log(`Sold ${sold} firefighter charity calendars for $${earned}! The city loves Station 7.`);
+    state.calendarsSold += sold;
     return { ok: true, sold, earned };
   }
+
   function trainRookie() {
-    if (state.rank < 1) return { ok: false, reason: 'rank-too-low', need: 'Firefighter' };
-    const cost = 0;
-    const gain = 5 + Math.floor(rng() * 10);
-    state.rookiesTrained = (state.rookiesTrained || 0) + 1;
+    if (state.rank < 1) return { ok: false, reason: 'rank-too-low' };
+    state.rookiesTrained += 1;
     state.commendations += 1;
-    log(`You train a rookie for the day. They learn fast. Commendation +1.`);
-    return { ok: true, rookies: state.rookiesTrained, gain, cost };
+    const gain = 5 + Math.floor(rnd() * 10);
+    return { ok: true, rookies: state.rookiesTrained, gain, cost: 0 };
   }
+
   function checkHydrants() {
-    const count = 4 + Math.floor(rng() * 4);
-    let broken = 0;
-    for (let i = 0; i < count; i++) {
-      if (rng() < 0.25) broken += 1;
-    }
-    const pay = count * 10;
-    addCash(pay);
+    const checked = 4 + Math.floor(rnd() * 4);
+    const broken = Math.floor(checked / 4);
+    const pay = checked * 10;
+    moveCash(pay);
     state.totalEarned += pay;
-    state.hydrantsChecked = (state.hydrantsChecked || 0) + count;
-    log(`Checked ${count} hydrants, ${broken} need repair. Pay $${pay}.`);
-    return { ok: true, checked: count, broken, pay };
+    state.hydrantsChecked += checked;
+    return { ok: true, checked, broken, pay };
   }
+
   function hostOpenHouse() {
-    const cost = 200;
-    if (getCash() < cost) return { ok: false, reason: 'no-cash', need: cost };
-    if (state.callsDone < 5) return { ok: false, reason: 'need-5-calls', have: state.callsDone };
-    addCash(-cost);
-    const visitors = 30 + Math.floor(rng() * 70);
-    const donations = Math.round(visitors * (2 + rng() * 5));
-    addCash(donations);
+    if (cashOf() < 200) return { ok: false, reason: 'not-enough-cash' };
+    if (state.callsDone < 5) return { ok: false, reason: 'not-enough-calls' };
+    moveCash(-200);
+    const visitors = 30 + Math.floor(rnd() * 70);
+    const donations = visitors * 2 + Math.floor(rnd() * 6);
+    moveCash(donations);
     state.totalEarned += donations;
-    state.openHouses = (state.openHouses || 0) + 1;
-    log(`Station 7 open house: ${visitors} visitors, $${donations} in donations!`);
-    return { ok: true, visitors, donations, cost };
+    state.openHouses += 1;
+    return { ok: true, visitors, donations, cost: 200 };
   }
+
   function firePreventionTalk() {
-    const pay = 60;
-    addCash(pay);
-    state.totalEarned += pay;
-    state.talksGiven = (state.talksGiven || 0) + 1;
-    log(`Fire prevention talk at the school. The kids love the truck. Pay $${pay}.`);
-    return { ok: true, pay };
+    moveCash(60);
+    state.totalEarned += 60;
+    state.talksGiven += 1;
+    return { ok: true, pay: 60 };
   }
 
   return {
+    name: 'Firefighter',
     state,
-    tick,
-    tickDay,
-    interact,
-    hudLine,
-    stats,
-    serialize,
-    deserialize,
     spawnFire,
     answerCall,
     sprayWater,
@@ -750,12 +730,15 @@ export function createFirefighterSystem(deps = {}) {
     startShift,
     endShift,
     reportFalseAlarm,
+    tick,
+    tickDay,
     repairTruck,
     upgradeStation,
-    hosePower,
-    tankCapacity,
-    hasGear,
-    rankInfo,
+    interact,
+    hudLine,
+    stats,
+    serialize,
+    deserialize,
     inspectBuilding,
     installSmokeAlarm,
     adoptFirehouseDog,

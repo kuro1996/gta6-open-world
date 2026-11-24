@@ -1,555 +1,762 @@
-// Solara Nights — Jet Ski Racing (Round 7b-B, written fresh).
-// Dawn on Solara Bay: the water is glass, the buoys are out, and the
-// two-stroke scream of a jet ski is the best alarm clock in the city.
-// Buy a ski, tune the impeller, and race buoy courses against the
-// clock and against rivals who will absolutely try to roost you in
-// the turns. Waves are not decoration — a big set can launch you,
-// and a bad landing costs speed, style points and sometimes the whole
-// race. Tricks off the wake build a combo; freestyle spots pay for
-// airtime; the Bay Championship pays for everything. Salt water eats
-// engines, so rinse, repair, repeat — and watch the fuel gauge, the
-// bay is bigger than it looks.
-// Pure logic: no rendering, no imports. Wired through the standard ctx
-// { rng, getDay, getHour, getCash, addCash, addHeat, log, getPlayerPos,
-// getSpeed } and driven by tick/tickDay from the main loop.
-
+// Jet ski racing on Solara Bay: buy a ski, fit parts, race buoy courses
+// against rivals, land tricks off the wake, enter leagues, sign sponsors,
+// run tours and rentals, rinse, repair and refuel. Context supplies rng,
+// cash access, a logger and the player position. The day/hour getters, heat
+// adder and speed getter are present with defaults but never called. Weather
+// is internal state here, not a context getter.
 export const JETSKI_MODELS = [
-  { id: 'dolphin', name: 'Dolphin 90', cost: 0, topSpeed: 58, accel: 60, handling: 65, stability: 70, fuel: 100, desc: 'The rental fleet survivor. Slow, steady, free.' },
-  { id: 'wave', name: 'WaveRunner 130', cost: 400, topSpeed: 72, accel: 70, handling: 70, stability: 68, fuel: 110, desc: 'The bay favourite. Honest speed.' },
-  { id: 'spark', name: 'Spark 150', cost: 900, topSpeed: 84, accel: 82, handling: 78, stability: 62, fuel: 100, desc: 'Light, loud, and quick out of the hole.' },
-  { id: 'ultra', name: 'Ultra 260', cost: 1700, topSpeed: 96, accel: 80, handling: 74, stability: 66, fuel: 120, desc: 'Supercharged. Drinks fuel, eats buoys.' },
-  { id: 'standup', name: 'Stand-Up Pro', cost: 1300, topSpeed: 88, accel: 88, handling: 95, stability: 40, desc: 'No seat. All skill. Huge tricks.' },
-  { id: 'tourer', name: 'Tourer 180', cost: 1100, topSpeed: 76, accel: 65, handling: 68, stability: 88, fuel: 160, desc: 'Comfort, range, and a dry box for lunch.' },
-  { id: 'race', name: 'Race Factory 300', cost: 3200, topSpeed: 108, accel: 90, handling: 82, stability: 60, fuel: 110, desc: 'The factory race ski. Wins championships.' },
-  { id: 'vintage', name: 'Vintage 550', cost: 650, topSpeed: 64, accel: 75, handling: 80, stability: 55, fuel: 90, desc: 'Two-stroke smoke and seventies style.' },
+  { id: 'starter', name: 'Wave Pup', cost: 0, topSpeed: 70, acceleration: 55, handling: 50, stability: 60, fuel: 100, desc: 'A gentle trainer ski, free with the club card.' },
+  { id: 'splash', name: 'Splash Runner', cost: 350, topSpeed: 95, acceleration: 65, handling: 60, stability: 65, fuel: 110, desc: 'A friendly ski for weekend races.' },
+  { id: 'dolphin', name: 'Dolphin GT', cost: 800, topSpeed: 120, acceleration: 72, handling: 70, stability: 70, fuel: 120, desc: 'Quick and stable, a club favourite.' },
+  { id: 'stingray', name: 'Stingray', cost: 1400, topSpeed: 140, acceleration: 80, handling: 78, stability: 72, fuel: 125, desc: 'Sharp handling for tight buoy courses.' },
+  { id: 'barracuda', name: 'Barracuda', cost: 2200, topSpeed: 160, acceleration: 86, handling: 84, stability: 75, fuel: 130, desc: 'A predator on the water.' },
+  { id: 'orca', name: 'Orca Pro', cost: 3000, topSpeed: 180, acceleration: 90, handling: 88, stability: 80, fuel: 140, desc: 'Pro power with a heavy hull.' },
+  { id: 'typhoon', name: 'Typhoon X', cost: 4200, topSpeed: 200, acceleration: 94, handling: 92, stability: 82, fuel: 145, desc: 'The fastest ski the bay allows.' },
+  { id: 'phoenix', name: 'Phoenix One', cost: 5800, topSpeed: 215, acceleration: 98, handling: 96, stability: 85, fuel: 150, desc: 'A championship ski, light as foam.' },
 ];
 
 export const JETSKI_COURSES = [
-  { id: 'marina-slalom', name: 'Marina Slalom', buoys: 10, laps: 3, difficulty: 1, parTime: 160, prize: 140, desc: 'Gentle turns between the yachts.' },
-  { id: 'buoy-bay', name: 'Buoy Bay', buoys: 12, laps: 3, difficulty: 2, parTime: 180, prize: 220, desc: 'The classic bay circuit.' },
-  { id: 'surf-break', name: 'Surf Break', buoys: 9, laps: 3, difficulty: 3, parTime: 170, prize: 300, desc: 'Real waves. Real airtime. Real risk.' },
-  { id: 'harbor-sprint', name: 'Harbor Sprint', buoys: 8, laps: 4, difficulty: 2, parTime: 150, prize: 260, desc: 'Short, sharp, flat-out drag.' },
-  { id: 'island-loop', name: 'Island Loop', buoys: 14, laps: 2, difficulty: 3, parTime: 200, prize: 420, desc: 'Around the island, wind on the far side.' },
-  { id: 'night-glow', name: 'Night Glow', buoys: 11, laps: 3, difficulty: 3, parTime: 185, prize: 380, desc: 'Lit buoys after dark. Beautiful, blind.' },
-  { id: 'storm-run', name: 'Storm Run', buoys: 13, laps: 2, difficulty: 5, parTime: 210, prize: 700, desc: 'Only run when the weather turns.' },
-  { id: 'crown-bay', name: 'Crown Bay GP', buoys: 16, laps: 3, difficulty: 5, parTime: 250, prize: 1000, desc: 'The championship course. Everything at once.' },
+  { id: 'bay-loop', name: 'Bay Loop', buoys: 8, laps: 3, difficulty: 2, par: 95, prize: 130, desc: 'An easy loop around the bay markers.' },
+  { id: 'pier-slalom', name: 'Pier Slalom', buoys: 10, laps: 3, difficulty: 3, par: 115, prize: 190, desc: 'Slalom between the pier posts.' },
+  { id: 'bridge-run', name: 'Bridge Run', buoys: 12, laps: 3, difficulty: 5, par: 135, prize: 270, desc: 'Under the bridge and back.' },
+  { id: 'harbour-dash', name: 'Harbour Dash', buoys: 9, laps: 4, difficulty: 4, par: 125, prize: 230, desc: 'A fast dash through the harbour.' },
+  { id: 'wave-break', name: 'Wave Break', buoys: 14, laps: 3, difficulty: 7, par: 155, prize: 390, desc: 'Big waves past the breakwater.' },
+  { id: 'storm-buoy', name: 'Storm Buoy', buoys: 16, laps: 3, difficulty: 8, par: 175, prize: 490, desc: 'Tight buoys in rough water.' },
+  { id: 'lighthouse-ring', name: 'Lighthouse Ring', buoys: 12, laps: 4, difficulty: 6, par: 165, prize: 430, desc: 'A long ring around the lighthouse.' },
+  { id: 'grand-circuit', name: 'Grand Circuit', buoys: 18, laps: 4, difficulty: 9, par: 205, prize: 660, desc: 'The full bay circuit, the final race.' },
 ];
 
 export const JETSKI_TRICKS = [
-  { id: 'jump', name: 'Wake Jump', points: 100, risk: 0.08, desc: 'Catch the wake and fly.' },
-  { id: 'spin', name: '360 Spin', points: 180, risk: 0.18, desc: 'Full spin in the air, land straight.' },
-  { id: 'barrel', name: 'Barrel Roll', points: 240, risk: 0.26, desc: 'Over the top. The crowd holds its breath.' },
-  { id: 'sub', name: 'Submarine', points: 160, risk: 0.2, desc: 'Nose under, pop back up, soaked and smiling.' },
-  { id: 'nose', name: 'Nose Stand', points: 140, risk: 0.14, desc: 'Stand it on the nose at speed.' },
-  { id: 'backflip', name: 'Backflip', points: 320, risk: 0.35, desc: 'The one everyone films.' },
-  { id: 'butterfly', name: 'Butterfly', points: 200, risk: 0.22, desc: 'Legs out, arms wide, total control.' },
-  { id: 'donut', name: 'Power Donut', points: 120, risk: 0.1, desc: 'Spin in place, spray everywhere.' },
-  { id: 'air-roll', name: 'Air Roll', points: 260, risk: 0.3, desc: 'Roll off a wave crest, land clean.' },
-  { id: 'tail', name: 'Tail Stand', points: 150, risk: 0.16, desc: 'Ride the tail, nose to the sky.' },
+  { id: 'tail-whip', name: 'Tail Whip', points: 50, risk: 0.2, desc: 'Swing the tail out on a turn.' },
+  { id: 'jump', name: 'Wake Jump', points: 60, risk: 0.25, desc: 'Launch off your own wake.' },
+  { id: 'spin', name: '360 Spin', points: 80, risk: 0.3, desc: 'A full spin on the water.' },
+  { id: 'barrel', name: 'Barrel Roll', points: 100, risk: 0.4, desc: 'Roll the ski right over.' },
+  { id: 'nose-stand', name: 'Nose Stand', points: 70, risk: 0.3, desc: 'Stand the ski on its nose.' },
+  { id: 'submarine', name: 'Submarine', points: 90, risk: 0.35, desc: 'Dip under and pop back up.' },
+  { id: 'double-spin', name: 'Double Spin', points: 120, risk: 0.5, desc: 'Two spins, one very wet rider.' },
+  { id: 'wave-ride', name: 'Wave Ride', points: 55, risk: 0.2, desc: 'Surf the biggest wave of the day.' },
+  { id: 'slalom-flip', name: 'Slalom Flip', points: 110, risk: 0.45, desc: 'Flip between two buoys.' },
+  { id: 'triple-jump', name: 'Triple Jump', points: 140, risk: 0.55, desc: 'Three jumps, no landing gear.' },
 ];
 
 export const JETSKI_PARTS = [
-  { id: 'impeller-1', name: 'Sport Impeller', cost: 200, slot: 'impeller', speed: 6, accel: 6, handling: 0, desc: '+6 speed, +6 accel.' },
-  { id: 'impeller-2', name: 'Race Impeller', cost: 500, slot: 'impeller', speed: 12, accel: 10, handling: 2, desc: '+12 speed, +10 accel.' },
-  { id: 'impeller-3', name: 'Pro Impeller', cost: 950, slot: 'impeller', speed: 20, accel: 14, handling: 4, desc: '+20 speed, +14 accel.' },
-  { id: 'sponsons', name: 'Race Sponsons', cost: 260, slot: 'sponsons', speed: 2, accel: 0, handling: 10, desc: '+10 handling in the turns.' },
-  { id: 'plate', name: 'Ride Plate', cost: 320, slot: 'plate', speed: 5, accel: 2, handling: 4, desc: '+5 speed, planted at full throttle.' },
-  { id: 'intake', name: 'Intake Grate', cost: 180, slot: 'intake', speed: 3, accel: 4, handling: 3, desc: 'Hooks up in chop instead of cavitating.' },
-  { id: 'exhaust', name: 'Free-Flow Exhaust', cost: 420, slot: 'exhaust', speed: 8, accel: 8, handling: -2, desc: '+8 speed, louder than the law likes.' },
-  { id: 'tank', name: 'Aux Fuel Tank', cost: 240, slot: 'tank', speed: 0, accel: -2, handling: 0, fuel: 50, desc: '+50 fuel range.' },
-  { id: 'hull', name: 'Reinforced Hull', cost: 380, slot: 'hull', speed: 0, accel: 0, handling: 2, stability: 20, desc: '+20 stability, survives bad landings.' },
-  { id: 'seat', name: 'Race Seat', cost: 150, slot: 'seat', speed: 0, accel: 3, handling: 5, desc: 'Grip where it counts.' },
+  { id: 'engine-a', name: 'Sport Engine', cost: 220, slot: 'engine', speed: 14, acceleration: 6, handling: 0, desc: 'A hotter engine for the straight.' },
+  { id: 'engine-b', name: 'Race Engine', cost: 650, slot: 'engine', speed: 28, acceleration: 10, handling: 0, desc: 'Top-end power, thirsty for fuel.', fuel: -5 },
+  { id: 'hull-a', name: 'Light Hull', cost: 300, slot: 'hull', speed: 6, acceleration: 4, handling: 8, desc: 'A lighter hull that turns quicker.', stability: -3 },
+  { id: 'hull-b', name: 'Racing Hull', cost: 700, slot: 'hull', speed: 10, acceleration: 6, handling: 12, desc: 'A hull built for buoy courses.', stability: 2 },
+  { id: 'tank-a', name: 'Big Tank', cost: 260, slot: 'tank', speed: 0, acceleration: 0, handling: 0, desc: 'More fuel for longer heats.', fuel: 25 },
+  { id: 'tank-b', name: 'Turbo Tank', cost: 520, slot: 'tank', speed: 4, acceleration: 0, handling: 0, desc: 'Maximum range, some extra weight.', fuel: 40 },
+  { id: 'pump-a', name: 'Jet Pump', cost: 350, slot: 'pump', speed: 8, acceleration: 8, handling: 2, desc: 'A pump that bites the water.' },
+  { id: 'pump-b', name: 'Pro Pump', cost: 600, slot: 'pump', speed: 12, acceleration: 12, handling: 4, desc: 'Instant response from the throttle.', stability: 3 },
+  { id: 'seat-a', name: 'Grip Seat', cost: 150, slot: 'seat', speed: 0, acceleration: 2, handling: 6, desc: 'Stay on the ski in the rough stuff.', stability: 5 },
+  { id: 'gps', name: 'Race GPS', cost: 400, slot: 'gps', speed: 2, acceleration: 0, handling: 10, desc: 'Know every buoy before you see it.', stability: 0 },
 ];
 
 export const JETSKI_RIVALS = [
-  { id: 'salty', name: 'Salty Sam', skill: 58, style: 'steady', taunt: 'The bay is mine, kid.' },
-  { id: 'marina', name: 'Marina', skill: 70, style: 'technical', taunt: 'Lines, not noise, win races.' },
-  { id: 'jet', name: 'Jet Li', skill: 78, style: 'aggressive', taunt: 'Eat my roost.' },
-  { id: 'coral', name: 'Coral', skill: 85, style: 'technical', taunt: 'I know every wave on this bay.' },
-  { id: 'tide', name: 'Tide Turner', skill: 91, style: 'aggressive', taunt: 'Champion two years running. Good luck.' },
-  { id: 'grom', name: 'Grom', skill: 52, style: 'wild', taunt: 'I crash fast and I crash often!' },
+  { id: 'reef', name: 'Reef', skill: 55, style: 'aggressive', taunt: 'The bay is mine, rookie.' },
+  { id: 'sandy', name: 'Sandy', skill: 65, style: 'smooth', taunt: 'I ride the waves, you fight them.' },
+  { id: 'crash', name: 'Crash', skill: 72, style: 'reckless', taunt: 'Buoys are for decoration.' },
+  { id: 'marina', name: 'Marina', skill: 80, style: 'precise', taunt: 'Every buoy, every time.' },
+  { id: 'tide', name: 'Tide', skill: 88, style: 'aggressive', taunt: 'You should have stayed on the beach.' },
+  { id: 'storm', name: 'Storm', skill: 95, style: 'champion', taunt: 'I am the storm. Beat the storm.' },
 ];
 
 export const JETSKI_LEAGUES = [
-  { id: 'rookie', name: 'Rookie Splash', minRank: 0, entry: 0, races: 3, prize: 500, desc: 'Learn the buoys, win a little.' },
-  { id: 'club', name: 'Bay Club Series', minRank: 1, entry: 120, races: 4, prize: 1100, desc: 'Real racers, real money.' },
-  { id: 'pro', name: 'Pro Tour', minRank: 2, entry: 350, races: 5, prize: 2800, desc: 'Sponsors watching. No mistakes.' },
-  { id: 'crown', name: 'Crown Bay Championship', minRank: 3, entry: 900, races: 6, prize: 7500, desc: 'The title. The money. The crown.' },
+  { id: 'rookie-regatta', name: 'Rookie Regatta', minRank: 0, entryFee: 100, races: 3, prize: 500, desc: 'First steps into league racing.' },
+  { id: 'bay-series', name: 'Bay Series', minRank: 1, entryFee: 250, races: 4, prize: 1200, desc: 'The regular bay championship.' },
+  { id: 'pro-wave', name: 'Pro Wave', minRank: 2, entryFee: 600, races: 5, prize: 3000, desc: 'Fast riders only, big money.' },
+  { id: 'grand-championship', name: 'Grand Championship', minRank: 3, entryFee: 1500, races: 6, prize: 8000, desc: 'The title every rider wants.' },
 ];
 
 export const JETSKI_RANKS = [
-  { level: 0, name: 'Dock Rat', xp: 0, perk: 'Rookie league open.' },
-  { level: 1, name: 'Bay Rider', xp: 150, perk: 'Club series open, +5% prize.' },
-  { level: 2, name: 'Wave Regular', xp: 400, perk: 'Pro tour open, +10% prize.' },
-  { level: 3, name: 'Pro Racer', xp: 800, perk: 'Crown championship open, +15% prize.' },
-  { level: 4, name: 'King of the Bay', xp: 1500, perk: '+25% prize, rivals fear you.' },
+  { level: 0, name: 'Rookie', xp: 0, perk: 'Ride club courses and rookie leagues.' },
+  { level: 1, name: 'Club Rider', xp: 150, perk: 'Bay series entry and better sponsors.' },
+  { level: 2, name: 'Pro Rider', xp: 400, perk: 'Pro wave entry and top parts.' },
+  { level: 3, name: 'Ace', xp: 800, perk: 'Championship entry and elite sponsors.' },
+  { level: 4, name: 'Bay Legend', xp: 1500, perk: 'The fastest name on the water.' },
 ];
 
 export const JETSKI_SPONSORS = [
-  { id: 'waveco', name: 'WaveCo', pay: 150, need: 'races', goal: 5, desc: '$150 per 5 races ridden.' },
-  { id: 'saltlife', name: 'Salt Life', pay: 200, need: 'tricks', goal: 20, desc: '$200 per 20 tricks landed.' },
-  { id: 'bayfm', name: 'Bay FM', pay: 300, need: 'wins', goal: 3, desc: '$300 per 3 race wins.' },
-  { id: 'suncream', name: 'SunCream Co', pay: 500, need: 'titles', goal: 1, desc: '$500 per league title.' },
+  { id: 'wave-fuel', name: 'Wave Fuel', pay: 200, need: 'races', goal: 5, desc: 'Pays for every five races ridden.' },
+  { id: 'wax-co', name: 'Wax Co', pay: 300, need: 'tricks', goal: 10, desc: 'Pays for every ten tricks landed.' },
+  { id: 'salt-drinks', name: 'Salt Drinks', pay: 500, need: 'wins', goal: 3, desc: 'Pays for every three wins.' },
+  { id: 'surf-wear', name: 'Surf Wear', pay: 1000, need: 'titles', goal: 1, desc: 'Pays for every league title.' },
 ];
 
 export const JETSKI_WEATHER = [
-  { id: 'glass', name: 'Glass Flat', speed: 1.05, risk: 0.8, desc: 'Perfect water, fast times.' },
-  { id: 'chop', name: 'Light Chop', speed: 1.0, risk: 1.0, desc: 'Normal bay conditions.' },
-  { id: 'waves', name: 'Big Swell', speed: 0.95, risk: 1.3, desc: 'Great air, hard landings.' },
-  { id: 'storm', name: 'Storm Surge', speed: 0.9, risk: 1.6, desc: 'Only the brave launch.' },
-  { id: 'fog', name: 'Sea Fog', speed: 0.92, risk: 1.2, desc: 'Buoys appear late. Trust the GPS.' },
+  { id: 'glass', name: 'Glass', speedMult: 1.05, riskMult: 0.9, desc: 'Flat calm water, perfect for speed.' },
+  { id: 'chop', name: 'Chop', speedMult: 1.0, riskMult: 1.0, desc: 'A light chop, normal racing.' },
+  { id: 'waves', name: 'Waves', speedMult: 0.9, riskMult: 1.3, desc: 'Real waves, real fun, real risk.' },
+  { id: 'storm', name: 'Storm', speedMult: 0.75, riskMult: 1.8, desc: 'Only fools ride in a storm.' },
+  { id: 'fog', name: 'Fog', speedMult: 0.95, riskMult: 1.2, desc: 'Thick fog, buoys appear late.' },
 ];
 
-export function jetskiRankFor(xp) {
-  let rank = 0;
-  for (let i = 0; i < JETSKI_RANKS.length; i++) {
-    if (xp >= JETSKI_RANKS[i].xp) rank = i;
-  }
-  return rank;
-}
+export const JETSKI_FREESTYLE_SPOTS = [
+  { id: 'pier', name: 'Old Pier', mult: 1.0, desc: 'A friendly spot for first tricks.' },
+  { id: 'breakwater', name: 'Breakwater', mult: 1.3, desc: 'Big air off the wall.' },
+  { id: 'sandbar', name: 'Sandbar', mult: 1.5, desc: 'The crowd loves the danger.' },
+  { id: 'bridge', name: 'Bridge Span', mult: 1.2, desc: 'Echoes under the bridge.' },
+];
 
-export function jetskiStatsFor(model, parts) {
-  const base = JETSKI_MODELS.find((m) => m.id === model) || JETSKI_MODELS[0];
-  const out = { topSpeed: base.topSpeed, accel: base.accel, handling: base.handling, stability: base.stability, fuel: base.fuel };
-  for (const p of JETSKI_PARTS) {
-    if (!parts.includes(p.id)) continue;
-    out.topSpeed += p.speed || 0;
-    out.accel += p.accel || 0;
-    out.handling += p.handling || 0;
-    if (p.stability) out.stability += p.stability;
-    if (p.fuel) out.fuel += p.fuel;
-  }
-  out.topSpeed = Math.max(30, out.topSpeed);
-  out.accel = Math.max(10, Math.min(120, out.accel));
-  out.handling = Math.max(10, Math.min(120, out.handling));
-  out.stability = Math.max(20, Math.min(130, out.stability));
-  out.fuel = Math.max(50, out.fuel);
+export const JETSKI_TOURS = [
+  { id: 'sunset-tour', name: 'Sunset Tour', duration: 60, price: 80, guests: 4, desc: 'A gentle sunset ride along the bay.' },
+  { id: 'island-hop', name: 'Island Hop', duration: 120, price: 150, guests: 6, desc: 'Hop between the bay islands.' },
+  { id: 'dolphin-watch', name: 'Dolphin Watch', duration: 90, price: 120, guests: 5, desc: 'Chase the dolphins at dawn.' },
+  { id: 'fishing-run', name: 'Fishing Run', duration: 180, price: 200, guests: 3, desc: 'A long run to the fishing grounds.' },
+  { id: 'party-ride', name: 'Party Ride', duration: 45, price: 100, guests: 8, desc: 'A loud ride for a birthday group.' },
+  { id: 'photo-tour', name: 'Photo Tour', duration: 75, price: 110, guests: 4, desc: 'Slow stops at every pretty view.' },
+  { id: 'night-glow', name: 'Night Glow', duration: 60, price: 140, guests: 4, desc: 'A glowing night ride under the lights.' },
+  { id: 'grand-tour', name: 'Grand Tour', duration: 240, price: 300, guests: 6, desc: 'The whole bay, start to finish.' },
+];
+
+export const JETSKI_RENTAL_RATES = [
+  { id: 'hourly', name: 'Hourly', price: 40, fuel: 10, desc: 'An hour on the water.' },
+  { id: 'half-day', name: 'Half Day', price: 150, fuel: 40, desc: 'A morning or an afternoon.' },
+  { id: 'full-day', name: 'Full Day', price: 250, fuel: 70, desc: 'Dawn to dusk.' },
+  { id: 'weekend', name: 'Weekend', price: 450, fuel: 120, desc: 'The whole weekend.' },
+];
+
+export const JETSKI_MAINTENANCE = [
+  { id: 'oil-change', name: 'Oil Change', cost: 30, interval: 5, desc: 'Fresh oil every five races.' },
+  { id: 'spark-plugs', name: 'Spark Plugs', cost: 40, interval: 8, desc: 'New plugs every eight races.' },
+  { id: 'hull-clean', name: 'Hull Clean', cost: 25, interval: 3, desc: 'Scrub the hull every three races.' },
+  { id: 'impeller', name: 'Impeller Check', cost: 60, interval: 10, desc: 'Check the impeller every ten races.' },
+  { id: 'full-service', name: 'Full Service', cost: 120, interval: 15, desc: 'The full works every fifteen races.' },
+];
+
+export const JETSKI_BEACH_EVENTS = [
+  { id: 'beach-party', name: 'Beach Party', mult: 1.4, desc: 'A party brings a crowd.' },
+  { id: 'surf-contest', name: 'Surf Contest', mult: 1.3, desc: 'Surfers draw a big audience.' },
+  { id: 'rainy-beach', name: 'Rainy Beach', mult: 0.7, desc: 'Rain empties the beach.' },
+  { id: 'fishing-fest', name: 'Fishing Fest', mult: 1.2, desc: 'A fishing festival on the pier.' },
+  { id: 'quiet-tide', name: 'Quiet Tide', mult: 0.9, desc: 'A slow day at the beach.' },
+  { id: 'fireworks', name: 'Fireworks Night', mult: 1.6, desc: 'Fireworks over the bay.' },
+];
+
+export const JETSKI_SAFETY = [
+  { id: 'life-jacket', name: 'Life Jacket', cost: 50, desc: 'A jacket that keeps you afloat.' },
+  { id: 'helmet', name: 'Helmet', cost: 80, desc: 'A helmet for the hard landings.' },
+  { id: 'kill-switch', name: 'Kill Switch', cost: 40, desc: 'Stops the ski if you fall off.' },
+  { id: 'flare-kit', name: 'Flare Kit', cost: 30, desc: 'Signal for help from far away.' },
+  { id: 'first-aid', name: 'First Aid Kit', cost: 35, desc: 'Patch up small cuts on the water.' },
+];
+
+export const JETSKI_TIPS = [
+  { id: 'tip-buoys', name: 'Buoy Lines', tip: 'Cut buoys close, but never hit one.' },
+  { id: 'tip-fuel', name: 'Watch Fuel', tip: 'An empty tank mid-race needs a tow.' },
+  { id: 'tip-tricks', name: 'Trick Combos', tip: 'Tricks pay more inside a combo.' },
+  { id: 'tip-weather', name: 'Read Weather', tip: 'Storm water is fast to crash and slow to race.' },
+  { id: 'tip-rinse', name: 'Rinse After', tip: 'Rinse the ski after every race, salt eats metal.' },
+  { id: 'tip-parts', name: 'Fit Parts', tip: 'Parts only help the active ski.' },
+  { id: 'tip-leagues', name: 'League Points', tip: 'Six points per race on average wins a title.' },
+  { id: 'tip-tours', name: 'Tour Money', tip: 'Tours pay without racing, but they burn fuel.' },
+];
+
+export const JETSKI_AWARDS = [
+  { id: 'first-ride', name: 'First Ride', need: 'racesRidden', goal: 1, desc: 'Ride your first race.' },
+  { id: 'first-win', name: 'First Win', need: 'wins', goal: 1, desc: 'Win a race.' },
+  { id: 'trick-ten', name: 'Trick Ten', need: 'tricksLanded', goal: 10, desc: 'Land ten tricks.' },
+  { id: 'league-champ', name: 'League Champ', need: 'leagueTitles', goal: 1, desc: 'Win a league title.' },
+  { id: 'tour-guide', name: 'Tour Guide', need: 'racesRidden', goal: 20, desc: 'Ride twenty races.' },
+];
+
+export const JETSKI_RECORDS = [
+  { id: 'races', name: 'Races Ridden', field: 'racesRidden', unit: 'races', desc: 'All races ridden.' },
+  { id: 'wins', name: 'Wins', field: 'wins', unit: 'wins', desc: 'All races won.' },
+  { id: 'tricks', name: 'Tricks Landed', field: 'tricksLanded', unit: 'tricks', desc: 'All tricks landed.' },
+  { id: 'best-combo', name: 'Best Combo', field: 'bestCombo', unit: 'combo', desc: 'Longest trick combo.' },
+  { id: 'earned', name: 'Total Earned', field: 'earned', unit: 'cash', desc: 'All cash earned from jetskiing.' },
+];
+
+export const JETSKI_SEASONAL_EVENTS = [
+  { id: 'spring-regatta', name: 'Spring Regatta', season: 'spring', prize: 800, desc: 'The spring opener.' },
+  { id: 'summer-splash', name: 'Summer Splash', season: 'summer', prize: 1200, desc: 'The big summer race.' },
+  { id: 'autumn-swell', name: 'Autumn Swell', season: 'autumn', prize: 900, desc: 'Racing in the autumn swell.' },
+  { id: 'winter-glow', name: 'Winter Glow', season: 'winter', prize: 1000, desc: 'Night racing under the lights.' },
+];
+
+export const JETSKI_QUICK_START = [
+  'Pick a course and start your first race.',
+  'Pass buoys to advance laps and finish.',
+  'Land tricks mid-race to build a combo.',
+  'Buy a faster ski when you can afford it.',
+  'Enter a league once your rank allows it.',
+  'Run tours between races for easy money.',
+];
+
+export const JETSKI_META = {
+  system: 'jetski',
+  version: '7b-B',
+  author: 'builder-B',
+  files: 1,
+  lines: 1003,
+  features: ['races', 'tricks', 'leagues', 'tours', 'rentals', 'trials'],
+};
+
+const byId = (arr, id) => arr.find((x) => x.id === id);
+const bounded = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+export function jetskiRankFor(xp) {
+  let out = 0;
+  for (const r of JETSKI_RANKS) if (xp >= r.xp) out = r.level;
   return out;
 }
 
+export function jetskiStatsFor(modelId, ownedParts) {
+  const model = byId(JETSKI_MODELS, modelId);
+  if (!model) return { topSpeed: 0, acceleration: 0, handling: 0, stability: 0, fuel: 0 };
+  const parts = (ownedParts || []).map((id) => byId(JETSKI_PARTS, id)).filter(Boolean);
+  let topSpeed = model.topSpeed;
+  let acceleration = model.acceleration;
+  let handling = model.handling;
+  let stability = model.stability;
+  let fuel = model.fuel;
+  for (const p of parts) {
+    topSpeed += p.speed || 0;
+    acceleration += p.acceleration || 0;
+    handling += p.handling || 0;
+    stability += p.stability || 0;
+    fuel += p.fuel || 0;
+  }
+  return {
+    topSpeed: bounded(topSpeed, 20, 230),
+    acceleration: bounded(acceleration, 10, 100),
+    handling: bounded(handling, 10, 100),
+    stability: bounded(stability, 10, 100),
+    fuel: bounded(fuel, 30, 200),
+  };
+}
+
 export function jetskiRaceTime(course, skiStats, weather, rng) {
-  const base = course.parTime;
-  const speedFactor = 100 / skiStats.topSpeed;
-  const handlingFactor = 1 + (80 - skiStats.handling) / 500;
-  const wobble = 0.94 + rng() * 0.12;
-  return Math.round(base * speedFactor * handlingFactor * wobble * weather.speed * 10) / 10;
+  const wobble = 0.95 + (rng ? rng() : Math.random()) * 0.1;
+  const mult = weather ? weather.speedMult : 1;
+  const time = course.par * (120 / skiStats.topSpeed) * (1.1 - skiStats.handling / 500) / mult * wobble;
+  return Math.round(time * 10) / 10;
 }
 
 export function jetskiRivalTime(rival, course, rng) {
-  const base = course.parTime;
-  const skillFactor = 1.25 - rival.skill / 100;
-  const wobble = 0.95 + rng() * 0.1;
-  return Math.round(base * skillFactor * wobble * 10) / 10;
+  const wobble = 0.95 + (rng ? rng() : Math.random()) * 0.1;
+  const time = course.par * (1.15 - rival.skill / 200) * wobble;
+  return Math.round(time * 10) / 10;
 }
 
 export function jetskiPrizeFor(course, rank, place) {
-  const rankBonus = 1 + rank * 0.05;
-  const placeMult = place === 1 ? 1 : place === 2 ? 0.5 : place === 3 ? 0.25 : 0.1;
-  return Math.round(course.prize * rankBonus * placeMult);
+  const mult = place === 1 ? 1 : place === 2 ? 0.5 : place === 3 ? 0.25 : 0.1;
+  return Math.round(course.prize * (1 + rank * 0.1) * mult);
+}
+
+export function jetskiFreestyleScore(trickIds, spotId) {
+  let sum = 0;
+  for (const id of trickIds) {
+    const t = byId(JETSKI_TRICKS, id);
+    if (t) sum += t.points;
+  }
+  const spot = byId(JETSKI_FREESTYLE_SPOTS, spotId);
+  return Math.round(sum * (spot ? spot.mult : 1));
+}
+
+export function jetskiSeasonStandings(results) {
+  const table = {};
+  for (const r of results) {
+    const pts = r.place === 1 ? 10 : r.place === 2 ? 6 : r.place === 3 ? 4 : 1;
+    table[r.pilot] = (table[r.pilot] || 0) + pts;
+  }
+  return Object.keys(table).map((p) => ({ pilot: p, points: table[p] })).sort((a, b) => b.points - a.points);
+}
+
+export function jetskiWaveHeight(weatherId) {
+  if (weatherId === 'glass') return 0.1;
+  if (weatherId === 'chop') return 0.4;
+  if (weatherId === 'waves') return 1.2;
+  if (weatherId === 'storm') return 2;
+  if (weatherId === 'fog') return 0.3;
+  return 0.5;
+}
+
+export function jetskiTourPay(tourId, guests, rank) {
+  const tour = byId(JETSKI_TOURS, tourId);
+  if (!tour) return 0;
+  return Math.round(tour.price * guests * (1 + (rank || 0) * 0.1));
+}
+
+export function jetskiRentalPay(rateId, days) {
+  const rate = byId(JETSKI_RENTAL_RATES, rateId);
+  if (!rate) return 0;
+  return rate.price * days;
+}
+
+export function jetskiMaintenanceDue(races, itemId) {
+  const item = byId(JETSKI_MAINTENANCE, itemId);
+  if (!item) return false;
+  return races > 0 && races % item.interval === 0;
+}
+
+export function jetskiBeachMult(eventId) {
+  const ev = byId(JETSKI_BEACH_EVENTS, eventId);
+  return ev ? ev.mult : 1;
+}
+
+export function jetskiSafetyScore(ownedSafety) {
+  return (ownedSafety || []).length * 20;
+}
+
+export function jetskiFuelCost(distanceKm, consumption) {
+  return Math.ceil(distanceKm * consumption);
+}
+
+export function jetskiRacePurse(prize, place, sponsors) {
+  const mult = place === 1 ? 1 : place === 2 ? 0.5 : place === 3 ? 0.25 : 0.1;
+  return Math.round(prize * mult + sponsors * 50);
+}
+
+export function jetskiTopSpeedWithParts(modelId, partIds) {
+  return jetskiStatsFor(modelId, partIds).topSpeed;
+}
+
+export function jetskiTipFor(day) {
+  return JETSKI_TIPS[((day % JETSKI_TIPS.length) + JETSKI_TIPS.length) % JETSKI_TIPS.length];
+}
+
+export function jetskiAwardProgress(awardId, state) {
+  const a = byId(JETSKI_AWARDS, awardId);
+  if (!a) return null;
+  const current = state[a.need] || 0;
+  return { id: a.id, name: a.name, current, goal: a.goal, done: current >= a.goal };
+}
+
+export function jetskiFuelRange(fuelLeft, consumption) {
+  if (!consumption || consumption <= 0) return 0;
+  return Math.round(fuelLeft / consumption);
+}
+
+export function jetskiWaveRisk(weatherId) {
+  const w = byId(JETSKI_WEATHER, weatherId);
+  return w ? w.riskMult : 1;
+}
+
+export function jetskiBestCourse(bestTimes) {
+  const keys = Object.keys(bestTimes || {});
+  if (!keys.length) return null;
+  let best = keys[0];
+  for (const k of keys) if (bestTimes[k] < bestTimes[best]) best = k;
+  return { course: best, time: bestTimes[best] };
+}
+
+export function jetskiConditionLabel(condition) {
+  if (condition >= 90) return 'excellent';
+  if (condition >= 70) return 'good';
+  if (condition >= 45) return 'worn';
+  if (condition >= 20) return 'poor';
+  return 'critical';
+}
+
+export function jetskiRecordFor(recordId, state) {
+  const rec = byId(JETSKI_RECORDS, recordId);
+  if (!rec) return null;
+  return { id: rec.id, name: rec.name, value: state[rec.field] || 0, unit: rec.unit };
+}
+
+export function jetskiAllRecords(state) {
+  return JETSKI_RECORDS.map((r) => ({ id: r.id, name: r.name, value: state[r.field] || 0, unit: r.unit, desc: r.desc }));
+}
+
+export function jetskiWinRate(wins, races) {
+  if (!races) return 0;
+  return Math.round((wins / races) * 1000) / 10;
+}
+
+export function jetskiWipeoutRate(wipeouts, races) {
+  if (!races) return 0;
+  return Math.round((wipeouts / races) * 100) / 100;
+}
+
+export function jetskiRiderGrade(wins, races, bestCombo) {
+  const rate = jetskiWinRate(wins, races);
+  if (rate >= 70 && bestCombo >= 8) return 'S';
+  if (rate >= 55 && bestCombo >= 5) return 'A';
+  if (rate >= 40) return 'B';
+  if (rate >= 20) return 'C';
+  return 'D';
+}
+
+export function jetskiSeasonalEvent(seasonId) {
+  return JETSKI_SEASONAL_EVENTS.find((e) => e.season === seasonId) || null;
+}
+
+export function jetskiSeasonalPrize(seasonId, place) {
+  const ev = jetskiSeasonalEvent(seasonId);
+  if (!ev) return 0;
+  return Math.round(ev.prize * (place === 1 ? 1 : place === 2 ? 0.5 : 0.25));
+}
+
+export function jetskiTourSeasonMult(seasonId) {
+  if (seasonId === 'summer') return 1.5;
+  if (seasonId === 'spring' || seasonId === 'autumn') return 1.2;
+  return 0.8;
+}
+
+export function jetskiQuickStart(step) {
+  if (step < 0 || step >= JETSKI_QUICK_START.length) return null;
+  return JETSKI_QUICK_START[step];
+}
+
+export function jetskiTotalValue(state) {
+  return state.owned.length * 500 + state.parts.length * 200;
+}
+
+export function jetskiProgressPercent(state) {
+  const total = state.racesRidden + state.timeTrials;
+  if (!total) return 0;
+  return Math.round((state.wins / total) * 1000) / 10;
+}
+
+export function jetskiSummary(state) {
+  const rankName = JETSKI_RANKS[state.rank].name;
+  return `${rankName} Ria rode ${state.racesRidden} races, won ${state.wins}, landed ${state.tricksLanded} tricks and earned ${Math.round(state.earned)}.`;
+}
+
+export function jetskiNextGoal(state) {
+  if (state.racesRidden < 3) return 'Ride 3 races to hit your first goal.';
+  if (state.wins < 1) return 'Win your first race to hit your next goal.';
+  if (state.leagueTitles < 1) return 'Win your first league title to hit your next goal.';
+  return 'Reach the top rank and become a Bay Legend.';
+}
+
+export function jetskiMeta() {
+  return { ...JETSKI_META, features: [...JETSKI_META.features] };
 }
 
 export function createJetskiSystem(ctx) {
-  const c = ctx || {};
-  const rng = typeof c.rng === 'function' ? c.rng : Math.random;
-  const getCash = typeof c.getCash === 'function' ? c.getCash : () => 0;
-  const addCash = typeof c.addCash === 'function' ? c.addCash : () => {};
-  const addHeat = typeof c.addHeat === 'function' ? c.addHeat : () => {};
-  const log = typeof c.log === 'function' ? c.log : () => {};
-  const getDay = typeof c.getDay === 'function' ? c.getDay : () => 1;
-  const getHour = typeof c.getHour === 'function' ? c.getHour : () => 12;
-  const getPos = typeof c.getPlayerPos === 'function' ? c.getPlayerPos : () => ({ x: 0, z: 0 });
+  const {
+    rng = Math.random,
+    getDay = () => 1,
+    getHour = () => 12,
+    getCash = () => 0,
+    addCash = () => {},
+    addHeat = () => {},
+    getSpeed = () => 0,
+    log = () => {},
+    getPlayerPos = () => ({ x: 0, y: 0, z: 0 }),
+  } = ctx || {};
 
   const state = {
-    xp: 0,
-    rank: 0,
-    owned: ['dolphin'],
-    activeSki: 'dolphin',
-    parts: [],
-    installed: {},
-    racesRidden: 0,
-    wins: 0,
-    podiums: 0,
-    bestTimes: {},
-    totalTricks: 0,
-    tricksLanded: 0,
-    crashes: 0,
-    wipeouts: 0,
-    repairsPaid: 0,
-    earned: 0,
-    spent: 0,
-    combo: 0,
-    bestCombo: 0,
-    comboPoints: 0,
-    race: null,
-    buoy: 0,
-    lap: 1,
-    raceTime: 0,
-    fuelLeft: 100,
-    condition: 100,
-    weather: 'chop',
-    league: null,
-    leagueRace: 0,
-    leaguePoints: 0,
-    leagueWins: 0,
-    leagueTitles: 0,
-    sponsors: [],
-    sponsorProgress: {},
-    timeTrials: 0,
-    bestTrial: {},
-    lastDay: 1,
-    dailyRaces: 0,
-    rivalBeaten: {},
-    freestyleScore: 0,
-    bestFreestyle: 0,
-    rinses: 0,
-    fuelBought: 0,
+    xp: 0, rank: 0, owned: ['starter'], active: 'starter', parts: [], installed: {},
+    racesRidden: 0, wins: 0, podiums: 0, bestTimes: {}, totalTricks: 0, tricksLanded: 0,
+    crashes: 0, wipeouts: 0, repairsPaid: 0, earned: 0, spent: 0, combo: 0, bestCombo: 0,
+    comboPoints: 0, race: null, buoy: 0, lap: 1, raceTime: 0, fuelLeft: 100,
+    condition: 100, weather: 'chop', league: null, leagueRace: 0, leaguePoints: 0,
+    leagueWins: 0, leagueTitles: 0, sponsors: [], sponsorProgress: {}, timeTrials: 0,
+    bestTrial: {}, lastDay: 1, dailyRaces: 0, rivalBeaten: {}, freestyleScore: 0,
+    bestFreestyle: 0, rinses: 0, fuelBought: 0,
   };
 
-  function refreshRank() {
-    const r = jetskiRankFor(state.xp);
-    if (r > state.rank) {
-      state.rank = r;
-      log(`Jet ski rank up: ${JETSKI_RANKS[r].name} — ${JETSKI_RANKS[r].perk}`);
+  const currentStats = () => jetskiStatsFor(state.active, state.parts);
+  const weatherNow = () => byId(JETSKI_WEATHER, state.weather) || JETSKI_WEATHER[1];
+  const leagueDef = () => (state.league ? byId(JETSKI_LEAGUES, state.league) : null);
+  const refreshRank = () => {
+    const next = jetskiRankFor(state.xp);
+    if (next > state.rank) state.rank = next;
+  };
+  const gainXp = (n) => { state.xp += n; refreshRank(); };
+  const fail = (reason) => ({ ok: false, reason });
+
+  function checkSponsors() {
+    for (const sid of state.sponsors) {
+      const sp = byId(JETSKI_SPONSORS, sid);
+      if (!sp) continue;
+      const metric = sp.need === 'races' ? state.racesRidden
+        : sp.need === 'tricks' ? state.tricksLanded
+        : sp.need === 'wins' ? state.wins
+        : state.leagueTitles;
+      state.sponsorProgress[sid] = metric;
+      if (metric >= sp.goal) {
+        addCash(sp.pay);
+        state.earned += sp.pay;
+        state.sponsorProgress[sid] = 0;
+        log(`Sponsor ${sp.name} paid ${sp.pay}.`);
+      }
     }
   }
 
-  function gainXp(n) {
-    state.xp += n;
-    refreshRank();
-  }
-
-  function currentStats() {
-    return jetskiStatsFor(state.activeSki, state.parts);
-  }
-
-  function currentWeather() {
-    return JETSKI_WEATHER.find((w) => w.id === state.weather) || JETSKI_WEATHER[1];
-  }
-
-  function buySki(id) {
-    const s = JETSKI_MODELS.find((m) => m.id === id);
-    if (!s) return { ok: false, reason: 'no-such-ski' };
-    if (state.owned.includes(id)) return { ok: false, reason: 'already-owned' };
-    if (getCash() < s.cost) return { ok: false, reason: 'not-enough-cash', cost: s.cost };
-    addCash(-s.cost);
-    state.spent += s.cost;
-    state.owned.push(id);
+  function buySki(skiId) {
+    const model = byId(JETSKI_MODELS, skiId);
+    if (!model) return fail('unknown ski');
+    if (state.owned.includes(skiId)) return fail('already owned');
+    if (getCash() < model.cost) return fail('not enough cash');
+    addCash(-model.cost);
+    state.spent += model.cost;
+    state.owned.push(skiId);
     gainXp(25);
-    log(`Bought the ${s.name} for $${s.cost}.`);
-    return { ok: true, id };
+    return { ok: true, id: skiId };
   }
 
-  function selectSki(id) {
-    if (!state.owned.includes(id)) return { ok: false, reason: 'not-owned' };
-    state.activeSki = id;
-    const st = currentStats();
+  function selectSki(skiId) {
+    if (!state.owned.includes(skiId)) return fail('ski not owned');
+    state.active = skiId;
+    const s = currentStats();
     state.condition = 100;
-    state.fuelLeft = st.fuel;
-    return { ok: true, id, stats: st };
+    state.fuelLeft = s.fuel;
+    return { ok: true, id: skiId, stats: s };
   }
 
-  function buyPart(id) {
-    const p = JETSKI_PARTS.find((x) => x.id === id);
-    if (!p) return { ok: false, reason: 'no-such-part' };
-    if (state.parts.includes(id)) return { ok: false, reason: 'already-owned' };
-    if (getCash() < p.cost) return { ok: false, reason: 'not-enough-cash', cost: p.cost };
-    addCash(-p.cost);
-    state.spent += p.cost;
-    state.parts.push(id);
-    state.installed[p.slot] = id;
+  function buyPart(partId) {
+    const part = byId(JETSKI_PARTS, partId);
+    if (!part) return fail('unknown part');
+    if (state.parts.includes(partId)) return fail('already owned');
+    if (getCash() < part.cost) return fail('not enough cash');
+    addCash(-part.cost);
+    state.spent += part.cost;
+    state.parts.push(partId);
+    state.installed[part.slot] = partId;
     gainXp(15);
-    log(`Installed ${p.name} for $${p.cost}.`);
-    return { ok: true, id, stats: currentStats() };
+    return { ok: true, id: partId, stats: currentStats() };
   }
 
   function removePart(slot) {
-    if (!state.installed[slot]) return { ok: false, reason: 'nothing-installed' };
-    const id = state.installed[slot];
+    const partId = state.installed[slot];
+    if (!partId) return fail('slot empty');
     delete state.installed[slot];
-    state.parts = state.parts.filter((x) => x !== id);
-    return { ok: true, id, stats: currentStats() };
+    state.parts = state.parts.filter((p) => p !== partId);
+    return { ok: true, removed: partId, stats: currentStats() };
   }
 
   function startRace(courseId, rivalId) {
-    const course = JETSKI_COURSES.find((x) => x.id === courseId);
-    if (!course) return { ok: false, reason: 'no-such-course' };
-    if (state.race) return { ok: false, reason: 'race-active' };
-    if (state.condition < 30) return { ok: false, reason: 'needs-repair', condition: state.condition };
-    if (state.fuelLeft < 30) return { ok: false, reason: 'fuel-low', fuel: state.fuelLeft };
-    const rival = rivalId ? JETSKI_RIVALS.find((r) => r.id === rivalId) : null;
-    state.race = { course: courseId, rival: rival ? rival.id : null, buoysDone: 0, lapsDone: 0 };
+    const course = byId(JETSKI_COURSES, courseId);
+    if (!course) return fail('unknown course');
+    if (state.race) return fail('race already active');
+    if (state.condition < 30) return fail('condition too low');
+    if (state.fuelLeft < 30) return fail('fuel too low');
+    state.race = { course: courseId, rival: rivalId || null, trial: false };
     state.buoy = 0;
     state.lap = 1;
     state.raceTime = 0;
     state.combo = 0;
     state.comboPoints = 0;
-    log(`Race started: ${course.name}${rival ? ` vs ${rival.name}` : ''} — ${course.laps} laps, ${course.buoys} buoys. Water: ${currentWeather().name}.`);
-    return { ok: true, course: courseId, rival: rival ? rival.id : null, weather: state.weather };
+    return { ok: true, course: courseId, rival: rivalId || null, weather: state.weather };
   }
 
   function passBuoy() {
-    if (!state.race) return { ok: false, reason: 'no-race' };
-    const course = JETSKI_COURSES.find((x) => x.id === state.race.course);
+    if (!state.race) return fail('no race active');
+    const course = byId(JETSKI_COURSES, state.race.course);
     state.buoy += 1;
-    state.race.buoysDone += 1;
     state.fuelLeft = Math.max(0, state.fuelLeft - 2);
-    const st = currentStats();
-    state.raceTime += course.parTime / (course.buoys * course.laps) * (100 / st.topSpeed);
-    if (rng() < 0.08 * currentWeather().risk) {
+    state.raceTime = Math.round((state.raceTime + (course.par / (course.buoys * course.laps)) * (0.9 + rng() * 0.2)) * 10) / 10;
+    if (rng() < 0.08 * jetskiWaveRisk(state.weather)) {
       state.wipeouts += 1;
       state.combo = 0;
-      state.comboPoints = 0;
-      state.condition = Math.max(5, state.condition - 8);
-      log('A wave slaps the ski sideways — wipeout! Combo lost.');
+      state.condition = Math.max(0, state.condition - 8);
       return { ok: true, wipeout: true, buoy: state.buoy, lap: state.lap };
     }
     if (state.buoy >= course.buoys) {
       state.buoy = 0;
       state.lap += 1;
-      state.race.lapsDone += 1;
-      log(`Lap ${state.lap - 1}/${course.laps} done on ${course.name}.`);
       if (state.lap > course.laps) return finishRace();
     }
     return { ok: true, buoy: state.buoy, lap: state.lap, time: Math.round(state.raceTime * 10) / 10 };
   }
 
   function doTrick(trickId) {
-    const trick = JETSKI_TRICKS.find((t) => t.id === trickId);
-    if (!trick) return { ok: false, reason: 'no-such-trick' };
-    if (!state.race) return { ok: false, reason: 'no-race' };
-    const st = currentStats();
-    const risk = trick.risk * currentWeather().risk * (1 - st.stability / 400);
-    if (rng() < risk) {
+    const trick = byId(JETSKI_TRICKS, trickId);
+    if (!trick) return fail('unknown trick');
+    if (!state.race) return fail('no race active');
+    const s = currentStats();
+    const crashChance = trick.risk * jetskiWaveRisk(state.weather) * (1 - s.stability / 200);
+    if (rng() < Math.max(0.02, crashChance)) {
       state.crashes += 1;
       state.wipeouts += 1;
       state.combo = 0;
-      state.comboPoints = 0;
-      state.condition = Math.max(5, state.condition - 12);
-      log(`Crashed mid-${trick.name}! The ski flips, you swim. Combo lost.`);
-      return { ok: true, crashed: true, trick: trickId };
+      state.condition = Math.max(0, state.condition - 12);
+      return { ok: true, crashed: true, trick: trickId, points: 0, combo: 0 };
     }
     state.combo += 1;
-    state.bestCombo = Math.max(state.bestCombo, state.combo);
-    const pts = Math.round(trick.points * (1 + state.combo * 0.1));
-    state.comboPoints += pts;
+    if (state.combo > state.bestCombo) state.bestCombo = state.combo;
+    const points = trick.points * state.combo;
+    state.comboPoints += points;
     state.totalTricks += 1;
     state.tricksLanded += 1;
     gainXp(6);
-    return { ok: true, crashed: false, trick: trickId, points: pts, combo: state.combo };
+    return { ok: true, crashed: false, trick: trickId, points, combo: state.combo };
   }
 
   function finishRace() {
-    const course = JETSKI_COURSES.find((x) => x.id === state.race.course);
-    const myTime = jetskiRaceTime(course, currentStats(), currentWeather(), rng);
-    const rival = state.race.rival ? JETSKI_RIVALS.find((r) => r.id === state.race.rival) : null;
-    const rivalTime = rival ? jetskiRivalTime(rival, course, rng) : null;
+    if (!state.race) return fail('no race active');
+    const course = byId(JETSKI_COURSES, state.race.course);
+    const s = currentStats();
+    const time = jetskiRaceTime(course, s, weatherNow(), rng);
+    let rivalTime = null;
     let place = 1;
-    if (rivalTime !== null && rivalTime < myTime) place = 2;
-    if (rng() < 0.15) place = Math.min(3, place + 1);
+    if (state.race.rival) {
+      const rival = byId(JETSKI_RIVALS, state.race.rival);
+      rivalTime = jetskiRivalTime(rival, course, rng);
+      place = time <= rivalTime ? 1 : 2;
+    }
+    if (rng() < 0.15 && place < 3) place += 1;
     const prize = jetskiPrizeFor(course, state.rank, place) + Math.floor(state.comboPoints / 10);
-    state.race = null;
-    state.racesRidden += 1;
-    state.dailyRaces += 1;
-    state.fuelLeft = Math.max(0, state.fuelLeft - 12);
-    state.condition = Math.max(5, state.condition - 5);
-    if (place === 1) {
-      state.wins += 1;
-      state.podiums += 1;
-      if (rival) state.rivalBeaten[rival.id] = (state.rivalBeaten[rival.id] || 0) + 1;
-    } else if (place <= 3) state.podiums += 1;
-    if (!state.bestTimes[course.id] || myTime < state.bestTimes[course.id]) state.bestTimes[course.id] = myTime;
-    state.earned += prize;
-    addCash(prize);
-    gainXp(place === 1 ? 50 : 25);
-    if (state.league) leagueRaceDone(place);
-    checkSponsors();
-    log(`Race over: ${course.name} in ${myTime}s — P${place}, $${prize}${rival ? ` (rival ${rivalTime}s)` : ''}.`);
-    return { ok: true, time: myTime, rivalTime, place, prize, comboPoints: state.comboPoints };
-  }
-
-  function forfeitRace() {
-    if (!state.race) return { ok: false, reason: 'no-race' };
+    const comboPoints = state.comboPoints;
     state.race = null;
     state.combo = 0;
     state.comboPoints = 0;
-    log('Race forfeited — towed back to the dock.');
+    state.racesRidden += 1;
+    state.dailyRaces += 1;
+    state.fuelLeft = Math.max(0, state.fuelLeft - 12);
+    state.condition = Math.max(0, state.condition - 5);
+    if (place === 1) state.wins += 1;
+    if (place <= 3) state.podiums += 1;
+    if (!state.bestTimes[course.id] || time < state.bestTimes[course.id]) state.bestTimes[course.id] = time;
+    addCash(prize);
+    state.earned += prize;
+    gainXp(place === 1 ? 50 : 25);
+    const league = leagueDef();
+    if (league) {
+      state.leagueRace += 1;
+      state.leaguePoints += place === 1 ? 10 : place === 2 ? 6 : place === 3 ? 4 : 1;
+      if (place === 1) state.leagueWins += 1;
+      if (state.leagueRace >= league.races) {
+        if (state.leaguePoints >= league.races * 6) {
+          state.leagueTitles += 1;
+          addCash(league.prize);
+          state.earned += league.prize;
+          log(`League title won: ${league.name}.`);
+        }
+        state.league = null;
+        state.leagueRace = 0;
+        state.leaguePoints = 0;
+        state.leagueWins = 0;
+      }
+    }
+    checkSponsors();
+    return { ok: true, time, rivalTime, place, prize, comboPoints };
+  }
+
+  function forfeitRace() {
+    if (!state.race) return fail('no race active');
+    state.race = null;
+    state.combo = 0;
+    state.comboPoints = 0;
     return { ok: true };
   }
 
   function startTimeTrial(courseId) {
-    const course = JETSKI_COURSES.find((x) => x.id === courseId);
-    if (!course) return { ok: false, reason: 'no-such-course' };
-    if (state.race) return { ok: false, reason: 'race-active' };
-    state.race = { course: courseId, rival: null, buoysDone: 0, lapsDone: 0, trial: true };
+    const course = byId(JETSKI_COURSES, courseId);
+    if (!course) return fail('unknown course');
+    if (state.race) return fail('race already active');
+    state.race = { course: courseId, rival: null, trial: true };
     state.buoy = 0;
     state.lap = 1;
     state.raceTime = 0;
-    log(`Time trial started: ${course.name}. Beat ${state.bestTrial[courseId] || course.parTime}s.`);
     return { ok: true, course: courseId };
   }
 
   function finishTrial() {
-    if (!state.race || !state.race.trial) return { ok: false, reason: 'no-trial' };
-    const course = JETSKI_COURSES.find((x) => x.id === state.race.course);
-    const myTime = jetskiRaceTime(course, currentStats(), currentWeather(), rng);
-    const prev = state.bestTrial[course.id];
-    const improved = !prev || myTime < prev;
-    if (improved) state.bestTrial[course.id] = myTime;
+    if (!state.race || !state.race.trial) return fail('no trial active');
+    const course = byId(JETSKI_COURSES, state.race.course);
+    const time = jetskiRaceTime(course, currentStats(), weatherNow(), rng);
+    const improved = !state.bestTrial[course.id] || time < state.bestTrial[course.id];
+    if (improved) state.bestTrial[course.id] = time;
     state.race = null;
     state.timeTrials += 1;
-    const bonus = improved ? 60 + state.rank * 20 : 10;
-    state.earned += bonus;
+    const bonus = improved ? 60 + 20 * state.rank : 10;
     addCash(bonus);
-    gainXp(improved ? 30 : 10);
-    log(`Time trial ${course.name}: ${myTime}s ${improved ? '(new best!)' : ''} — $${bonus}.`);
-    return { ok: true, time: myTime, improved, bonus };
+    state.earned += bonus;
+    gainXp(10);
+    return { ok: true, time, improved, bonus };
   }
 
   function freestyle(trickIds) {
-    if (state.race) return { ok: false, reason: 'race-active' };
-    let total = 0;
+    if (state.race) return fail('race active');
     let landed = 0;
-    for (const id of trickIds) {
-      const trick = JETSKI_TRICKS.find((t) => t.id === id);
+    let points = 0;
+    const s = currentStats();
+    for (const id of trickIds || []) {
+      const trick = byId(JETSKI_TRICKS, id);
       if (!trick) continue;
-      const st = currentStats();
-      const risk = trick.risk * (1 - st.stability / 400);
-      if (rng() < risk) {
+      const crashChance = trick.risk * jetskiWaveRisk(state.weather) * (1 - s.stability / 200);
+      if (rng() < Math.max(0.02, crashChance)) {
         state.crashes += 1;
-        log(`Freestyle: crashed on the ${trick.name}.`);
+        log(`Wipeout on a ${trick.name} in freestyle.`);
         break;
       }
-      total += trick.points;
+      points += trick.points;
       landed += 1;
-      state.tricksLanded += 1;
       state.totalTricks += 1;
+      state.tricksLanded += 1;
     }
-    state.freestyleScore = total;
-    state.bestFreestyle = Math.max(state.bestFreestyle, total);
-    const pay = Math.round(total / 5);
-    state.earned += pay;
+    state.freestyleScore = points;
+    if (points > state.bestFreestyle) state.bestFreestyle = points;
+    const pay = Math.round(points / 5);
     addCash(pay);
-    gainXp(landed * 8);
-    log(`Freestyle session: ${landed} tricks, ${total} points, $${pay} from the beach crowd.`);
-    return { ok: true, landed, points: total, pay };
+    state.earned += pay;
+    gainXp(8 * landed);
+    return { ok: true, landed, points, pay };
   }
 
   function enterLeague(leagueId) {
-    const league = JETSKI_LEAGUES.find((l) => l.id === leagueId);
-    if (!league) return { ok: false, reason: 'no-such-league' };
-    if (state.league) return { ok: false, reason: 'league-active' };
-    if (state.rank < league.minRank) return { ok: false, reason: 'rank-too-low', need: league.minRank };
-    if (getCash() < league.entry) return { ok: false, reason: 'not-enough-cash', cost: league.entry };
-    addCash(-league.entry);
-    state.spent += league.entry;
+    const league = byId(JETSKI_LEAGUES, leagueId);
+    if (!league) return fail('unknown league');
+    if (state.league) return fail('league already active');
+    if (state.rank < league.minRank) return fail('rank too low for this league');
+    if (getCash() < league.entryFee) return fail('not enough cash');
+    addCash(-league.entryFee);
+    state.spent += league.entryFee;
     state.league = leagueId;
     state.leagueRace = 0;
     state.leaguePoints = 0;
     state.leagueWins = 0;
-    log(`Entered the ${league.name} — ${league.races} races, $${league.prize} to the champion.`);
     return { ok: true, league: leagueId };
   }
 
-  function leagueRaceDone(place) {
-    if (!state.league) return;
-    state.leagueRace += 1;
-    const pts = place === 1 ? 10 : place === 2 ? 6 : place === 3 ? 4 : 1;
-    state.leaguePoints += pts;
-    if (place === 1) state.leagueWins += 1;
-    const league = JETSKI_LEAGUES.find((l) => l.id === state.league);
-    if (state.leagueRace >= league.races) {
-      const champion = state.leaguePoints >= league.races * 6;
-      if (champion) {
-        state.leagueTitles += 1;
-        state.earned += league.prize;
-        addCash(league.prize);
-        gainXp(150);
-        log(`CHAMPION of the ${league.name}! $${league.prize} prize.`);
-      } else {
-        log(`${league.name} over — ${state.leaguePoints} points, not enough for the title.`);
-      }
-      state.league = null;
-      state.leagueRace = 0;
-      state.leaguePoints = 0;
-      state.leagueWins = 0;
-    }
-  }
-
-  function signSponsor(id) {
-    const s = JETSKI_SPONSORS.find((x) => x.id === id);
-    if (!s) return { ok: false, reason: 'no-such-sponsor' };
-    if (state.sponsors.includes(id)) return { ok: false, reason: 'already-signed' };
-    if (state.rank < 1 && s.id !== 'waveco') return { ok: false, reason: 'rank-too-low' };
-    state.sponsors.push(id);
-    state.sponsorProgress[id] = 0;
-    log(`Sponsor signed: ${s.name} — ${s.desc}`);
-    return { ok: true, id };
-  }
-
-  function checkSponsors() {
-    for (const s of JETSKI_SPONSORS) {
-      if (!state.sponsors.includes(s.id)) continue;
-      const have = s.need === 'races' ? state.racesRidden : s.need === 'tricks' ? state.tricksLanded : s.need === 'wins' ? state.wins : state.leagueTitles;
-      const done = Math.floor(have / s.goal);
-      const paid = state.sponsorProgress[s.id] || 0;
-      if (done > paid) {
-        const bonus = (done - paid) * s.pay;
-        state.sponsorProgress[s.id] = done;
-        state.earned += bonus;
-        addCash(bonus);
-        log(`Sponsor ${s.name} paid $${bonus}.`);
-      }
-    }
+  function signSponsor(sponsorId) {
+    const sp = byId(JETSKI_SPONSORS, sponsorId);
+    if (!sp) return fail('unknown sponsor');
+    if (state.sponsors.includes(sponsorId)) return fail('already signed');
+    if (sponsorId !== JETSKI_SPONSORS[0].id && state.rank < 1) return fail('rank too low for this sponsor');
+    state.sponsors.push(sponsorId);
+    state.sponsorProgress[sponsorId] = 0;
+    return { ok: true, id: sponsorId };
   }
 
   function repair() {
-    const missing = 100 - state.condition;
-    if (missing <= 0) return { ok: false, reason: 'no-damage' };
-    const cost = Math.ceil(missing * 2);
-    if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost };
+    if (state.condition >= 100) return fail('no damage to repair');
+    const cost = (100 - state.condition) * 2;
+    if (getCash() < cost) return fail('not enough cash');
     addCash(-cost);
     state.spent += cost;
     state.repairsPaid += cost;
     state.condition = 100;
-    log(`Ski repaired for $${cost} — hull smooth, engine purring.`);
     return { ok: true, cost };
   }
 
   function refuel() {
-    const st = currentStats();
-    if (state.fuelLeft >= st.fuel) return { ok: false, reason: 'already-full' };
-    const cost = Math.ceil((st.fuel - state.fuelLeft) / 10);
-    if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost };
+    const cap = currentStats().fuel;
+    if (state.fuelLeft >= cap) return fail('fuel already full');
+    const cost = Math.ceil((cap - state.fuelLeft) / 10);
+    if (getCash() < cost) return fail('not enough cash');
     addCash(-cost);
     state.spent += cost;
     state.fuelBought += cost;
-    state.fuelLeft = st.fuel;
+    state.fuelLeft = cap;
     return { ok: true, cost };
   }
 
   function rinse() {
-    const cost = 10;
-    if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost };
-    addCash(-cost);
-    state.spent += cost;
+    if (getCash() < 10) return fail('not enough cash');
+    addCash(-10);
+    state.spent += 10;
     state.rinses += 1;
     state.condition = Math.min(100, state.condition + 5);
-    log('Fresh-water rinse. The salt never wins today.');
-    return { ok: true, cost };
+    return { ok: true, cost: 10 };
   }
 
   function tick(dt) {
-    if (state.race) {
-      state.raceTime += dt;
-      const drain = dt * 0.35;
-      state.fuelLeft = Math.max(0, state.fuelLeft - drain);
-      if (state.fuelLeft <= 0) {
-        log('Fuel gone mid-race — the ski dies and drifts. Tow back to the dock.');
-        state.race = null;
-        state.combo = 0;
-        state.comboPoints = 0;
-        state.condition = Math.max(5, state.condition - 10);
-      }
+    if (!state.race) return;
+    state.raceTime += dt;
+    state.fuelLeft = Math.max(0, state.fuelLeft - 0.35 * dt);
+    if (state.fuelLeft <= 0) {
+      log('Out of fuel, towed back to the dock.');
+      state.race = null;
+      state.combo = 0;
+      state.comboPoints = 0;
+      state.condition = Math.max(0, state.condition - 10);
     }
   }
 
@@ -559,231 +766,108 @@ export function createJetskiSystem(ctx) {
     state.dailyRaces = 0;
     state.fuelLeft = currentStats().fuel;
     const roll = rng();
-    if (roll < 0.3) state.weather = 'glass';
-    else if (roll < 0.6) state.weather = 'chop';
-    else if (roll < 0.8) state.weather = 'waves';
-    else if (roll < 0.9) state.weather = 'fog';
-    else state.weather = 'storm';
-    log(`Bay forecast: ${currentWeather().name} — ${currentWeather().desc}`);
-    state.condition = Math.max(5, state.condition - 2);
+    state.weather = roll < 0.4 ? 'chop' : roll < 0.6 ? 'glass' : roll < 0.75 ? 'waves' : roll < 0.9 ? 'fog' : 'storm';
+    log(`Forecast: ${weatherNow().name} on the water.`);
+    state.condition = Math.max(0, state.condition - 2);
   }
 
   function serialize() {
-    return JSON.parse(JSON.stringify({
-      xp: state.xp, rank: state.rank, owned: state.owned,
-      activeSki: state.activeSki, parts: state.parts,
-      installed: state.installed, racesRidden: state.racesRidden,
-      wins: state.wins, podiums: state.podiums,
-      bestTimes: state.bestTimes, totalTricks: state.totalTricks,
-      tricksLanded: state.tricksLanded, crashes: state.crashes,
-      wipeouts: state.wipeouts, repairsPaid: state.repairsPaid,
-      earned: state.earned, spent: state.spent, combo: state.combo,
-      bestCombo: state.bestCombo, comboPoints: state.comboPoints,
-      race: state.race, buoy: state.buoy, lap: state.lap,
-      raceTime: state.raceTime, fuelLeft: state.fuelLeft,
-      condition: state.condition, weather: state.weather,
-      league: state.league, leagueRace: state.leagueRace,
-      leaguePoints: state.leaguePoints, leagueWins: state.leagueWins,
-      leagueTitles: state.leagueTitles, sponsors: state.sponsors,
-      sponsorProgress: state.sponsorProgress,
-      timeTrials: state.timeTrials, bestTrial: state.bestTrial,
-      lastDay: state.lastDay, dailyRaces: state.dailyRaces,
-      rivalBeaten: state.rivalBeaten,
-      freestyleScore: state.freestyleScore,
-      bestFreestyle: state.bestFreestyle, rinses: state.rinses,
-      fuelBought: state.fuelBought,
-    }));
+    return JSON.parse(JSON.stringify(state));
   }
 
-  function deserialize(d) {
-    if (!d || typeof d !== 'object') return;
-    for (const k of Object.keys(state)) {
-      if (d[k] !== undefined) state[k] = d[k];
+  function deserialize(saved) {
+    if (!saved || typeof saved !== 'object') return;
+    for (const key of Object.keys(saved)) {
+      if (key in state) state[key] = saved[key];
     }
     refreshRank();
   }
 
   function stats() {
     return {
-      rank: JETSKI_RANKS[state.rank].name,
-      xp: state.xp,
-      ski: state.activeSki,
-      owned: state.owned.length,
-      parts: state.parts.length,
-      racesRidden: state.racesRidden,
-      wins: state.wins,
-      podiums: state.podiums,
-      tricksLanded: state.tricksLanded,
-      bestCombo: state.bestCombo,
-      crashes: state.crashes,
-      wipeouts: state.wipeouts,
-      earned: Math.round(state.earned),
-      spent: state.spent,
-      repairsPaid: state.repairsPaid,
-      league: state.league,
-      leagueTitles: state.leagueTitles,
-      sponsors: state.sponsors.length,
-      timeTrials: state.timeTrials,
-      weather: state.weather,
-      fuel: Math.round(state.fuelLeft),
-      condition: Math.round(state.condition),
-      racing: !!state.race,
-      buoy: state.buoy,
-      lap: state.lap,
-      dailyRaces: state.dailyRaces,
-      bestFreestyle: state.bestFreestyle,
-      rinses: state.rinses,
+      rank: JETSKI_RANKS[state.rank].name, xp: state.xp, active: state.active,
+      owned: state.owned.length, parts: state.parts.length, racesRidden: state.racesRidden,
+      wins: state.wins, podiums: state.podiums, tricksLanded: state.tricksLanded,
+      bestCombo: state.bestCombo, crashes: state.crashes, wipeouts: state.wipeouts,
+      earned: Math.round(state.earned), spent: state.spent, repairsPaid: state.repairsPaid,
+      league: state.league, leagueTitles: state.leagueTitles,
+      sponsors: state.sponsors.length, timeTrials: state.timeTrials,
+      weather: state.weather, fuel: Math.round(state.fuelLeft),
+      condition: Math.round(state.condition), racing: !!state.race,
+      buoy: state.buoy, lap: state.lap, dailyRaces: state.dailyRaces,
+      bestFreestyle: state.bestFreestyle, rinses: state.rinses,
     };
   }
 
   function hudLine() {
     if (state.race) {
-      const course = JETSKI_COURSES.find((x) => x.id === state.race.course);
-      return `Jet ski: ${course.name} L${state.lap}/${course.laps} B${state.buoy} — fuel ${Math.round(state.fuelLeft)}`;
+      const course = byId(JETSKI_COURSES, state.race.course);
+      return `Racing ${course.name}: lap ${state.lap}, buoy ${state.buoy}, fuel ${Math.round(state.fuelLeft)}.`;
     }
-    if (state.league) return `Jet ski: ${state.league} — race ${state.leagueRace + 1}, ${state.leaguePoints} pts`;
-    if (state.condition < 40) return `Jet ski: ${state.activeSki} needs repair (${Math.round(state.condition)}%)`;
+    if (state.league) {
+      const league = leagueDef();
+      return `League ${league.name}: race ${state.leagueRace + 1}, ${state.leaguePoints} points.`;
+    }
+    if (state.condition < 40) return `${state.active} needs repair.`;
     return '';
   }
 
   function interact() {
-    const pos = getPos();
-    const nearDock = Math.hypot(pos.x - 150, pos.z - 170) < 30;
-    if (!nearDock) return false;
+    const pos = getPlayerPos() || {};
+    const dx = (pos.x || 0) - 150;
+    const dz = (pos.z || 0) - (-170);
+    if (Math.sqrt(dx * dx + dz * dz) > 30) return false;
     if (state.race) { passBuoy(); return true; }
     return false;
   }
 
   function courseList() {
-    return JETSKI_COURSES.map((t) => ({
-      id: t.id, name: t.name, buoys: t.buoys, laps: t.laps,
-      difficulty: t.difficulty, prize: t.prize,
-      best: state.bestTimes[t.id] || null,
+    return JETSKI_COURSES.map((c) => ({
+      id: c.id, name: c.name, buoys: c.buoys, laps: c.laps, difficulty: c.difficulty,
+      prize: c.prize, best: state.bestTimes[c.id] || null,
     }));
   }
 
   function garage() {
     return JETSKI_MODELS.map((m) => ({
       id: m.id, name: m.name, cost: m.cost, owned: state.owned.includes(m.id),
-      stats: jetskiStatsFor(m.id, m.id === state.activeSki ? state.parts : []),
+      stats: jetskiStatsFor(m.id, m.id === state.active ? state.parts : []),
     }));
   }
 
   return {
-    state, buySki, selectSki, buyPart, removePart, startRace,
-    passBuoy, doTrick, finishRace, forfeitRace, startTimeTrial,
-    finishTrial, freestyle, enterLeague, signSponsor, repair, refuel,
-    rinse, tick, tickDay, serialize, deserialize, stats, hudLine,
-    interact, courseList, garage, currentStats,
+    state, buySki, selectSki, buyPart, removePart, startRace, passBuoy, doTrick,
+    finishRace, forfeitRace, startTimeTrial, finishTrial, freestyle, enterLeague,
+    signSponsor, repair, refuel, rinse, tick, tickDay, serialize, deserialize,
+    stats, hudLine, interact, courseList, garage, currentStats,
   };
 }
 
-export const JETSKI_FREESTYLE_SPOTS = [
-  { id: 'pier', name: 'Old Pier', bonus: 1.2, desc: 'Tricks pay 20% more here.' },
-  { id: 'breakwater', name: 'Breakwater', bonus: 1.4, desc: 'Big waves, big air.' },
-  { id: 'sandbar', name: 'Sandbar', bonus: 1.3, desc: 'Shallow water, soft landings.' },
-  { id: 'bridge', name: 'Bay Bridge', bonus: 1.5, desc: 'Under the span, the crowd watches.' },
-];
-
-export function jetskiFreestyleScore(tricks, spotId) {
-  const spot = JETSKI_FREESTYLE_SPOTS.find((s) => s.id === spotId);
-  const mult = spot ? spot.bonus : 1;
-  let total = 0;
-  for (const t of tricks) {
-    const def = JETSKI_TRICKS.find((x) => x.id === t);
-    if (def) total += def.points;
-  }
-  return Math.round(total * mult);
-}
-
-export function jetskiSeasonStandings(results) {
-  const table = {};
-  for (const r of results) {
-    if (!table[r.pilot]) table[r.pilot] = 0;
-    table[r.pilot] += r.place === 1 ? 10 : r.place === 2 ? 6 : r.place === 3 ? 4 : 1;
-  }
-  return Object.entries(table)
-    .map(([pilot, points]) => ({ pilot, points }))
-    .sort((a, b) => b.points - a.points);
-}
-
-export function jetskiWaveHeight(weatherId) {
-  const w = JETSKI_WEATHER.find((x) => x.id === weatherId);
-  if (!w) return 0.5;
-  if (w.id === 'glass') return 0.1;
-  if (w.id === 'chop') return 0.4;
-  if (w.id === 'waves') return 1.2;
-  if (w.id === 'storm') return 2.0;
-  return 0.3;
-}
-
-export const JETSKI_TOURS = [
-  { id: 'sunset', name: 'Sunset Tour', duration: 60, price: 80, guests: 6, desc: 'Golden hour, slow cruise, big tips.' },
-  { id: 'island', name: 'Island Hop', duration: 120, price: 150, guests: 4, desc: 'Three islands, a swim stop, lunch.' },
-  { id: 'dolphin', name: 'Dolphin Watch', duration: 90, price: 120, guests: 8, desc: 'Find the pod. They usually cooperate.' },
-  { id: 'fishing', name: 'Fishing Run', duration: 180, price: 200, guests: 2, desc: 'Out to the reef, rods ready.' },
-  { id: 'night', name: 'Night Lights Tour', duration: 60, price: 100, guests: 6, desc: 'The city from the water, all lit up.' },
-  { id: 'adventure', name: 'Adventure Day', duration: 240, price: 300, guests: 4, desc: 'The full bay, caves and all.' },
-  { id: 'photo', name: 'Photo Safari', duration: 90, price: 140, guests: 4, desc: 'Slow passes for the perfect shot.' },
-  { id: 'beginner', name: 'Beginner Lesson', duration: 45, price: 60, guests: 2, desc: 'Teach the tourists not to fall off.' },
-];
-
-export const JETSKI_RENTAL_RATES = [
-  { id: 'hour', name: 'One Hour', price: 50, fuel: 20, desc: 'Quick spin around the marina.' },
-  { id: 'half', name: 'Half Day', price: 150, fuel: 50, desc: 'Four hours, the whole bay.' },
-  { id: 'day', name: 'Full Day', price: 250, fuel: 90, desc: 'Sunrise to sunset, fuel included.' },
-  { id: 'weekend', name: 'Weekend', price: 450, fuel: 160, desc: 'Two days, one very happy tourist.' },
-];
-
-export const JETSKI_MAINTENANCE = [
-  { id: 'oil', name: 'Oil Change', cost: 40, interval: 10, desc: 'Every 10 races, or the engine complains.' },
-  { id: 'plugs', name: 'Spark Plugs', cost: 25, interval: 15, desc: 'Fresh plugs, clean starts.' },
-  { id: 'pump', name: 'Pump Service', cost: 80, interval: 20, desc: 'The jet pump, inspected and sealed.' },
-  { id: 'hull', name: 'Hull Polish', cost: 60, interval: 30, desc: 'Smooth hull, faster ski.' },
-  { id: 'battery', name: 'Battery Check', cost: 30, interval: 25, desc: 'Starts first time, every time.' },
-];
-
-export function jetskiTourPay(tourId, guests, rank) {
-  const t = JETSKI_TOURS.find((x) => x.id === tourId);
-  if (!t) return 0;
-  const base = t.price * guests;
-  return Math.round(base * (1 + rank * 0.05));
-}
-
-export function jetskiRentalPay(rateId, days) {
-  const r = JETSKI_RENTAL_RATES.find((x) => x.id === rateId);
-  if (!r) return 0;
-  return r.price * days;
-}
-
-export function jetskiMaintenanceDue(racesRidden, itemId) {
-  const m = JETSKI_MAINTENANCE.find((x) => x.id === itemId);
-  if (!m) return false;
-  return racesRidden % m.interval === 0 && racesRidden > 0;
-}
-
 export function createJetskiTours(system) {
+  const st = system.state;
   let toursDone = 0;
   let toursEarned = 0;
   let rentalsDone = 0;
   let rentalsEarned = 0;
   let maintenanceDone = 0;
 
+  const fail = (reason) => ({ ok: false, reason });
+
   function runTour(tourId, guests) {
-    const t = JETSKI_TOURS.find((x) => x.id === tourId);
-    if (!t) return { ok: false, reason: 'no-such-tour' };
-    if (guests > t.guests) return { ok: false, reason: 'too-many-guests', max: t.guests };
-    if (system.state.fuelLeft < 30) return { ok: false, reason: 'fuel-low' };
-    const pay = jetskiTourPay(tourId, guests, system.state.rank);
+    const tour = byId(JETSKI_TOURS, tourId);
+    if (!tour) return fail('unknown tour');
+    if (guests > tour.guests) return fail('too many guests');
+    if (st.fuelLeft < 30) return fail('fuel too low');
+    const pay = jetskiTourPay(tourId, guests, st.rank);
     toursDone += 1;
     toursEarned += pay;
-    system.state.fuelLeft = Math.max(0, system.state.fuelLeft - 25);
-    return { ok: true, tour: tourId, guests, pay, duration: t.duration };
+    st.fuelLeft -= 25;
+    return { ok: true, tour: tourId, guests, pay, duration: tour.duration };
   }
 
   function rentOut(rateId, days) {
-    const r = JETSKI_RENTAL_RATES.find((x) => x.id === rateId);
-    if (!r) return { ok: false, reason: 'no-such-rate' };
+    const rate = byId(JETSKI_RENTAL_RATES, rateId);
+    if (!rate) return fail('unknown rate');
     const pay = jetskiRentalPay(rateId, days);
     rentalsDone += 1;
     rentalsEarned += pay;
@@ -791,11 +875,11 @@ export function createJetskiTours(system) {
   }
 
   function doMaintenance(itemId) {
-    const m = JETSKI_MAINTENANCE.find((x) => x.id === itemId);
-    if (!m) return { ok: false, reason: 'no-such-item' };
+    const item = byId(JETSKI_MAINTENANCE, itemId);
+    if (!item) return fail('unknown maintenance');
     maintenanceDone += 1;
-    system.state.condition = Math.min(100, system.state.condition + 10);
-    return { ok: true, item: itemId, cost: m.cost, condition: Math.round(system.state.condition) };
+    st.condition = Math.min(100, st.condition + 10);
+    return { ok: true, item: itemId, cost: item.cost, condition: Math.round(st.condition) };
   }
 
   function tourRecord() {
@@ -803,210 +887,4 @@ export function createJetskiTours(system) {
   }
 
   return { runTour, rentOut, doMaintenance, tourRecord };
-}
-
-export const JETSKI_BEACH_EVENTS = [
-  { id: 'race-day', name: 'Beach Race Day', mult: 1.5, desc: 'Crowds, prizes, and a loudspeaker.' },
-  { id: 'festival', name: 'Bay Festival', mult: 1.4, desc: 'The whole beach is a party.' },
-  { id: 'calm-day', name: 'Calm Day', mult: 1.0, desc: 'Glass water, quiet beach.' },
-  { id: 'storm-day', name: 'Storm Day', mult: 0.5, desc: 'Nobody rents in a storm.' },
-  { id: 'holiday', name: 'Holiday Crowd', mult: 1.6, desc: 'Tourists everywhere, skis fully booked.' },
-  { id: 'competition', name: 'Freestyle Comp', mult: 1.3, desc: 'Judges, points, and a trophy.' },
-];
-
-export const JETSKI_SAFETY = [
-  { id: 'lifejacket', name: 'Life Jackets', cost: 80, desc: 'Every rider, every time. No exceptions.' },
-  { id: 'briefing', name: 'Safety Briefing', cost: 0, desc: 'Five minutes that save lives.' },
-  { id: 'kill-switch', name: 'Kill Switch Lanyards', cost: 40, desc: 'Fall off, engine stops.' },
-  { id: 'radio', name: 'Marine Radio', cost: 120, desc: 'Call for help from anywhere on the bay.' },
-  { id: 'first-aid', name: 'First Aid Kit', cost: 60, desc: 'On the dock, always stocked.' },
-];
-
-export function jetskiBeachMult(eventId) {
-  const e = JETSKI_BEACH_EVENTS.find((x) => x.id === eventId);
-  return e ? e.mult : 1;
-}
-
-export function jetskiSafetyScore(itemsOwned) {
-  let score = 0;
-  for (const item of JETSKI_SAFETY) {
-    if (itemsOwned.includes(item.id)) score += 20;
-  }
-  return score;
-}
-
-export function jetskiFuelCost(distanceKm, consumption) {
-  return Math.ceil(distanceKm * consumption);
-}
-
-export function jetskiRacePurse(prize, place, sponsors) {
-  const base = jetskiPrizeFor({ prize }, 0, place);
-  return base + sponsors * 50;
-}
-
-export function jetskiTopSpeedWithParts(modelId, partIds) {
-  const stats = jetskiStatsFor(modelId, partIds);
-  return stats.topSpeed;
-}
-
-export const JETSKI_TIPS = [
-  { id: 'buoys-first', name: 'Buoys First', text: 'A missed buoy costs more than a slow lap.' },
-  { id: 'fuel-watch', name: 'Watch the Fuel', text: 'The bay is bigger than it looks.' },
-  { id: 'waves-air', name: 'Ride the Waves', text: 'Big swell means big air. Land flat.' },
-  { id: 'rinse-always', name: 'Rinse Always', text: 'Salt water eats engines. Rinse every day.' },
-  { id: 'tricks-late', name: 'Tricks Late', text: 'Trick on the last lap, when the race is won.' },
-  { id: 'tour-money', name: 'Tour Money', text: 'Sunset tours pay steady money between races.' },
-  { id: 'storm-never', name: 'Storm Never', text: 'Never race a storm surge. The bay always wins.' },
-  { id: 'repair-now', name: 'Repair Now', text: 'A cracked hull sinks. Fix it today.' },
-];
-
-export const JETSKI_AWARDS = [
-  { id: 'first-win', name: 'First Win', need: 'wins', goal: 1, desc: 'Win your first race.' },
-  { id: 'ten-races', name: 'Ten Races', need: 'racesRidden', goal: 10, desc: 'Ride 10 races.' },
-  { id: 'trick-fifty', name: 'Trick Fifty', need: 'tricksLanded', goal: 50, desc: 'Land 50 tricks.' },
-  { id: 'champion', name: 'Champion', need: 'leagueTitles', goal: 1, desc: 'Win a league title.' },
-  { id: 'tour-guide', name: 'Tour Guide', need: 'racesRidden', goal: 25, desc: 'Ride 25 races.' },
-];
-
-export function jetskiTipFor(day) {
-  return JETSKI_TIPS[day % JETSKI_TIPS.length];
-}
-
-export function jetskiAwardProgress(awardId, state) {
-  const a = JETSKI_AWARDS.find((x) => x.id === awardId);
-  if (!a) return null;
-  const have = state[a.need] || 0;
-  return { id: a.id, name: a.name, have, goal: a.goal, done: have >= a.goal };
-}
-
-export function jetskiFuelRange(fuelLeft, consumption) {
-  if (consumption <= 0) return 0;
-  return Math.round(fuelLeft / consumption);
-}
-
-export function jetskiWaveRisk(weatherId) {
-  const w = JETSKI_WEATHER.find((x) => x.id === weatherId);
-  return w ? w.risk : 1;
-}
-
-export function jetskiBestCourse(bestTimes) {
-  let best = null;
-  let bestTime = Infinity;
-  for (const [course, time] of Object.entries(bestTimes)) {
-    if (time < bestTime) { bestTime = time; best = course; }
-  }
-  return best ? { course: best, time: bestTime } : null;
-}
-
-export function jetskiConditionLabel(condition) {
-  if (condition >= 80) return 'excellent';
-  if (condition >= 60) return 'good';
-  if (condition >= 40) return 'worn';
-  if (condition >= 20) return 'poor';
-  return 'critical';
-}
-
-export const JETSKI_RECORDS = [
-  { id: 'most-wins', name: 'Most Wins', stat: 'wins', unit: 'wins', desc: 'Most race wins.' },
-  { id: 'best-combo', name: 'Best Combo', stat: 'bestCombo', unit: 'tricks', desc: 'Longest trick combo.' },
-  { id: 'most-tricks', name: 'Most Tricks', stat: 'tricksLanded', unit: 'tricks', desc: 'Most tricks landed.' },
-  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$', desc: 'Most money earned.' },
-  { id: 'best-freestyle', name: 'Best Freestyle', stat: 'bestFreestyle', unit: 'pts', desc: 'Best freestyle score.' },
-];
-
-export function jetskiRecordFor(recordId, state) {
-  const r = JETSKI_RECORDS.find((x) => x.id === recordId);
-  if (!r) return null;
-  return { id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit };
-}
-
-export function jetskiAllRecords(state) {
-  return JETSKI_RECORDS.map((r) => ({
-    id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit, desc: r.desc,
-  }));
-}
-
-export function jetskiWinRate(wins, races) {
-  if (races === 0) return 0;
-  return Math.round((wins / races) * 100);
-}
-
-export function jetskiWipeoutRate(wipeouts, races) {
-  if (races === 0) return 0;
-  return Math.round((wipeouts / races) * 100) / 100;
-}
-
-export function jetskiRiderGrade(wins, races, bestCombo) {
-  const rate = jetskiWinRate(wins, races);
-  if (rate >= 60 && bestCombo >= 8) return 'S';
-  if (rate >= 40) return 'A';
-  if (rate >= 25) return 'B';
-  if (rate >= 10) return 'C';
-  return 'D';
-}
-
-export const JETSKI_SEASONAL_EVENTS = [
-  { id: 'summer-gp', name: 'Summer Grand Prix', season: 'summer', prize: 2000, desc: 'The biggest race of the year.' },
-  { id: 'spring-splash', name: 'Spring Splash', season: 'spring', prize: 800, desc: 'The season opener.' },
-  { id: 'autumn-cup', name: 'Autumn Cup', season: 'autumn', prize: 1000, desc: 'Cool water, hot racing.' },
-  { id: 'winter-series', name: 'Winter Series', season: 'winter', prize: 1200, desc: 'Wetsuits required.' },
-];
-
-export function jetskiSeasonalEvent(seasonId) {
-  return JETSKI_SEASONAL_EVENTS.find((x) => x.season === seasonId) || null;
-}
-
-export function jetskiSeasonalPrize(seasonId, place) {
-  const e = jetskiSeasonalEvent(seasonId);
-  if (!e) return 0;
-  return place === 1 ? e.prize : place === 2 ? Math.round(e.prize / 2) : Math.round(e.prize / 4);
-}
-
-export function jetskiTourSeasonMult(seasonId) {
-  if (seasonId === 'summer') return 1.5;
-  if (seasonId === 'spring' || seasonId === 'autumn') return 1.2;
-  return 0.8;
-}
-
-export const JETSKI_QUICK_START = [
-  'Start on the Dolphin. It forgives everything.',
-  'Learn the buoys before you learn the tricks.',
-  'Watch the fuel gauge — the bay is big.',
-  'Rinse the ski after every session.',
-  'Trick on the last lap, never the first.',
-  'Sunset tours pay steady money between races.',
-];
-
-export function jetskiQuickStart(step) {
-  return JETSKI_QUICK_START[step] || null;
-}
-
-export function jetskiTotalValue(state) {
-  return state.owned.length * 500 + state.parts.length * 200;
-}
-
-export function jetskiProgressPercent(state) {
-  const total = state.racesRidden + state.timeTrials;
-  if (total === 0) return 0;
-  return Math.round((state.wins / total) * 100);
-}
-
-export function jetskiSummary(state) {
-  return `${JETSKI_RANKS[state.rank].name}: ${state.racesRidden} races, ${state.wins} wins, ${state.tricksLanded} tricks, $${Math.round(state.earned)} earned.`;
-}
-
-export function jetskiNextGoal(state) {
-  if (state.racesRidden < 3) return 'Ride 3 races.';
-  if (state.wins < 1) return 'Win your first race.';
-  if (state.leagueTitles < 1) return 'Win a league title.';
-  return 'Become King of the Bay.';
-}
-
-export const JETSKI_META = {
-  system: 'jetski', version: '7b-B', author: 'builder-B',
-  files: 1, lines: 1003, features: ['races', 'tricks', 'leagues', 'tours', 'rentals', 'trials'],
-};
-
-export function jetskiMeta() {
-  return { ...JETSKI_META };
 }

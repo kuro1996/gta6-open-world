@@ -1,171 +1,360 @@
-// Solara Nights — Hunting / Wild Trails (Round 7, written fresh).
-// Ria tracks game across Solara's wild edges: marshes, pine ridges,
-// scrub plains and the old orchard belts. Stalk, call, shoot clean —
-// a rushed shot spooks the herd and costs you the day. Pelts, meat
-// and antlers sell to the butcher, the tannery and the lodge kitchen;
-// a clean heart-shot pays a trophy bonus, a wounded animal may charge.
-// Licences, blinds, calls and rifles gate the bigger game, and the
-// warden fines poachers who hunt out of season or after dark.
-// Pure logic: no rendering, no imports. The game wires it through the
-// standard ctx { rng, getDay, getHour, getCash, addCash, addHeat, log,
-// getPlayerPos, getWeather } and drives tick/tickDay from the main loop.
-
 export const HUNTING_ANIMALS = [
-  { id: 'rabbit', name: 'Marsh Rabbit', value: 18, meat: 2, pelt: 1, difficulty: 1, rarity: 0.3, habitat: 'marsh', season: 'all', danger: 0, trackTime: 2, desc: 'Quick, small, everywhere near the reeds.' },
-  { id: 'duck', name: 'Pintail Duck', value: 22, meat: 2, pelt: 0, difficulty: 1, rarity: 0.24, habitat: 'marsh', season: 'all', danger: 0, trackTime: 2, desc: 'Dawns over the lagoon in noisy flocks.' },
-  { id: 'squirrel', name: 'Grey Squirrel', value: 12, meat: 1, pelt: 1, difficulty: 1, rarity: 0.28, habitat: 'orchard', season: 'all', danger: 0, trackTime: 1, desc: 'Chatters from the orchard branches at noon.' },
-  { id: 'pheasant', name: 'Ringneck Pheasant', value: 30, meat: 3, pelt: 1, difficulty: 2, rarity: 0.16, habitat: 'scrub', season: 'autumn', danger: 0, trackTime: 3, desc: 'Bursts out of the scrub with a clatter of wings.' },
-  { id: 'raccoon', name: 'Marsh Raccoon', value: 38, meat: 2, pelt: 2, difficulty: 2, rarity: 0.12, habitat: 'marsh', season: 'all', danger: 1, trackTime: 3, desc: 'Washes its food in the shallows after dark.' },
-  { id: 'deer', name: 'Whitetail Deer', value: 85, meat: 12, pelt: 3, difficulty: 3, rarity: 0.14, habitat: 'pine', season: 'all', danger: 1, trackTime: 5, desc: 'A careful grazer at the pine edge at dawn.' },
-  { id: 'fox', name: 'Red Fox', value: 64, meat: 3, pelt: 4, difficulty: 3, rarity: 0.09, habitat: 'scrub', season: 'all', danger: 1, trackTime: 4, desc: 'A russet shadow that tests every call you make.' },
-  { id: 'boar', name: 'Wild Boar', value: 120, meat: 18, pelt: 2, difficulty: 4, rarity: 0.08, habitat: 'pine', season: 'all', danger: 3, trackTime: 5, desc: 'Tusks like knives and a temper to match.' },
-  { id: 'goose', name: 'Canada Goose', value: 44, meat: 6, pelt: 0, difficulty: 2, rarity: 0.13, habitat: 'marsh', season: 'winter', danger: 0, trackTime: 3, desc: 'Honks overhead in long winter skeins.' },
-  { id: 'elk', name: 'Ridge Elk', value: 210, meat: 30, pelt: 5, difficulty: 5, rarity: 0.05, habitat: 'pine', season: 'autumn', danger: 2, trackTime: 8, desc: 'An antlered king that bugles across the ridge.' },
-  { id: 'bear', name: 'Black Bear', value: 260, meat: 35, pelt: 6, difficulty: 5, rarity: 0.03, habitat: 'pine', season: 'all', danger: 4, trackTime: 8, desc: 'Do not miss. Do not run. Shoot straight.' },
-  { id: 'turkey', name: 'Wild Turkey', value: 52, meat: 8, pelt: 1, difficulty: 2, rarity: 0.11, habitat: 'orchard', season: 'spring', danger: 0, trackTime: 4, desc: 'Gobbles from the orchard floor at first light.' },
+  { id: 'rabbit', name: 'Rabbit', value: 15, meat: 2, pelt: 1, difficulty: 1, rarity: 0.3, habitat: 'marsh', season: 'all', danger: 0, trackTime: 1, desc: 'Quick and common, good for a first stalk.' },
+  { id: 'duck', name: 'Duck', value: 20, meat: 2, pelt: 1, difficulty: 1, rarity: 0.28, habitat: 'marsh', season: 'all', danger: 0, trackTime: 1, desc: 'Paddles the reeds at dawn and dusk.' },
+  { id: 'squirrel', name: 'Squirrel', value: 12, meat: 1, pelt: 1, difficulty: 1, rarity: 0.25, habitat: 'orchard', season: 'all', danger: 0, trackTime: 1, desc: 'Small, twitchy, and always watching the canopy.' },
+  { id: 'pheasant', name: 'Pheasant', value: 25, meat: 2, pelt: 1, difficulty: 2, rarity: 0.2, habitat: 'scrub', season: 'autumn', danger: 0, trackTime: 2, desc: 'Bursts out of the brush when you least expect it.' },
+  { id: 'raccoon', name: 'Raccoon', value: 30, meat: 2, pelt: 2, difficulty: 2, rarity: 0.18, habitat: 'orchard', season: 'all', danger: 1, trackTime: 2, desc: 'A night raider with a fine striped pelt.' },
+  { id: 'deer', name: 'Deer', value: 90, meat: 8, pelt: 2, difficulty: 3, rarity: 0.12, habitat: 'pine', season: 'all', danger: 1, trackTime: 4, desc: 'The classic quarry of the pine ridge.' },
+  { id: 'fox', name: 'Fox', value: 45, meat: 2, pelt: 3, difficulty: 3, rarity: 0.1, habitat: 'scrub', season: 'winter', danger: 1, trackTime: 3, desc: 'Clever, fast, and worth more for its coat than its meat.' },
+  { id: 'boar', name: 'Boar', value: 120, meat: 10, pelt: 3, difficulty: 4, rarity: 0.08, habitat: 'scrub', season: 'all', danger: 3, trackTime: 5, desc: 'Mean, heavy, and liable to charge when wounded.' },
+  { id: 'goose', name: 'Goose', value: 35, meat: 3, pelt: 1, difficulty: 2, rarity: 0.15, habitat: 'marsh', season: 'spring', danger: 0, trackTime: 2, desc: 'Loud flocks that pass through in spring.' },
+  { id: 'elk', name: 'Elk', value: 180, meat: 14, pelt: 4, difficulty: 4, rarity: 0.06, habitat: 'pine', season: 'autumn', danger: 2, trackTime: 6, desc: 'A grand rack in the autumn rut.' },
+  { id: 'bear', name: 'Bear', value: 260, meat: 12, pelt: 5, difficulty: 5, rarity: 0.03, habitat: 'pine', season: 'spring', danger: 4, trackTime: 8, desc: 'The most dangerous game in these woods.' },
+  { id: 'turkey', name: 'Turkey', value: 40, meat: 4, pelt: 1, difficulty: 2, rarity: 0.14, habitat: 'orchard', season: 'autumn', danger: 0, trackTime: 3, desc: 'Struts the orchard rows in autumn.' },
 ];
 
 export const HUNTING_HABITATS = [
-  { id: 'marsh', name: 'Salt Marsh', district: 'Lagoon', game: 0.9, danger: 0, mult: 1.0, timeMin: 5, desc: 'Reeds, mud and dawn mist over black water.' },
-  { id: 'pine', name: 'Pine Ridge', district: 'North Hills', game: 0.8, danger: 2, mult: 1.25, timeMin: 7, desc: 'Tall pines, deep shade, big animals.' },
-  { id: 'scrub', name: 'Scrub Plains', district: 'East Flats', game: 0.85, danger: 1, mult: 1.1, timeMin: 6, desc: 'Dry brush and long sightlines.' },
-  { id: 'orchard', name: 'Old Orchards', district: 'West Farms', game: 0.7, danger: 0, mult: 1.0, timeMin: 4, desc: 'Apple rows and sleepy farm dogs.' },
+  { id: 'marsh', name: 'Marshlands', district: 'Wetlands', game: 0.8, danger: 1, mult: 1.0, timeMin: 30, desc: 'Reeds, mud, and waterfowl.' },
+  { id: 'pine', name: 'Pine Ridge', district: 'Highlands', game: 0.6, danger: 2, mult: 1.2, timeMin: 45, desc: 'Tall pines where deer and elk wander.' },
+  { id: 'scrub', name: 'Scrub Plains', district: 'Lowlands', game: 0.7, danger: 1, mult: 1.0, timeMin: 30, desc: 'Open brush, boar country.' },
+  { id: 'orchard', name: 'Old Orchard', district: 'Valley', game: 0.5, danger: 0, mult: 0.9, timeMin: 20, desc: 'Quiet rows of old fruit trees.' },
 ];
 
 export const HUNTING_BUYERS = [
-  { id: 'butcher', name: "Otto's Butcher", mult: 1.0, likes: ['meat'], dislikes: ['pelt'], mood: 'steady', minRank: 0, desc: 'Pays by the kilo for clean meat.' },
-  { id: 'tannery', name: 'Tannery Row', mult: 1.1, likes: ['pelt'], dislikes: ['meat'], mood: 'steady', minRank: 0, desc: 'Top coin for unspoiled pelts.' },
-  { id: 'lodge', name: 'Lodge Kitchen', mult: 1.2, likes: ['trophy'], dislikes: [], mood: 'fancy', minRank: 2, desc: 'The lodge chef pays for the best cuts.' },
-  { id: 'taxidermist', name: 'Taxidermist Voss', mult: 1.4, likes: ['trophy'], dislikes: ['meat'], mood: 'odd', minRank: 3, desc: 'Wants whole specimens, no questions asked.' },
-  { id: 'market', name: 'Night Market Stall', mult: 0.95, likes: [], dislikes: [], mood: 'quick', minRank: 0, desc: 'Fast cash, no fuss, slightly less money.' },
+  { id: 'butcher', name: 'The Butcher', mult: 1.0, likes: ['deer', 'boar', 'elk'], dislikes: ['fox'], mood: 'steady', minRank: 0, desc: 'Pays fair for meat, every day.' },
+  { id: 'tannery', name: 'The Tannery', mult: 1.1, likes: ['fox', 'bear', 'raccoon'], dislikes: ['duck'], mood: 'keen', minRank: 0, desc: 'Wants pelts, the finer the better.' },
+  { id: 'lodge', name: 'Hunting Lodge', mult: 1.2, likes: ['deer', 'elk', 'pheasant'], dislikes: ['squirrel'], mood: 'picky', minRank: 2, desc: 'Buys game for the lodge kitchen.' },
+  { id: 'taxidermist', name: 'The Taxidermist', mult: 1.4, likes: ['bear', 'elk', 'boar'], dislikes: ['rabbit'], mood: 'fussy', minRank: 3, desc: 'Pays top coin for trophy animals.' },
+  { id: 'market', name: 'Town Market', mult: 0.9, likes: [], dislikes: [], mood: 'flat', minRank: 0, desc: 'Buys anything, but never pays well.' },
 ];
 
 export const HUNTING_UPGRADES = [
-  { id: 'license', name: 'Hunting Licence', cost: 80, desc: 'Legal hunting — no warden fines.', effect: 'legal' },
-  { id: 'boots', name: 'Silent Boots', cost: 120, desc: 'Spook chance -25% on every stalk.', effect: 'quiet' },
-  { id: 'call', name: 'Game Call Set', cost: 160, desc: 'Lure animals in: +30% encounter rate.', effect: 'lure' },
-  { id: 'blind', name: 'Pop-up Blind', cost: 240, desc: 'Animals approach closer: +15% accuracy.', effect: 'blind' },
-  { id: 'scope', name: 'Rifle Scope', cost: 320, desc: 'Long shots land: +20% accuracy.', effect: 'scope' },
-  { id: 'rifle', name: 'Bolt Rifle', cost: 480, desc: 'Clean kills on big game: +1 damage tier.', effect: 'rifle' },
-  { id: 'dog', name: 'Tracker Dog', cost: 650, desc: 'Finds wounded game and flushes birds.', effect: 'dog' },
-  { id: 'freezer', name: 'Chest Freezer', cost: 900, desc: 'Meat never spoils; sell when prices peak.', effect: 'freeze' },
+  { id: 'license', name: 'Hunting Licence', cost: 80, desc: 'A stamped licence that keeps the warden off your back.', effect: 'legal' },
+  { id: 'boots', name: 'Silent Boots', cost: 120, desc: 'Soft soles for creeping close without a sound.', effect: 'stealth' },
+  { id: 'call', name: 'Game Call', cost: 160, desc: 'A reed call that draws animals toward you.', effect: 'lure' },
+  { id: 'blind', name: 'Hunting Blind', cost: 240, desc: 'A hidden blind that steadies your aim.', effect: 'accuracy' },
+  { id: 'scope', name: 'Rifle Scope', cost: 320, desc: 'A fine scope for long, clean shots.', effect: 'accuracy' },
+  { id: 'rifle', name: 'Bolt Rifle', cost: 480, desc: 'A heavy bolt rifle for big game.', effect: 'power' },
+  { id: 'dog', name: 'Hunting Dog', cost: 650, desc: 'A loyal dog that tracks wounded game.', effect: 'track' },
+  { id: 'freezer', name: 'Deep Freezer', cost: 900, desc: 'Keeps meat from spoiling overnight.', effect: 'preserve' },
 ];
 
 export const HUNTING_RANKS = [
-  { level: 0, name: 'Weekend Shooter', xp: 0, perk: 'Base prices, base accuracy.' },
-  { level: 1, name: 'Trail Walker', xp: 120, perk: '+10% sale prices.' },
-  { level: 2, name: 'Stalker', xp: 300, perk: '+10% accuracy.' },
-  { level: 3, name: 'Big Game Hunter', xp: 620, perk: '+20% sale prices, lodge buys from you.' },
-  { level: 4, name: 'Master of the Wild', xp: 1100, perk: '+30% sale prices, trophy bonus doubled.' },
+  { level: 0, name: 'Weekend Shooter', xp: 0, perk: 'Learning the trails.' },
+  { level: 1, name: 'Trail Walker', xp: 120, perk: 'Steadier on the stalk.' },
+  { level: 2, name: 'Stalker', xp: 300, perk: 'Animals rarely hear you coming.' },
+  { level: 3, name: 'Big Game Hunter', xp: 620, perk: 'The lodge takes your calls.' },
+  { level: 4, name: 'Master of the Wild', xp: 1100, perk: 'The woods are yours.' },
 ];
 
 export const HUNTING_SEASONS = [
-  { id: 'spring', name: 'Spring', months: [3, 4, 5], mult: 1.0, desc: 'Turkeys gobble, everything wakes up.' },
+  { id: 'spring', name: 'Spring', months: [3, 4, 5], mult: 1.0, desc: 'New growth, skittish game.' },
   { id: 'summer', name: 'Summer', months: [6, 7, 8], mult: 0.9, desc: 'Thick cover, wary animals.' },
-  { id: 'autumn', name: 'Autumn', months: [9, 10, 11], mult: 1.2, desc: 'The rut. Elk bugle, pheasants flush.' },
-  { id: 'winter', name: 'Winter', months: [12, 1, 2], mult: 1.1, desc: 'Tracks in the snow tell you everything.' },
+  { id: 'autumn', name: 'Autumn', months: [9, 10, 11], mult: 1.2, desc: 'The rut. Best prices of the year.' },
+  { id: 'winter', name: 'Winter', months: [12, 1, 2], mult: 1.1, desc: 'Bare branches, clear shots.' },
 ];
 
 export const HUNTING_TROPHIES = [
-  { id: 'antler-6', name: 'Six-Point Antlers', animal: 'deer', value: 180, desc: 'A clean six-pointer, mounted and proud.' },
-  { id: 'antler-10', name: 'Ten-Point Antlers', animal: 'elk', value: 420, desc: 'A ridge king, ten points of bone.' },
-  { id: 'boar-tusk', name: 'Boar Tusks', animal: 'boar', value: 150, desc: 'Curved ivory from a big old boar.' },
-  { id: 'bear-claw', name: 'Bear Claw Necklace', animal: 'bear', value: 300, desc: 'Proof you stood your ground.' },
-  { id: 'fox-tail', name: 'Fox Tail', animal: 'fox', value: 90, desc: 'Russet and full, a classic prize.' },
-  { id: 'goose-feather', name: 'Goose Feather Quill', animal: 'goose', value: 40, desc: 'A writer’s prize from the winter skein.' },
+  { id: 'antler-6', name: 'Six-Point Antlers', animal: 'deer', value: 180, desc: 'A fine six-point rack.' },
+  { id: 'antler-10', name: 'Ten-Point Antlers', animal: 'elk', value: 420, desc: 'A grand ten-point rack.' },
+  { id: 'boar-tusk', name: 'Boar Tusk', animal: 'boar', value: 150, desc: 'A curved, yellowed tusk.' },
+  { id: 'bear-claw', name: 'Bear Claw', animal: 'bear', value: 300, desc: 'A heavy claw from a big bear.' },
+  { id: 'fox-tail', name: 'Fox Tail', animal: 'fox', value: 90, desc: 'A bushy red tail.' },
+  { id: 'goose-feather', name: 'Goose Feather', animal: 'goose', value: 40, desc: 'A long barred feather.' },
 ];
 
 export const HUNTING_EVENTS = [
-  { id: 'rut', name: 'The Rut', mult: 1.5, animals: ['elk', 'deer'], desc: 'Bucks and bulls lose all caution.' },
-  { id: 'migration', name: 'Migration Flyover', mult: 1.4, animals: ['duck', 'goose'], desc: 'The sky fills with wings at dawn.' },
-  { id: 'full-moon', name: 'Full Moon', mult: 0.8, animals: ['rabbit', 'raccoon'], desc: 'Bright nights make small game shy.' },
-  { id: 'storm-front', name: 'Storm Front', mult: 1.3, animals: ['boar', 'bear'], desc: 'Big animals feed hard before the storm.' },
-  { id: 'warden-patrol', name: 'Warden Patrol', mult: 0.7, animals: [], desc: 'The warden is out — hunt legal or not at all.' },
-  { id: 'acorn-mast', name: 'Acorn Mast', mult: 1.3, animals: ['squirrel', 'turkey', 'boar'], desc: 'The oaks drop a feast; the woods are busy.' },
+  { id: 'rut', name: 'The Rut', mult: 1.3, animals: ['deer', 'elk'], desc: 'Bucks are bold and careless.' },
+  { id: 'migration', name: 'Migration', mult: 1.2, animals: ['duck', 'goose'], desc: 'Flocks pass overhead in waves.' },
+  { id: 'full-moon', name: 'Full Moon', mult: 1.1, animals: ['fox', 'raccoon'], desc: 'Night hunters stir under bright moonlight.' },
+  { id: 'storm-front', name: 'Storm Front', mult: 0.8, animals: ['rabbit', 'squirrel'], desc: 'Wind and rain drive game to cover.' },
+  { id: 'warden-patrol', name: 'Warden Patrol', mult: 0.9, animals: [], desc: 'The warden is out walking the trails.' },
+  { id: 'acorn-mast', name: 'Acorn Mast', mult: 1.2, animals: ['boar', 'squirrel', 'turkey'], desc: 'A heavy acorn fall fattens the woods.' },
 ];
 
 export const HUNTING_CONTRACTS = [
-  { id: 'venison-10', name: 'Venison Order', animal: 'deer', qty: 3, pay: 300, days: 2, rep: 1, desc: 'The lodge needs three deer by the weekend.' },
-  { id: 'boar-2', name: 'Boar Cull', animal: 'boar', qty: 2, pay: 380, days: 2, rep: 2, desc: 'Farmers pay to thin the boar damage.' },
-  { id: 'pelts-8', name: 'Pelt Run', animal: 'fox', qty: 4, pay: 420, days: 3, rep: 2, desc: 'The tannery wants four prime fox pelts.' },
-  { id: 'rabbit-12', name: 'Rabbit Stew', animal: 'rabbit', qty: 12, pay: 220, days: 1, rep: 0, desc: 'A cafe orders a dozen rabbits for stew.' },
-  { id: 'elk-1', name: 'The Big Bull', animal: 'elk', qty: 1, pay: 600, days: 3, rep: 3, desc: 'One trophy bull for the lodge wall.' },
-  { id: 'duck-8', name: 'Duck Dinner', animal: 'duck', qty: 8, pay: 260, days: 1, rep: 0, desc: 'The market stall needs ducks for the feast.' },
+  { id: 'venison-10', name: 'Venison Order', animal: 'deer', qty: 3, pay: 300, days: 2, rep: 1, desc: 'Three deer for the lodge table.' },
+  { id: 'boar-2', name: 'Boar Cull', animal: 'boar', qty: 2, pay: 380, days: 2, rep: 2, desc: 'Two boars rooting up the fields.' },
+  { id: 'pelts-8', name: 'Fox Pelts', animal: 'fox', qty: 4, pay: 420, days: 3, rep: 2, desc: 'Four fine fox pelts for the tannery.' },
+  { id: 'rabbit-12', name: 'Rabbit Dozen', animal: 'rabbit', qty: 12, pay: 220, days: 1, rep: 0, desc: 'A dozen rabbits for the market stall.' },
+  { id: 'elk-1', name: 'One Great Elk', animal: 'elk', qty: 1, pay: 600, days: 3, rep: 3, desc: 'A single great elk, nothing less.' },
+  { id: 'duck-8', name: 'Duck Supper', animal: 'duck', qty: 8, pay: 260, days: 1, rep: 0, desc: 'Eight ducks for the tavern.' },
 ];
 
 export const HUNTING_WEATHER_MODS = [
-  { condition: 'clear', accuracy: 0.05, encounter: 0, desc: 'Clear skies, good light.' },
-  { condition: 'rain', accuracy: -0.1, encounter: 0.15, desc: 'Rain masks your sound — animals feed on.' },
-  { condition: 'fog', accuracy: -0.15, encounter: -0.1, desc: 'Fog swallows the far shots.' },
-  { condition: 'storm', accuracy: -0.2, encounter: 0.1, desc: 'Storm light, nervous animals.' },
-  { condition: 'snow', accuracy: 0, encounter: 0.2, desc: 'Tracks in fresh snow give the game away.' },
-  { condition: 'wind', accuracy: -0.05, encounter: -0.05, desc: 'Wind carries your scent downrange.' },
+  { condition: 'clear', accuracy: 0, encounter: 0, desc: 'Clear skies, fair shooting.' },
+  { condition: 'rain', accuracy: -0.1, encounter: -0.05, desc: 'Rain muffles sound but blurs the sight.' },
+  { condition: 'fog', accuracy: -0.15, encounter: -0.1, desc: 'Thick fog hides the game.' },
+  { condition: 'storm', accuracy: -0.2, encounter: -0.2, desc: 'A storm keeps everything down.' },
+  { condition: 'snow', accuracy: -0.05, encounter: -0.1, desc: 'Snow shows tracks but chills the fingers.' },
+  { condition: 'wind', accuracy: -0.1, encounter: 0.05, desc: 'Wind carries scent away, but pushes the shot.' },
 ];
 
+export const HUNTING_HELPERS = [
+  { id: 'tracker', name: 'Old Tracker', wage: 30, skill: 'track', bonus: 0.2, desc: 'Reads sign like a book.' },
+  { id: 'skinner', name: 'Skinner', wage: 45, skill: 'pelt', bonus: 0.25, desc: 'Never wastes a pelt.' },
+  { id: 'cook', name: 'Camp Cook', wage: 55, skill: 'meat', bonus: 0.2, desc: 'Turns game into fine meals.' },
+  { id: 'warden-friend', name: 'Warden Friend', wage: 70, skill: 'legal', bonus: 0.5, desc: 'Knows the warden by name.' },
+];
+
+export const HUNTING_CHALLENGES = [
+  { id: 'first-blood', name: 'First Blood', target: 'kills', goal: 1, xp: 50, desc: 'Take your first animal.' },
+  { id: 'kills-25', name: 'Twenty-Five Down', target: 'kills', goal: 25, xp: 100, desc: 'Take twenty-five animals.' },
+  { id: 'heart-10', name: 'Ten Heart Shots', target: 'heartShots', goal: 10, xp: 120, desc: 'Land ten heart shots.' },
+  { id: 'earn-1000', name: 'A Thousand Earned', target: 'earned', goal: 1000, xp: 150, desc: 'Earn a thousand from the hunt.' },
+  { id: 'trophies-5', name: 'Five Trophies Sold', target: 'trophiesSold', goal: 5, xp: 120, desc: 'Sell five trophies.' },
+  { id: 'contracts-5', name: 'Five Contracts', target: 'contractsDone', goal: 5, xp: 140, desc: 'Finish five hunting contracts.' },
+  { id: 'elk-1', name: 'An Elk Worthy', target: 'bestValue', goal: 180, xp: 200, desc: 'Take an animal worth at least 180.' },
+  { id: 'no-spook', name: 'Ghost in the Woods', target: 'spooked', goal: 0, xp: 100, desc: 'Never spook a single animal.' },
+];
+
+export const HUNTING_ACHIEVEMENTS = [
+  { id: 'first-kill', name: 'First Kill', check: (s) => s.kills >= 1, desc: 'Your first clean kill.' },
+  { id: 'first-trophy', name: 'First Trophy', check: (s) => s.trophies.length >= 1, desc: 'Your first trophy on the wall.' },
+  { id: 'bear-down', name: 'Bear Down', check: (s) => s.bestAnimal === 'bear', desc: 'You brought down a bear.' },
+  { id: 'rank-3', name: 'Big Game Hunter', check: (s) => s.rank >= 3, desc: 'Reach rank three.' },
+  { id: 'rich-hunter', name: 'Rich Hunter', check: (s) => s.earned >= 1000, desc: 'Earn a thousand from hunting.' },
+  { id: 'full-kit', name: 'Full Kit', check: (s) => s.upgrades.length >= 8, desc: 'Own every hunting upgrade.' },
+  { id: 'clean-day', name: 'Clean Day', check: (s) => s.kills >= 5 && s.misses === 0, desc: 'Five kills and not one miss.' },
+  { id: 'no-fines', name: 'No Fines', check: (s) => s.kills > 0 && s.fines === 0 && s.finesPaid === 0, desc: 'Hunt clean and never pay a fine.' },
+];
+
+export const HUNTING_TIPS = [
+  { id: 'dawn', name: 'Dawn Patrol', text: 'Game moves most at first light; start your hunt early.' },
+  { id: 'wind', name: 'Mind the Wind', text: 'Keep the wind in your face or the herd will smell you first.' },
+  { id: 'heart', name: 'Aim for the Heart', text: 'A heart shot drops game clean and saves the pelt.' },
+  { id: 'license-first', name: 'Licence First', text: 'Buy the licence before you hunt; warden fines sting.' },
+  { id: 'boar-care', name: 'Boar Care', text: 'A wounded boar charges. Keep your distance and your nerve.' },
+  { id: 'freeze', name: 'Freeze the Meat', text: 'A deep freezer stops a fifth of your meat spoiling each day.' },
+  { id: 'rut', name: 'Use the Rut', text: 'During the rut, deer and elk grow bold and careless.' },
+  { id: 'dog', name: 'Trust the Dog', text: 'A good dog finds wounded game you would lose alone.' },
+];
+
+export const HUNTING_LEADERBOARD = [
+  { name: 'Old Silas', kills: 1400, desc: 'Forty years on the ridge.' },
+  { name: 'Ranger Pete', kills: 900, desc: 'Knows every trail by heart.' },
+  { name: 'Ria', kills: 0, desc: 'The new hunter in town.' },
+  { name: 'Mara', kills: 620, desc: 'Quiet, patient, deadly.' },
+  { name: 'Chef Ansel', kills: 310, desc: 'Hunts only what he can cook.' },
+];
+
+export const HUNTING_RECORDS = [
+  { id: 'most-kills', name: 'Most Kills', stat: 'kills', unit: 'kills', desc: 'Animals taken in total.' },
+  { id: 'best-value', name: 'Best Value', stat: 'bestValue', unit: '$', desc: 'Most valuable single animal.' },
+  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$', desc: 'Coin earned from hunting.' },
+  { id: 'heart-shots', name: 'Heart Shots', stat: 'heartShots', unit: 'shots', desc: 'Clean heart shots landed.' },
+  { id: 'trophies', name: 'Trophies Sold', stat: 'trophiesSold', unit: 'trophies', desc: 'Trophies sold to buyers.' },
+];
+
+export const HUNTING_QUICK_START = [
+  'Buy the licence first so the warden never fines you.',
+  'Start in the marsh at dawn for easy rabbits and ducks.',
+  'Stalk slowly; a spooked animal is a wasted morning.',
+  'Aim for the heart to keep the pelt clean and the meat prime.',
+  'Sell pelts to the tannery and meat to the butcher for the best coin.',
+  'Never hunt a bear without the bolt rifle.',
+];
+
+export const HUNTING_META = {
+  system: 'hunting',
+  version: '7-B1',
+  author: 'builder-1',
+  animals: 12,
+  habitats: 4,
+  note: 'Stalk, shoot clean, sell the haul.',
+};
+
 export function huntingRankFor(xp) {
-  let rank = 0;
+  let found = 0;
   for (let i = 0; i < HUNTING_RANKS.length; i++) {
-    if (xp >= HUNTING_RANKS[i].xp) rank = i;
+    if (xp >= HUNTING_RANKS[i].xp) found = i;
   }
-  return rank;
+  return found;
 }
 
 export function huntingSeasonFor(month) {
-  for (const s of HUNTING_SEASONS) {
-    if (s.months.includes(month)) return s;
-  }
-  return HUNTING_SEASONS[0];
+  const hit = HUNTING_SEASONS.find((s) => s.months.includes(month));
+  return hit || HUNTING_SEASONS[0];
 }
 
 export function huntingInSeason(animal, month) {
+  if (!animal) return false;
   if (animal.season === 'all') return true;
-  const s = huntingSeasonFor(month);
-  return s.id === animal.season;
+  return huntingSeasonFor(month).id === animal.season;
 }
 
 export function huntingWeatherMod(condition) {
-  const row = HUNTING_WEATHER_MODS.find((w) => w.condition === condition);
-  return row || { condition: 'clear', accuracy: 0, encounter: 0, desc: '' };
+  const hit = HUNTING_WEATHER_MODS.find((w) => w.condition === condition);
+  if (hit) return hit;
+  return { condition: 'clear', accuracy: 0, encounter: 0, desc: 'Clear skies, fair shooting.' };
 }
 
 export function huntingBaseAccuracy(rank, upgrades) {
-  let acc = 0.55 + rank * 0.05;
-  if (upgrades.includes('blind')) acc += 0.15;
-  if (upgrades.includes('scope')) acc += 0.2;
-  return Math.min(0.95, acc);
+  const owned = upgrades || [];
+  let acc = 0.55 + 0.05 * rank;
+  if (owned.includes('blind')) acc += 0.15;
+  if (owned.includes('scope')) acc += 0.2;
+  if (acc > 0.95) acc = 0.95;
+  return acc;
 }
 
 export function huntingPriceFor(animal, rank, upgrades, seasonMult) {
-  let price = animal.value;
-  price *= 1 + rank * 0.1;
-  price *= seasonMult || 1;
-  if (upgrades.includes('freezer')) price *= 1.1;
+  if (!animal) return 1;
+  const owned = upgrades || [];
+  const mult = seasonMult || 1;
+  let price = animal.value * (1 + 0.1 * rank) * mult;
+  if (owned.includes('freezer')) price *= 1.1;
   return Math.max(1, Math.round(price));
 }
 
 export function huntingBuyerPrice(animal, buyerId, rank, upgrades, seasonMult) {
   const buyer = HUNTING_BUYERS.find((b) => b.id === buyerId);
-  if (!buyer) return 0;
-  let mult = buyer.mult;
-  if (animal.pelt >= 3 && buyer.likes.includes('pelt')) mult += 0.15;
-  if (animal.meat >= 10 && buyer.likes.includes('meat')) mult += 0.15;
-  if (buyer.likes.includes('trophy') && animal.difficulty >= 4) mult += 0.2;
-  return Math.max(1, Math.round(huntingPriceFor(animal, rank, upgrades, seasonMult) * mult));
+  if (!buyer || !animal) return 0;
+  let price = huntingPriceFor(animal, rank, upgrades, seasonMult) * buyer.mult;
+  if (buyer.likes.includes(animal.id)) price *= 1.1;
+  if (buyer.dislikes.includes(animal.id)) price *= 0.9;
+  if (buyer.id === 'tannery' && animal.pelt >= 3) price *= 1.15;
+  if (buyer.id === 'butcher' && animal.meat >= 8) price *= 1.1;
+  if (buyer.id === 'taxidermist' && HUNTING_TROPHIES.some((t) => t.animal === animal.id)) price *= 1.2;
+  return Math.max(1, Math.round(price));
 }
 
-export function createHuntingSystem(ctx) {
-  const c = ctx || {};
-  const rng = typeof c.rng === 'function' ? c.rng : Math.random;
-  const getCash = typeof c.getCash === 'function' ? c.getCash : () => 0;
-  const addCash = typeof c.addCash === 'function' ? c.addCash : () => {};
-  const addHeat = typeof c.addHeat === 'function' ? c.addHeat : () => {};
-  const log = typeof c.log === 'function' ? c.log : () => {};
-  const getDay = typeof c.getDay === 'function' ? c.getDay : () => 1;
-  const getHour = typeof c.getHour === 'function' ? c.getHour : () => 12;
-  const getPos = typeof c.getPlayerPos === 'function' ? c.getPlayerPos : () => ({ x: 0, z: 0 });
-  const getWeather = typeof c.getWeather === 'function' ? c.getWeather : () => ({ condition: 'clear' });
+const HUNTING_STATE_KEYS = [
+  'xp', 'rank', 'hunts', 'kills', 'cleanKills', 'misses', 'wounded', 'spooked',
+  'charged', 'earned', 'spent', 'fines', 'finesPaid', 'meat', 'pelts', 'trophies',
+  'trophiesSold', 'upgrades', 'habitat', 'stalk', 'stalkProgress', 'stalkTarget',
+  'encounters', 'dayDrift', 'lastDay', 'month', 'activeContract', 'contractProgress',
+  'contractsDone', 'contractsFailed', 'bestAnimal', 'bestValue', 'dailyKills',
+  'dailyEarned', 'shotsFired', 'heartShots', 'wardenWarnings', 'currentEvent',
+  'seasonMult', 'licenses',
+];
 
-  const state = {
+function huntingChallengeAmount(target, st) {
+  switch (target) {
+    case 'kills': return st.kills;
+    case 'heartShots': return st.heartShots;
+    case 'earned': return st.earned;
+    case 'trophiesSold': return st.trophiesSold;
+    case 'contractsDone': return st.contractsDone;
+    case 'bestValue': return st.bestValue;
+    case 'spooked': return st.spooked;
+    default: return 0;
+  }
+}
+
+export function huntingHelperBonus(ids, skill) {
+  let sum = 0;
+  for (const id of ids || []) {
+    const helper = HUNTING_HELPERS.find((h) => h.id === id);
+    if (helper && helper.skill === skill) sum += helper.bonus;
+  }
+  return sum;
+}
+
+export function huntingChallengeProgress(challenge, state) {
+  const amount = Math.floor(huntingChallengeAmount(challenge.target, state));
+  const done = challenge.goal === 0 ? amount === 0 : amount >= challenge.goal;
+  return { id: challenge.id, name: challenge.name, amount, goal: challenge.goal, done };
+}
+
+export function huntingTipFor(day) {
+  const idx = ((day || 0) % HUNTING_TIPS.length + HUNTING_TIPS.length) % HUNTING_TIPS.length;
+  return HUNTING_TIPS[idx];
+}
+
+export function huntingLeaderboardWith(kills) {
+  const rows = HUNTING_LEADERBOARD.map((row) => ({
+    name: row.name,
+    kills: row.name === 'Ria' ? kills : row.kills,
+    desc: row.desc,
+  }));
+  rows.sort((a, b) => b.kills - a.kills);
+  return rows.map((row, i) => ({ rank: i + 1, name: row.name, kills: row.kills, desc: row.desc }));
+}
+
+export function huntingEfficiency(kills, shots) {
+  if (!shots) return 0;
+  return Math.round((kills / shots) * 100);
+}
+
+export function huntingProfitPerDay(earned, hunts) {
+  if (!hunts) return 0;
+  return Math.round((earned / hunts) * 10) / 10;
+}
+
+export function huntingGrade(kills, misses, heartShots) {
+  const shots = kills + misses;
+  if (!shots) return 'D';
+  const acc = kills / shots;
+  if (acc >= 0.9 && heartShots >= 5) return 'S';
+  if (acc >= 0.75) return 'A';
+  if (acc >= 0.6) return 'B';
+  if (acc >= 0.4) return 'C';
+  return 'D';
+}
+
+function huntingRecordValue(stat, state) {
+  switch (stat) {
+    case 'kills': return state.kills;
+    case 'bestValue': return state.bestValue;
+    case 'earned': return Math.round(state.earned);
+    case 'heartShots': return state.heartShots;
+    case 'trophiesSold': return state.trophiesSold;
+    default: return 0;
+  }
+}
+
+export function huntingRecordFor(id, state) {
+  const rec = HUNTING_RECORDS.find((r) => r.id === id);
+  if (!rec) return null;
+  return { id: rec.id, name: rec.name, value: huntingRecordValue(rec.stat, state), unit: rec.unit };
+}
+
+export function huntingAllRecords(state) {
+  return HUNTING_RECORDS.map((rec) => ({
+    id: rec.id,
+    name: rec.name,
+    value: huntingRecordValue(rec.stat, state),
+    unit: rec.unit,
+    desc: rec.desc,
+  }));
+}
+
+export function huntingSummary(state) {
+  const rankName = HUNTING_RANKS[state.rank] ? HUNTING_RANKS[state.rank].name : 'Weekend Shooter';
+  return `${rankName} — ${state.kills} kills, ${state.heartShots} heart shots, $${Math.round(state.earned)} earned, ${state.trophies.length} trophies.`;
+}
+
+export function huntingNextGoal(state) {
+  if (state.kills < 5) return 'Bag five kills on the trail.';
+  if (state.heartShots < 5) return 'Land five heart shots.';
+  if (state.rank < 2) return 'Reach rank 2 and become a Stalker.';
+  return 'Take a ridge elk with one clean shot.';
+}
+
+export function huntingQuickStart(step) {
+  if (step < 0 || step >= HUNTING_QUICK_START.length) return null;
+  return HUNTING_QUICK_START[step];
+}
+
+export function createHuntingSystem(ctx = {}) {
+  const rng = ctx.rng || Math.random;
+  const getDay = ctx.getDay || (() => 1);
+  const getHour = ctx.getHour || (() => 12);
+  const getCash = ctx.getCash || (() => 0);
+  const addCash = ctx.addCash || (() => {});
+  const addHeat = ctx.addHeat || (() => {});
+  const log = ctx.log || (() => {});
+  const getPlayerPos = ctx.getPlayerPos || (() => ({ x: 0, z: 0 }));
+  const getWeather = ctx.getWeather || (() => ({ condition: 'clear' }));
+
+  const zeroMap = () => {
+    const m = {};
+    for (const a of HUNTING_ANIMALS) m[a.id] = 0;
+    return m;
+  };
+
+  const sys = {
     xp: 0,
     rank: 0,
     hunts: 0,
@@ -179,17 +368,16 @@ export function createHuntingSystem(ctx) {
     spent: 0,
     fines: 0,
     finesPaid: 0,
-    meat: {},
-    pelts: {},
+    meat: zeroMap(),
+    pelts: zeroMap(),
     trophies: [],
     trophiesSold: 0,
     upgrades: [],
     habitat: null,
-    stalk: null,
     stalkProgress: 0,
     stalkTarget: null,
     encounters: 0,
-    dayDrift: {},
+    dayDrift: zeroMap(),
     lastDay: 1,
     month: 9,
     activeContract: null,
@@ -207,749 +395,622 @@ export function createHuntingSystem(ctx) {
     seasonMult: 1.2,
     licenses: 0,
   };
-  for (const a of HUNTING_ANIMALS) { state.meat[a.id] = 0; state.pelts[a.id] = 0; state.dayDrift[a.id] = 0; }
 
-  function refreshRank() {
-    const r = huntingRankFor(state.xp);
-    if (r > state.rank) {
-      state.rank = r;
-      log(`Hunting rank up: ${HUNTING_RANKS[r].name} — ${HUNTING_RANKS[r].perk}`);
+  let stalking = false;
+
+  function gainXp(amount) {
+    sys.xp += amount;
+    const next = huntingRankFor(sys.xp);
+    if (next > sys.rank) {
+      sys.rank = next;
+      log(`Rank up! You are now ${HUNTING_RANKS[next].name}.`);
     }
   }
 
-  function gainXp(n) {
-    state.xp += n;
-    refreshRank();
+  function nope(reason) {
+    return { ok: false, reason };
   }
 
-  function seasonOf(day) {
-    const month = ((Math.floor((day - 1) / 30) + 8) % 12) + 1;
-    state.month = month;
-    const s = huntingSeasonFor(month);
-    state.seasonMult = s.mult;
-    return s;
+  function yep(extra) {
+    return { ok: true, ...extra };
+  }
+
+  function currentSeason() {
+    return huntingSeasonFor(sys.month);
+  }
+
+  function eventRow() {
+    if (!sys.currentEvent) return null;
+    return HUNTING_EVENTS.find((e) => e.id === sys.currentEvent) || null;
   }
 
   function pickAnimal(habitatId) {
-    const season = seasonOf(getDay());
-    const bag = [];
-    for (const a of HUNTING_ANIMALS) {
-      if (a.habitat !== habitatId) continue;
-      if (!huntingInSeason(a, state.month)) continue;
+    const pool = HUNTING_ANIMALS.filter(
+      (a) => a.habitat === habitatId && huntingInSeason(a, sys.month),
+    );
+    if (!pool.length) return null;
+    const ev = eventRow();
+    const weights = pool.map((a) => {
       let w = a.rarity;
-      if (state.upgrades.includes('call')) w *= 1.3;
-      if (state.currentEvent) {
-        const ev = HUNTING_EVENTS.find((e) => e.id === state.currentEvent);
-        if (ev && ev.animals.includes(a.id)) w *= ev.mult;
-      }
-      bag.push({ a, w });
-    }
-    if (bag.length === 0) return null;
+      if (sys.upgrades.includes('call')) w *= 1.4;
+      if (ev && ev.animals.includes(a.id)) w *= ev.mult;
+      return w;
+    });
     let total = 0;
-    for (const b of bag) total += b.w;
+    for (const w of weights) total += w;
     let roll = rng() * total;
-    for (const b of bag) {
-      roll -= b.w;
-      if (roll <= 0) return b.a;
+    for (let i = 0; i < pool.length; i++) {
+      roll -= weights[i];
+      if (roll <= 0) return pool[i];
     }
-    return bag[0].a;
+    return pool[pool.length - 1];
   }
 
-  function startHunt(habitatId) {
-    const h = HUNTING_HABITATS.find((x) => x.id === habitatId);
-    if (!h) return { ok: false, reason: 'no-such-habitat' };
-    if (state.habitat) return { ok: false, reason: 'hunt-active' };
+  function checkContract(animalId) {
+    if (!sys.activeContract || sys.activeContract.animal !== animalId) return;
+    sys.contractProgress += 1;
+    if (sys.contractProgress < sys.activeContract.qty) return;
+    const pay = sys.activeContract.pay + 50 * sys.rank;
+    sys.earned += pay;
+    sys.dailyEarned += pay;
+    addCash(pay);
+    sys.contractsDone += 1;
+    log(`Contract done: ${sys.activeContract.name} paid $${pay}.`);
+    sys.activeContract = null;
+    sys.contractProgress = 0;
+    gainXp(60);
+  }
+
+  sys.startHunt = function startHunt(habitatId) {
+    const habitat = HUNTING_HABITATS.find((h) => h.id === habitatId);
+    if (!habitat) return nope('unknown-habitat');
+    if (sys.habitat) return nope('already-hunting');
     const hour = getHour();
-    if (hour >= 22 || hour < 4) return { ok: false, reason: 'too-dark' };
-    state.habitat = habitatId;
-    state.stalk = null;
-    state.stalkTarget = null;
-    state.stalkProgress = 0;
-    log(`Hunt started in ${h.name} — move slow, watch the wind.`);
-    return { ok: true, habitat: habitatId };
-  }
+    if (hour >= 22 || hour <= 3) return nope('night');
+    sys.habitat = habitatId;
+    stalking = false;
+    sys.stalkProgress = 0;
+    sys.stalkTarget = null;
+    sys.hunts += 1;
+    log(`Hunt started in ${habitat.name}.`);
+    return yep({ habitat: habitatId });
+  };
 
-  function stalk() {
-    if (!state.habitat) return { ok: false, reason: 'no-hunt' };
-    if (state.stalk) return { ok: false, reason: 'already-stalking' };
-    const animal = pickAnimal(state.habitat);
-    if (!animal) return { ok: false, reason: 'nothing-here' };
-    const weather = huntingWeatherMod((getWeather() || {}).condition || 'clear');
-    const encounterRoll = rng() + weather.encounter;
-    if (encounterRoll < 0.25) {
-      state.spooked += 1;
-      log('The woods go quiet — something spooked before you saw it.');
-      return { ok: true, found: false, note: 'spooked' };
+  sys.stalk = function stalk() {
+    if (!sys.habitat) return nope('no-hunt');
+    if (stalking) return nope('already-stalking');
+    const animal = pickAnimal(sys.habitat);
+    if (!animal) return nope('no-game');
+    const weather = huntingWeatherMod(getWeather().condition);
+    const spookLine = 0.12 + weather.encounter;
+    if (rng() < spookLine) {
+      sys.spooked += 1;
+      log('Something spooked in the brush before you could find it.');
+      return nope('spooked');
     }
-    state.stalk = animal.id;
-    state.stalkTarget = animal.id;
-    state.stalkProgress = 0;
-    state.encounters += 1;
-    log(`Sign found: ${animal.name} — ${animal.desc} Stalk it close.`);
-    return { ok: true, found: true, animal: animal.id, name: animal.name, trackTime: animal.trackTime };
-  }
+    stalking = true;
+    sys.stalkTarget = animal.id;
+    sys.stalkProgress = 0;
+    sys.encounters += 1;
+    return yep({ found: true, animal: animal.id, name: animal.name, trackTime: animal.trackTime });
+  };
 
-  function creep() {
-    if (!state.stalk) return { ok: false, reason: 'not-stalking' };
-    const animal = HUNTING_ANIMALS.find((a) => a.id === state.stalk);
-    state.stalkProgress += 1;
-    const spookChance = 0.12 * animal.difficulty - (state.upgrades.includes('boots') ? 0.06 : 0);
-    if (rng() < Math.max(0.02, spookChance)) {
-      state.stalk = null;
-      state.stalkTarget = null;
-      state.stalkProgress = 0;
-      state.spooked += 1;
-      log(`The ${animal.name} caught your movement and bolted.`);
-      return { ok: true, spooked: true };
+  sys.creep = function creep() {
+    if (!stalking || !sys.stalkTarget) return nope('no-stalk');
+    const animal = HUNTING_ANIMALS.find((a) => a.id === sys.stalkTarget);
+    sys.stalkProgress += 1;
+    let spookChance = 0.05 + animal.difficulty * 0.04;
+    if (sys.upgrades.includes('boots')) spookChance -= 0.05;
+    if (rng() < Math.max(0, spookChance)) {
+      stalking = false;
+      sys.stalkTarget = null;
+      sys.stalkProgress = 0;
+      sys.spooked += 1;
+      log(`The ${animal.name} bolted at a snapped twig.`);
+      return nope('spooked');
     }
-    const ready = state.stalkProgress >= animal.trackTime;
-    if (ready) log(`You are in range of the ${animal.name}. Take the shot.`);
-    return { ok: true, progress: state.stalkProgress, need: animal.trackTime, ready };
-  }
+    return yep({
+      progress: sys.stalkProgress,
+      needed: animal.trackTime,
+      inRange: sys.stalkProgress >= animal.trackTime,
+    });
+  };
 
-  function shoot() {
-    if (!state.stalk) return { ok: false, reason: 'not-stalking' };
-    const animal = HUNTING_ANIMALS.find((a) => a.id === state.stalk);
-    const weather = huntingWeatherMod((getWeather() || {}).condition || 'clear');
-    const inRange = state.stalkProgress >= animal.trackTime;
-    let acc = huntingBaseAccuracy(state.rank, state.upgrades) + weather.accuracy;
-    if (!inRange) acc -= 0.25;
-    acc -= (animal.difficulty - 1) * 0.06;
-    if (state.upgrades.includes('rifle') && animal.difficulty >= 4) acc += 0.1;
-    state.shotsFired += 1;
-    const roll = rng();
-    if (roll > acc) {
-      state.misses += 1;
-      state.stalk = null;
-      state.stalkTarget = null;
-      state.stalkProgress = 0;
-      state.spooked += 1;
-      log(`Missed the ${animal.name} — the shot echoes and the woods empty.`);
-      return { ok: true, hit: false };
+  sys.shoot = function shoot() {
+    if (!stalking || !sys.stalkTarget) return nope('no-stalk');
+    const animal = HUNTING_ANIMALS.find((a) => a.id === sys.stalkTarget);
+    const weather = huntingWeatherMod(getWeather().condition);
+    const inRange = sys.stalkProgress >= animal.trackTime;
+    let accuracy = huntingBaseAccuracy(sys.rank, sys.upgrades) + weather.accuracy;
+    if (!inRange) accuracy -= 0.2;
+    accuracy -= animal.difficulty * 0.03;
+    if (sys.upgrades.includes('rifle') && animal.danger >= 3) accuracy += 0.1;
+    accuracy = Math.max(0.05, Math.min(0.95, accuracy));
+    sys.shotsFired += 1;
+    stalking = false;
+    sys.stalkTarget = null;
+    sys.stalkProgress = 0;
+    if (rng() >= accuracy) {
+      sys.misses += 1;
+      sys.spooked += 1;
+      log(`Missed the ${animal.name}; it vanished into the trees.`);
+      return yep({ hit: false, heart: false, wounded: false, animal: animal.id, meat: 0, pelts: 0 });
     }
-    const heart = rng() < 0.25 + state.rank * 0.03;
+    const heart = rng() < 0.25;
     const wounded = !heart && rng() < 0.2;
-    state.stalk = null;
-    state.stalkTarget = null;
-    state.stalkProgress = 0;
-    state.kills += 1;
-    state.dailyKills += 1;
-    state.hunts += 1;
+    sys.kills += 1;
+    sys.dailyKills += 1;
     if (heart) {
-      state.heartShots += 1;
-      state.cleanKills += 1;
-      gainXp(20 + animal.difficulty * 8);
-    } else if (wounded) {
-      state.wounded += 1;
-      gainXp(8 + animal.difficulty * 4);
-      if (animal.danger >= 3 && rng() < 0.4) {
-        state.charged += 1;
-        addHeat(2);
-        log(`The wounded ${animal.name} CHARGED! You barely got clear — heat +2.`);
-      } else {
-        log(`The ${animal.name} is wounded and limping. The dog would help here.`);
+      sys.heartShots += 1;
+      sys.cleanKills += 1;
+    }
+    if (wounded) sys.wounded += 1;
+    if (wounded && animal.danger >= 3 && rng() < 0.5) {
+      sys.charged += 1;
+      addHeat(2);
+      log(`The wounded ${animal.name} charged!`);
+    }
+    sys.meat[animal.id] += animal.meat;
+    sys.pelts[animal.id] += animal.pelt;
+    if (animal.value > sys.bestValue) {
+      sys.bestValue = animal.value;
+      sys.bestAnimal = animal.id;
+    }
+    if (heart) {
+      const trophy = HUNTING_TROPHIES.find((t) => t.animal === animal.id);
+      if (trophy && rng() < 0.5) {
+        sys.trophies.push(trophy.id);
+        log(`Trophy taken: ${trophy.name}.`);
       }
-    } else {
-      state.cleanKills += 1;
-      gainXp(12 + animal.difficulty * 6);
     }
-    state.meat[animal.id] += animal.meat;
-    state.pelts[animal.id] += animal.pelt;
-    if (animal.value > state.bestValue) { state.bestValue = animal.value; state.bestAnimal = animal.id; }
-    const trophy = HUNTING_TROPHIES.find((t) => t.animal === animal.id);
-    if (trophy && heart && rng() < 0.35) {
-      state.trophies.push(trophy.id);
-      log(`Trophy! ${trophy.name} recovered from the ${animal.name}.`);
-    }
-    if (state.activeContract) checkContract(animal.id, 1);
-    log(`${heart ? 'Heart shot! ' : ''}${animal.name} down — +${animal.meat} meat, +${animal.pelt} pelts.`);
-    return { ok: true, hit: true, heart, wounded, animal: animal.id, meat: animal.meat, pelts: animal.pelt };
-  }
+    gainXp(10 + animal.difficulty * 2);
+    if (sys.upgrades.includes('dog') && wounded) log('Your dog tracks the wounded animal.');
+    checkContract(animal.id);
+    log(`Downed a ${animal.name} (${animal.meat} meat, ${animal.pelt} pelts).`);
+    return yep({ hit: true, heart, wounded, animal: animal.id, meat: animal.meat, pelts: animal.pelt });
+  };
 
-  function endHunt() {
-    if (!state.habitat) return { ok: false, reason: 'no-hunt' };
-    const h = state.habitat;
-    state.habitat = null;
-    state.stalk = null;
-    state.stalkTarget = null;
-    state.stalkProgress = 0;
-    log(`Hunt over in ${h} — head back and sell the haul.`);
-    return { ok: true, habitat: h };
-  }
+  sys.endHunt = function endHunt() {
+    if (!sys.habitat) return nope('no-hunt');
+    const done = sys.habitat;
+    sys.habitat = null;
+    stalking = false;
+    sys.stalkProgress = 0;
+    sys.stalkTarget = null;
+    return yep({ habitat: done });
+  };
 
-  function sellMeat(buyerId, animalId, qty) {
+  sys.sellMeat = function sellMeat(buyerId, animalId, qty) {
     const buyer = HUNTING_BUYERS.find((b) => b.id === buyerId);
-    if (!buyer) return { ok: false, reason: 'no-such-buyer' };
-    if (state.rank < buyer.minRank) return { ok: false, reason: 'rank-too-low', need: buyer.minRank };
+    if (!buyer) return nope('unknown-buyer');
+    if (sys.rank < buyer.minRank) return nope('rank-too-low');
     const animal = HUNTING_ANIMALS.find((a) => a.id === animalId);
-    if (!animal) return { ok: false, reason: 'no-such-animal' };
-    const have = state.meat[animalId] || 0;
-    if (qty <= 0 || have < qty) return { ok: false, reason: 'not-enough', have };
-    const unit = Math.max(1, Math.round(huntingBuyerPrice(animal, buyerId, state.rank, state.upgrades, state.seasonMult) / Math.max(1, animal.meat)));
-    const total = unit * qty;
-    state.meat[animalId] -= qty;
-    state.earned += total;
-    state.dailyEarned += total;
+    if (!animal) return nope('unknown-animal');
+    if ((sys.meat[animalId] || 0) < qty) return nope('not-enough');
+    const unitPrice = Math.max(1, Math.floor(huntingBuyerPrice(animal, buyerId, sys.rank, sys.upgrades, sys.seasonMult) / animal.meat));
+    const total = unitPrice * qty;
+    sys.meat[animalId] -= qty;
+    sys.earned += total;
+    sys.dailyEarned += total;
     addCash(total);
     gainXp(qty);
-    log(`Sold ${qty} meat (${animal.name}) to ${buyer.name} for $${total}.`);
-    return { ok: true, total, unit, qty };
-  }
+    return yep({ total, unitPrice, quantity: qty });
+  };
 
-  function sellPelts(buyerId, animalId, qty) {
+  sys.sellPelts = function sellPelts(buyerId, animalId, qty) {
     const buyer = HUNTING_BUYERS.find((b) => b.id === buyerId);
-    if (!buyer) return { ok: false, reason: 'no-such-buyer' };
-    if (state.rank < buyer.minRank) return { ok: false, reason: 'rank-too-low', need: buyer.minRank };
+    if (!buyer) return nope('unknown-buyer');
+    if (sys.rank < buyer.minRank) return nope('rank-too-low');
     const animal = HUNTING_ANIMALS.find((a) => a.id === animalId);
-    if (!animal) return { ok: false, reason: 'no-such-animal' };
-    const have = state.pelts[animalId] || 0;
-    if (qty <= 0 || have < qty) return { ok: false, reason: 'not-enough', have };
-    const unit = Math.max(2, Math.round(huntingBuyerPrice(animal, buyerId, state.rank, state.upgrades, state.seasonMult) * 0.4));
-    const total = unit * qty;
-    state.pelts[animalId] -= qty;
-    state.earned += total;
-    state.dailyEarned += total;
+    if (!animal) return nope('unknown-animal');
+    if ((sys.pelts[animalId] || 0) < qty) return nope('not-enough');
+    const unitPrice = Math.max(2, Math.floor(huntingBuyerPrice(animal, buyerId, sys.rank, sys.upgrades, sys.seasonMult) * 0.4));
+    const total = unitPrice * qty;
+    sys.pelts[animalId] -= qty;
+    sys.earned += total;
+    sys.dailyEarned += total;
     addCash(total);
     gainXp(qty * 2);
-    log(`Sold ${qty} pelts (${animal.name}) to ${buyer.name} for $${total}.`);
-    return { ok: true, total, unit, qty };
-  }
+    return yep({ total, unitPrice, quantity: qty });
+  };
 
-  function sellAll(buyerId) {
+  sys.sellAll = function sellAll(buyerId) {
     const buyer = HUNTING_BUYERS.find((b) => b.id === buyerId);
-    if (!buyer) return { ok: false, reason: 'no-such-buyer' };
-    let total = 0;
-    let units = 0;
+    if (!buyer) return nope('unknown-buyer');
+    if (sys.rank < buyer.minRank) return nope('rank-too-low');
     const lines = [];
-    for (const a of HUNTING_ANIMALS) {
-      const mQty = state.meat[a.id] || 0;
-      if (mQty > 0) {
-        const unit = Math.max(1, Math.round(huntingBuyerPrice(a, buyerId, state.rank, state.upgrades, state.seasonMult) / Math.max(1, a.meat)));
-        const line = unit * mQty;
-        total += line; units += mQty;
-        lines.push({ kind: 'meat', id: a.id, qty: mQty, total: line });
-        state.meat[a.id] = 0;
+    let total = 0;
+    let count = 0;
+    for (const animal of HUNTING_ANIMALS) {
+      const meatQty = sys.meat[animal.id] || 0;
+      if (meatQty > 0) {
+        const unitPrice = Math.max(1, Math.floor(huntingBuyerPrice(animal, buyerId, sys.rank, sys.upgrades, sys.seasonMult) / animal.meat));
+        const lineTotal = unitPrice * meatQty;
+        lines.push({ kind: 'meat', id: animal.id, quantity: meatQty, total: lineTotal });
+        total += lineTotal;
+        count += meatQty;
+        sys.meat[animal.id] = 0;
       }
-      const pQty = state.pelts[a.id] || 0;
-      if (pQty > 0) {
-        const unit = Math.max(2, Math.round(huntingBuyerPrice(a, buyerId, state.rank, state.upgrades, state.seasonMult) * 0.4));
-        const line = unit * pQty;
-        total += line; units += pQty;
-        lines.push({ kind: 'pelt', id: a.id, qty: pQty, total: line });
-        state.pelts[a.id] = 0;
+      const peltQty = sys.pelts[animal.id] || 0;
+      if (peltQty > 0) {
+        const unitPrice = Math.max(2, Math.floor(huntingBuyerPrice(animal, buyerId, sys.rank, sys.upgrades, sys.seasonMult) * 0.4));
+        const lineTotal = unitPrice * peltQty;
+        lines.push({ kind: 'pelt', id: animal.id, quantity: peltQty, total: lineTotal });
+        total += lineTotal;
+        count += peltQty;
+        sys.pelts[animal.id] = 0;
       }
     }
-    if (units === 0) return { ok: false, reason: 'nothing-to-sell' };
-    state.earned += total;
-    state.dailyEarned += total;
+    if (!lines.length) return nope('nothing-to-sell');
+    sys.earned += total;
+    sys.dailyEarned += total;
     addCash(total);
-    gainXp(units);
-    log(`Sold the whole haul to ${buyer.name} for $${total}.`);
-    return { ok: true, total, units, lines };
-  }
+    gainXp(count);
+    return yep({ total, count, lines });
+  };
 
-  function sellTrophy(trophyId) {
-    const idx = state.trophies.indexOf(trophyId);
-    if (idx < 0) return { ok: false, reason: 'no-such-trophy' };
-    const t = HUNTING_TROPHIES.find((x) => x.id === trophyId);
-    state.trophies.splice(idx, 1);
-    state.trophiesSold += 1;
-    const value = t.value + state.rank * 30;
-    state.earned += value;
+  sys.sellTrophy = function sellTrophy(trophyId) {
+    const idx = sys.trophies.indexOf(trophyId);
+    if (idx < 0) return nope('not-held');
+    const trophy = HUNTING_TROPHIES.find((t) => t.id === trophyId);
+    if (!trophy) return nope('unknown-trophy');
+    sys.trophies.splice(idx, 1);
+    sys.trophiesSold += 1;
+    const value = trophy.value + 30 * sys.rank;
+    sys.earned += value;
+    sys.dailyEarned += value;
     addCash(value);
     gainXp(25);
-    log(`Sold the ${t.name} for $${value}.`);
-    return { ok: true, value };
-  }
+    return yep({ value });
+  };
 
-  function buyUpgrade(id) {
-    const u = HUNTING_UPGRADES.find((x) => x.id === id);
-    if (!u) return { ok: false, reason: 'no-such-upgrade' };
-    if (state.upgrades.includes(id)) return { ok: false, reason: 'already-owned' };
-    if (getCash() < u.cost) return { ok: false, reason: 'not-enough-cash', cost: u.cost };
-    addCash(-u.cost);
-    state.spent += u.cost;
-    state.upgrades.push(id);
-    if (id === 'license') state.licenses += 1;
+  sys.buyUpgrade = function buyUpgrade(upgradeId) {
+    const upgrade = HUNTING_UPGRADES.find((u) => u.id === upgradeId);
+    if (!upgrade) return nope('unknown-upgrade');
+    if (sys.upgrades.includes(upgradeId)) return nope('already-owned');
+    if (getCash() < upgrade.cost) return nope('not-enough-cash');
+    addCash(-upgrade.cost);
+    sys.spent += upgrade.cost;
+    sys.upgrades.push(upgradeId);
+    if (upgradeId === 'license') sys.licenses += 1;
     gainXp(20);
-    log(`Bought ${u.name} for $${u.cost}.`);
-    return { ok: true, id };
-  }
+    return yep({ id: upgradeId });
+  };
 
-  function takeContract(id) {
-    const ct = HUNTING_CONTRACTS.find((x) => x.id === id);
-    if (!ct) return { ok: false, reason: 'no-such-contract' };
-    if (state.activeContract) return { ok: false, reason: 'contract-active' };
-    if (state.rank < ct.rep) return { ok: false, reason: 'rep-too-low', need: ct.rep };
-    state.activeContract = { ...ct, dayTaken: getDay(), deadlineDay: getDay() + ct.days };
-    state.contractProgress = 0;
-    log(`Contract taken: ${ct.name} — ${ct.qty}x ${ct.animal} by day ${state.activeContract.deadlineDay}.`);
-    return { ok: true, contract: state.activeContract };
-  }
+  sys.takeContract = function takeContract(contractId) {
+    const contract = HUNTING_CONTRACTS.find((c) => c.id === contractId);
+    if (!contract) return nope('unknown-contract');
+    if (sys.activeContract) return nope('contract-active');
+    if (sys.rank < contract.rep) return nope('rank-too-low');
+    const day = getDay();
+    sys.activeContract = { ...contract, dayTaken: day, deadline: day + contract.days };
+    sys.contractProgress = 0;
+    return yep({ contract: sys.activeContract });
+  };
 
-  function checkContract(animalId, qty) {
-    const ct = state.activeContract;
-    if (!ct || ct.animal !== animalId) return;
-    state.contractProgress += qty;
-    if (state.contractProgress >= ct.qty) {
-      const bonus = ct.pay + state.rank * 50;
-      state.activeContract = null;
-      state.contractProgress = 0;
-      state.contractsDone += 1;
-      state.earned += bonus;
-      addCash(bonus);
-      gainXp(60);
-      log(`Contract complete: ${ct.name} paid $${bonus}.`);
-    }
-  }
-
-  function deliverContract() {
-    const ct = state.activeContract;
-    if (!ct) return { ok: false, reason: 'no-contract' };
-    if (state.contractProgress < ct.qty) return { ok: false, reason: 'not-enough', have: state.contractProgress, need: ct.qty };
-    const bonus = ct.pay + state.rank * 50;
-    state.activeContract = null;
-    state.contractProgress = 0;
-    state.contractsDone += 1;
-    state.earned += bonus;
-    addCash(bonus);
+  sys.deliverContract = function deliverContract() {
+    if (!sys.activeContract) return nope('no-contract');
+    if (sys.contractProgress < sys.activeContract.qty) return nope('not-ready');
+    const pay = sys.activeContract.pay + 50 * sys.rank;
+    sys.earned += pay;
+    sys.dailyEarned += pay;
+    addCash(pay);
+    sys.contractsDone += 1;
+    sys.activeContract = null;
+    sys.contractProgress = 0;
     gainXp(60);
-    log(`Contract delivered: ${ct.name} paid $${bonus}.`);
-    return { ok: true, pay: bonus };
-  }
+    return yep({ pay });
+  };
 
-  function abandonContract() {
-    if (!state.activeContract) return { ok: false, reason: 'no-contract' };
-    state.activeContract = null;
-    state.contractProgress = 0;
-    state.contractsFailed += 1;
-    log('Contract abandoned — the client will not call again soon.');
-    return { ok: true };
-  }
+  sys.abandonContract = function abandonContract() {
+    if (!sys.activeContract) return nope('no-contract');
+    sys.activeContract = null;
+    sys.contractProgress = 0;
+    sys.contractsFailed += 1;
+    return yep({});
+  };
 
-  function payFine() {
-    if (state.fines <= 0) return { ok: false, reason: 'no-fines' };
-    const amount = state.fines;
-    if (getCash() < amount) return { ok: false, reason: 'not-enough-cash', amount };
+  sys.payFine = function payFine() {
+    if (sys.fines <= 0) return nope('no-fines');
+    if (getCash() < sys.fines) return nope('not-enough-cash');
+    const amount = sys.fines;
     addCash(-amount);
-    state.finesPaid += amount;
-    state.fines = 0;
-    state.wardenWarnings = 0;
-    log(`Warden fines settled: $${amount} paid.`);
-    return { ok: true, amount };
-  }
+    sys.spent += amount;
+    sys.finesPaid += amount;
+    sys.fines = 0;
+    sys.wardenWarnings = 0;
+    return yep({ amount });
+  };
 
-  function wardenCheck() {
+  sys.wardenCheck = function wardenCheck() {
     const hour = getHour();
-    const legal = state.upgrades.includes('license');
-    const night = hour >= 22 || hour < 4;
-    if (!legal && state.habitat && rng() < 0.25) {
-      const fine = 150 + state.wardenWarnings * 100;
-      state.fines += fine;
-      state.wardenWarnings += 1;
+    const hasLicence = sys.upgrades.includes('license');
+    if (sys.habitat && !hasLicence && rng() < 0.25) {
+      const fine = 150 + 100 * sys.wardenWarnings;
+      sys.fines += fine;
+      sys.wardenWarnings += 1;
       addHeat(3);
-      log(`The warden catches you hunting without a licence — fine $${fine}, heat +3.`);
-      return { ok: true, caught: true, fine };
+      log(`The warden caught you hunting without a licence: $${fine} fine.`);
+      return yep({ caught: true, fine });
     }
-    if (night && state.habitat) {
-      state.fines += 100;
+    if (sys.habitat && (hour >= 22 || hour <= 3)) {
+      sys.fines += 100;
       addHeat(2);
-      log('Night hunting is illegal — the warden notes your plates.');
-      return { ok: true, caught: true, fine: 100 };
+      log('The warden caught you hunting at night: $100 fine.');
+      return yep({ caught: true, fine: 100 });
     }
-    return { ok: true, caught: false };
-  }
+    return yep({ caught: false });
+  };
 
-  function priceBoard() {
+  sys.priceBoard = function priceBoard() {
     return HUNTING_ANIMALS.map((a) => ({
-      id: a.id, name: a.name,
-      price: huntingPriceFor(a, state.rank, state.upgrades, state.seasonMult),
-      inSeason: huntingInSeason(a, state.month),
-      meat: state.meat[a.id], pelts: state.pelts[a.id],
+      id: a.id,
+      name: a.name,
+      price: huntingPriceFor(a, sys.rank, sys.upgrades, sys.seasonMult),
+      inSeason: huntingInSeason(a, sys.month),
+      meat: sys.meat[a.id] || 0,
+      pelts: sys.pelts[a.id] || 0,
     }));
-  }
+  };
 
-  function habitatReport() {
+  sys.habitatReport = function habitatReport() {
     return HUNTING_HABITATS.map((h) => ({
-      id: h.id, name: h.name, district: h.district, mult: h.mult, danger: h.danger,
+      id: h.id,
+      name: h.name,
+      district: h.district,
+      mult: h.mult,
+      danger: h.danger,
       animals: HUNTING_ANIMALS.filter((a) => a.habitat === h.id).map((a) => a.id),
     }));
-  }
+  };
 
-  function dailyEvent() {
+  sys.dailyEvent = function dailyEvent() {
     const roll = rng();
     if (roll < 0.2) {
       const ev = HUNTING_EVENTS[Math.floor(rng() * HUNTING_EVENTS.length)];
-      state.currentEvent = ev.id;
-      log(`Wild news: ${ev.name} — ${ev.desc}`);
-      return { event: ev.id, name: ev.name };
+      sys.currentEvent = ev.id;
+      log(`Today's event: ${ev.name}.`);
+      return yep({ event: ev.id, name: ev.name });
     }
     if (roll < 0.3) {
-      const free = HUNTING_ANIMALS[Math.floor(rng() * HUNTING_ANIMALS.length)];
-      state.meat[free.id] += 2;
-      log(`A fellow hunter gifts you 2 meat from a ${free.name}.`);
-      return { event: 'gift', animal: free.id };
+      const animal = HUNTING_ANIMALS[Math.floor(rng() * HUNTING_ANIMALS.length)];
+      sys.meat[animal.id] += 2;
+      sys.currentEvent = null;
+      return yep({ event: 'gift', animal: animal.id, name: 'Gift' });
     }
-    state.currentEvent = null;
-    return { event: 'none' };
-  }
+    sys.currentEvent = null;
+    return yep({ event: 'none', name: 'None' });
+  };
 
-  function tick(dt) {
-    if (state.stalk) {
-      state.stalkProgress += dt * 0.02;
+  sys.tick = function tick(dt) {
+    const step = dt || 0;
+    if (stalking) {
+      sys.stalkProgress += step * 0.02;
+    } else if (sys.habitat && rng() < step * 0.01) {
+      log('A twig snaps somewhere behind you.');
     }
-    if (state.habitat && !state.stalk && rng() < dt * 0.01) {
-      log('A twig snaps somewhere ahead. Stay low.');
-    }
-  }
+  };
 
-  function tickDay(day) {
-    if (day === state.lastDay) return;
-    state.lastDay = day;
-    seasonOf(day);
-    state.dailyKills = 0;
-    state.dailyEarned = 0;
-    if (state.activeContract && day >= state.activeContract.deadlineDay && state.contractProgress < state.activeContract.qty) {
-      log(`Contract ${state.activeContract.name} expired — the client walked away.`);
-      state.activeContract = null;
-      state.contractProgress = 0;
-      state.contractsFailed += 1;
+  sys.tickDay = function tickDay(day) {
+    if (day === sys.lastDay) return;
+    sys.lastDay = day;
+    sys.month = ((9 - 1 + Math.floor((day - 1) / 30)) % 12) + 1;
+    sys.seasonMult = currentSeason().mult;
+    sys.dailyKills = 0;
+    sys.dailyEarned = 0;
+    if (sys.activeContract && day > sys.activeContract.deadline && sys.contractProgress < sys.activeContract.qty) {
+      sys.contractsFailed += 1;
+      log(`Contract failed: ${sys.activeContract.name}.`);
+      sys.activeContract = null;
+      sys.contractProgress = 0;
     }
-    if (!state.upgrades.includes('freezer')) {
-      for (const a of HUNTING_ANIMALS) {
-        const spoiled = Math.floor((state.meat[a.id] || 0) * 0.2);
-        if (spoiled > 0) {
-          state.meat[a.id] -= spoiled;
-          if (day % 3 === 0) log(`${spoiled} meat (${a.name}) spoiled overnight — buy a freezer.`);
-        }
+    if (!sys.upgrades.includes('freezer')) {
+      for (const animal of HUNTING_ANIMALS) {
+        const spoil = Math.floor((sys.meat[animal.id] || 0) * 0.2);
+        sys.meat[animal.id] -= spoil;
       }
+      if (day % 3 === 0) log('Some of your meat spoiled overnight.');
     }
-    dailyEvent();
-  }
+    sys.dailyEvent();
+  };
 
-  function serialize() {
-    return JSON.parse(JSON.stringify({
-      xp: state.xp, rank: state.rank, hunts: state.hunts, kills: state.kills,
-      cleanKills: state.cleanKills, misses: state.misses, wounded: state.wounded,
-      spooked: state.spooked, charged: state.charged, earned: state.earned,
-      spent: state.spent, fines: state.fines, finesPaid: state.finesPaid,
-      meat: state.meat, pelts: state.pelts, trophies: state.trophies,
-      trophiesSold: state.trophiesSold, upgrades: state.upgrades,
-      habitat: state.habitat, stalk: state.stalk, stalkProgress: state.stalkProgress,
-      stalkTarget: state.stalkTarget, encounters: state.encounters,
-      dayDrift: state.dayDrift, lastDay: state.lastDay, month: state.month,
-      activeContract: state.activeContract, contractProgress: state.contractProgress,
-      contractsDone: state.contractsDone, contractsFailed: state.contractsFailed,
-      bestAnimal: state.bestAnimal, bestValue: state.bestValue,
-      dailyKills: state.dailyKills, dailyEarned: state.dailyEarned,
-      shotsFired: state.shotsFired, heartShots: state.heartShots,
-      wardenWarnings: state.wardenWarnings, currentEvent: state.currentEvent,
-      seasonMult: state.seasonMult, licenses: state.licenses,
-    }));
-  }
+  sys.serialize = function serialize() {
+    const out = {};
+    for (const key of HUNTING_STATE_KEYS) {
+      if (key === 'stalk') {
+        out[key] = stalking;
+        continue;
+      }
+      out[key] = JSON.parse(JSON.stringify(sys[key]));
+    }
+    return out;
+  };
 
-  function deserialize(d) {
-    if (!d || typeof d !== 'object') return;
-    for (const k of Object.keys(state)) {
-      if (d[k] !== undefined) state[k] = d[k];
+  sys.deserialize = function deserialize(saved) {
+    if (!saved || typeof saved !== 'object') return;
+    for (const key of HUNTING_STATE_KEYS) {
+      if (key === 'stalk') {
+        if (key in saved) stalking = !!saved[key];
+        continue;
+      }
+      if (key in saved) sys[key] = JSON.parse(JSON.stringify(saved[key]));
     }
     for (const a of HUNTING_ANIMALS) {
-      if (state.meat[a.id] === undefined) state.meat[a.id] = 0;
-      if (state.pelts[a.id] === undefined) state.pelts[a.id] = 0;
-      if (state.dayDrift[a.id] === undefined) state.dayDrift[a.id] = 0;
+      if (sys.meat[a.id] === undefined) sys.meat[a.id] = 0;
+      if (sys.pelts[a.id] === undefined) sys.pelts[a.id] = 0;
+      if (sys.dayDrift[a.id] === undefined) sys.dayDrift[a.id] = 0;
     }
-    refreshRank();
-  }
-
-  function stats() {
-    return {
-      rank: HUNTING_RANKS[state.rank].name,
-      xp: state.xp,
-      hunts: state.hunts,
-      kills: state.kills,
-      cleanKills: state.cleanKills,
-      misses: state.misses,
-      wounded: state.wounded,
-      spooked: state.spooked,
-      charged: state.charged,
-      accuracy: state.shotsFired ? Math.round((state.kills / state.shotsFired) * 100) : 0,
-      heartShots: state.heartShots,
-      earned: Math.round(state.earned),
-      spent: state.spent,
-      fines: state.fines,
-      trophies: state.trophies.length,
-      trophiesSold: state.trophiesSold,
-      upgrades: state.upgrades.length,
-      habitat: state.habitat,
-      stalking: state.stalk,
-      season: huntingSeasonFor(state.month).name,
-      month: state.month,
-      activeContract: state.activeContract ? state.activeContract.id : null,
-      contractsDone: state.contractsDone,
-      contractsFailed: state.contractsFailed,
-      bestAnimal: state.bestAnimal,
-      dailyKills: state.dailyKills,
-      dailyEarned: Math.round(state.dailyEarned),
-      event: state.currentEvent,
-    };
-  }
-
-  function hudLine() {
-    if (state.stalk) {
-      const a = HUNTING_ANIMALS.find((x) => x.id === state.stalk);
-      return `Hunt: stalking ${a ? a.name : state.stalk} — ${Math.floor(state.stalkProgress)}/${a ? a.trackTime : '?'} close`;
-    }
-    if (state.habitat) return `Hunt: ${state.habitat} — find sign to stalk`;
-    if (state.activeContract) return `Hunt: ${state.activeContract.name} ${state.contractProgress}/${state.activeContract.qty}`;
-    const meatTotal = Object.values(state.meat).reduce((a, b) => a + b, 0);
-    if (meatTotal > 0) return `Hunt: ${meatTotal} meat to sell`;
-    if (state.fines > 0) return `Hunt: warden fines $${state.fines} unpaid`;
-    return '';
-  }
-
-  function interact() {
-    const pos = getPos();
-    const nearWoods = Math.hypot(pos.x - 200, pos.z - 300) < 40;
-    if (!nearWoods) return false;
-    if (!state.habitat) { startHunt('pine'); return true; }
-    if (!state.stalk) { stalk(); return true; }
-    creep();
-    return true;
-  }
-
-  return {
-    state, startHunt, stalk, creep, shoot, endHunt,
-    sellMeat, sellPelts, sellAll, sellTrophy, buyUpgrade,
-    takeContract, deliverContract, abandonContract, payFine,
-    wardenCheck, priceBoard, habitatReport, dailyEvent,
-    tick, tickDay, serialize, deserialize, stats, hudLine, interact,
+    const next = huntingRankFor(sys.xp);
+    if (next > sys.rank) sys.rank = next;
   };
-}
 
-export const HUNTING_HELPERS = [
-  { id: 'tracker', name: 'Old Silas', wage: 30, skill: 'track', bonus: 0.2, desc: 'Reads sign like a book: +20% encounters.' },
-  { id: 'skinner', name: 'Mara the Skinner', wage: 45, skill: 'pelt', bonus: 0.25, desc: 'Clean skins: +25% pelt value.' },
-  { id: 'cook', name: 'Chef Ansel', wage: 55, skill: 'meat', bonus: 0.2, desc: 'Butchers neat: +20% meat value.' },
-  { id: 'warden-friend', name: 'Ranger Pete', wage: 70, skill: 'legal', bonus: 0.5, desc: 'Knows the warden: fines halved.' },
-];
+  sys.stats = function stats() {
+    const accuracy = sys.shotsFired ? Math.round((sys.kills / sys.shotsFired) * 100) : 0;
+    const meatTotal = HUNTING_ANIMALS.reduce((sum, a) => sum + (sys.meat[a.id] || 0), 0);
+    return {
+      rank: HUNTING_RANKS[sys.rank].name,
+      xp: sys.xp,
+      hunts: sys.hunts,
+      kills: sys.kills,
+      cleanKills: sys.cleanKills,
+      misses: sys.misses,
+      wounded: sys.wounded,
+      spooked: sys.spooked,
+      charged: sys.charged,
+      accuracy,
+      heartShots: sys.heartShots,
+      earned: Math.round(sys.earned),
+      spent: sys.spent,
+      fines: sys.fines,
+      trophies: sys.trophies.length,
+      trophiesSold: sys.trophiesSold,
+      upgrades: sys.upgrades.length,
+      habitat: sys.habitat,
+      stalking: stalking,
+      season: currentSeason().name,
+      month: sys.month,
+      activeContract: sys.activeContract ? sys.activeContract.id : null,
+      contractsDone: sys.contractsDone,
+      contractsFailed: sys.contractsFailed,
+      bestAnimal: sys.bestAnimal,
+      dailyKills: sys.dailyKills,
+      dailyEarned: Math.round(sys.dailyEarned),
+      event: sys.currentEvent,
+      meat: meatTotal,
+    };
+  };
 
-export const HUNTING_CHALLENGES = [
-  { id: 'first-blood', name: 'First Blood', target: 'kills', goal: 1, xp: 40, desc: 'Take your first animal.' },
-  { id: 'kills-25', name: 'Seasoned Hunter', target: 'kills', goal: 25, xp: 100, desc: 'Take 25 animals.' },
-  { id: 'heart-10', name: 'Dead Eye', target: 'heartShots', goal: 10, xp: 120, desc: 'Land 10 heart shots.' },
-  { id: 'earn-1000', name: 'Hunter’s Purse', target: 'earned', goal: 1000, xp: 120, desc: 'Earn $1,000 from the hunt.' },
-  { id: 'trophies-5', name: 'Trophy Wall', target: 'trophiesSold', goal: 5, xp: 150, desc: 'Sell 5 trophies.' },
-  { id: 'contracts-5', name: 'Reliable Gun', target: 'contractsDone', goal: 5, xp: 140, desc: 'Complete 5 hunting contracts.' },
-  { id: 'elk-1', name: 'Ridge King', target: 'bestValue', goal: 210, xp: 150, desc: 'Take game worth $210 or more.' },
-  { id: 'no-spook', name: 'Ghost in the Woods', target: 'spooked', goal: 0, xp: 80, desc: 'Finish a day with zero spooks.' },
-];
+  sys.hudLine = function hudLine() {
+    if (stalking && sys.stalkTarget) {
+      const animal = HUNTING_ANIMALS.find((a) => a.id === sys.stalkTarget);
+      return `Hunting ${sys.habitat} — stalking ${animal.name} ${Math.floor(sys.stalkProgress)}/${animal.trackTime}, close`;
+    }
+    if (sys.habitat) {
+      const habitat = HUNTING_HABITATS.find((h) => h.id === sys.habitat);
+      return `Hunting ${habitat.name} — find sign to stalk`;
+    }
+    if (sys.activeContract) {
+      return `Contract ${sys.activeContract.name} ${sys.contractProgress}/${sys.activeContract.qty}`;
+    }
+    const meatTotal = HUNTING_ANIMALS.reduce((sum, a) => sum + (sys.meat[a.id] || 0), 0);
+    if (meatTotal > 0) return `${meatTotal} meat to sell`;
+    if (sys.fines > 0) return `$${sys.fines} in fines unpaid`;
+    return '';
+  };
 
-export const HUNTING_ACHIEVEMENTS = [
-  { id: 'first-kill', name: 'First Kill', check: (s) => s.kills >= 1, desc: 'Take your first animal.' },
-  { id: 'first-trophy', name: 'First Trophy', check: (s) => s.trophiesSold >= 1 || s.trophies.length >= 1, desc: 'Recover your first trophy.' },
-  { id: 'bear-down', name: 'Bear Down', check: (s) => s.bestAnimal === 'bear', desc: 'Take down a black bear.' },
-  { id: 'rank-3', name: 'Big Game Hunter', check: (s) => s.rank >= 3, desc: 'Reach rank Big Game Hunter.' },
-  { id: 'rich-hunter', name: 'Rich Hunter', check: (s) => s.earned >= 3000, desc: 'Earn $3,000 from hunting.' },
-  { id: 'full-kit', name: 'Full Kit', check: (s) => s.upgrades.length >= 8, desc: 'Own every hunting upgrade.' },
-  { id: 'clean-day', name: 'Clean Day', check: (s) => s.dailyKills >= 5 && s.misses === 0, desc: 'Five kills, no misses, one day.' },
-  { id: 'no-fines', name: 'Clean Record', check: (s) => s.kills >= 20 && s.finesPaid === 0 && s.fines === 0, desc: 'Twenty kills, never fined.' },
-];
+  sys.interact = function interact() {
+    const pos = getPlayerPos();
+    const dx = (pos.x || 0) - 200;
+    const dz = (pos.z || 0) - 300;
+    if (Math.hypot(dx, dz) > 40) return false;
+    if (!sys.habitat) {
+      sys.startHunt('pine');
+      return true;
+    }
+    if (!stalking) {
+      sys.stalk();
+      return true;
+    }
+    sys.creep();
+    return true;
+  };
 
-export function huntingHelperBonus(helpers, skill) {
-  let bonus = 0;
-  for (const h of HUNTING_HELPERS) {
-    if (helpers.includes(h.id) && h.skill === skill) bonus += h.bonus;
-  }
-  return bonus;
-}
-
-export function huntingChallengeProgress(challenge, state) {
-  const v = state[challenge.target] || 0;
-  return { id: challenge.id, name: challenge.name, have: Math.floor(v), goal: challenge.goal, done: v >= challenge.goal };
+  return sys;
 }
 
 export function createHuntingExtras(system) {
-  const helpers = [];
-  const claimed = [];
+  const sys = system;
+  let hired = [];
+  let claimed = [];
   let wagesPaid = 0;
 
-  function hireHelper(id) {
-    const h = HUNTING_HELPERS.find((x) => x.id === id);
-    if (!h) return { ok: false, reason: 'no-such-helper' };
-    if (helpers.includes(id)) return { ok: false, reason: 'already-hired' };
-    helpers.push(id);
-    return { ok: true, id, name: h.name, wage: h.wage };
+  function nope(reason) {
+    return { ok: false, reason };
   }
 
-  function fireHelper(id) {
-    const i = helpers.indexOf(id);
-    if (i < 0) return { ok: false, reason: 'not-hired' };
-    helpers.splice(i, 1);
-    return { ok: true, id };
+  function yep(extra) {
+    return { ok: true, ...extra };
   }
 
-  function payWages() {
-    let due = 0;
-    for (const id of helpers) {
-      const h = HUNTING_HELPERS.find((x) => x.id === id);
-      due += h.wage;
-    }
-    wagesPaid += due;
-    return { due, helpers: [...helpers], totalPaid: wagesPaid };
-  }
-
-  function helperBonus(skill) {
-    return huntingHelperBonus(helpers, skill);
-  }
-
-  function challenges() {
-    return HUNTING_CHALLENGES.map((ch) => huntingChallengeProgress(ch, system.state));
-  }
-
-  function claimChallenge(id) {
-    const ch = HUNTING_CHALLENGES.find((x) => x.id === id);
-    if (!ch) return { ok: false, reason: 'no-such-challenge' };
-    if (claimed.includes(id)) return { ok: false, reason: 'already-claimed' };
-    const p = huntingChallengeProgress(ch, system.state);
-    if (!p.done) return { ok: false, reason: 'not-done', have: p.have, goal: p.goal };
-    claimed.push(id);
-    return { ok: true, id, xp: ch.xp };
-  }
-
-  function achievements() {
-    return HUNTING_ACHIEVEMENTS.map((a) => ({
-      id: a.id, name: a.name, desc: a.desc, done: !!a.check(system.state),
-    }));
-  }
-
-  function butcherAll() {
-    let meat = 0;
-    for (const a of HUNTING_ANIMALS) meat += system.state.meat[a.id] || 0;
-    return { ok: true, meat, note: 'The butcher weighs the lot.' };
-  }
-
-  function tanAll() {
-    let pelts = 0;
-    for (const a of HUNTING_ANIMALS) pelts += system.state.pelts[a.id] || 0;
-    return { ok: true, pelts, note: 'The tannery salts the lot.' };
-  }
-
-  function inventoryValue() {
-    let total = 0;
-    for (const a of HUNTING_ANIMALS) {
-      total += (system.state.meat[a.id] || 0) * 3;
-      total += (system.state.pelts[a.id] || 0) * 8;
-    }
-    return { ok: true, value: Math.round(total) };
-  }
-
-  return {
-    hireHelper, fireHelper, payWages, helperBonus, challenges,
-    claimChallenge, achievements, butcherAll, tanAll, inventoryValue,
-    get helpers() { return [...helpers]; },
-    get claimed() { return [...claimed]; },
-    get wagesPaid() { return wagesPaid; },
+  const extras = {
+    hireHelper(id) {
+      const helper = HUNTING_HELPERS.find((h) => h.id === id);
+      if (!helper) return nope('unknown-helper');
+      if (hired.includes(id)) return nope('already-hired');
+      hired.push(id);
+      return yep({ id, name: helper.name, wage: helper.wage });
+    },
+    fireHelper(id) {
+      if (!hired.includes(id)) return nope('not-hired');
+      hired = hired.filter((h) => h !== id);
+      return yep({ id });
+    },
+    payWages() {
+      let due = 0;
+      for (const id of hired) {
+        const helper = HUNTING_HELPERS.find((h) => h.id === id);
+        if (helper) due += helper.wage;
+      }
+      wagesPaid += due;
+      return yep({ due, helpers: [...hired], wagesPaid });
+    },
+    helperBonus(skill) {
+      let sum = 0;
+      for (const id of hired) {
+        const helper = HUNTING_HELPERS.find((h) => h.id === id);
+        if (helper && helper.skill === skill) sum += helper.bonus;
+      }
+      return sum;
+    },
+    challenges() {
+      return HUNTING_CHALLENGES.map((c) => huntingChallengeProgress(c, sys));
+    },
+    claimChallenge(id) {
+      const challenge = HUNTING_CHALLENGES.find((c) => c.id === id);
+      if (!challenge) return nope('unknown-challenge');
+      if (claimed.includes(id)) return nope('already-claimed');
+      const progress = huntingChallengeProgress(challenge, sys);
+      if (!progress.done) return nope('not-done');
+      claimed.push(id);
+      return yep({ id, xp: challenge.xp });
+    },
+    achievements() {
+      return HUNTING_ACHIEVEMENTS.map((a) => ({
+        id: a.id,
+        name: a.name,
+        desc: a.desc,
+        done: !!a.check(sys),
+      }));
+    },
+    butcherAll() {
+      let total = 0;
+      for (const a of HUNTING_ANIMALS) total += sys.meat[a.id] || 0;
+      return yep({ total, note: 'The butcher weighs the lot and nods at the haul.' });
+    },
+    tanAll() {
+      let total = 0;
+      for (const a of HUNTING_ANIMALS) total += sys.pelts[a.id] || 0;
+      return yep({ total, note: 'The tannery salts the lot and hangs it to cure.' });
+    },
+    inventoryValue() {
+      let meatTotal = 0;
+      let peltTotal = 0;
+      for (const a of HUNTING_ANIMALS) {
+        meatTotal += sys.meat[a.id] || 0;
+        peltTotal += sys.pelts[a.id] || 0;
+      }
+      return yep({ value: Math.round(meatTotal * 3 + peltTotal * 8) });
+    },
+    get helpers() {
+      return [...hired];
+    },
+    get claimed() {
+      return [...claimed];
+    },
+    get wagesPaid() {
+      return wagesPaid;
+    },
   };
+
+  return extras;
 }
-
-export const HUNTING_TIPS = [
-  { id: 'dawn', name: 'Dawn Is Gold', text: 'Animals feed at dawn. Be in the woods before first light.' },
-  { id: 'wind', name: 'Mind the Wind', text: 'Wind carries your scent. Approach from downwind.' },
-  { id: 'heart', name: 'Aim for the Heart', text: 'A heart shot pays a trophy bonus and wastes no meat.' },
-  { id: 'license-first', name: 'Licence First', text: 'One warden fine costs more than the licence.' },
-  { id: 'boar-care', name: 'Boar Care', text: 'A wounded boar charges. Keep your distance and your nerve.' },
-  { id: 'freeze', name: 'Freeze It', text: 'Meat spoils in three days without a freezer.' },
-  { id: 'rut', name: 'The Rut', text: 'During the rut, elk and deer forget to be careful.' },
-  { id: 'dog', name: 'A Good Dog', text: 'A tracker dog finds wounded game you would lose.' },
-];
-
-export const HUNTING_LEADERBOARD = [
-  { name: 'Old Silas', kills: 1400, desc: 'Sixty seasons in these woods.' },
-  { name: 'Ranger Pete', kills: 900, desc: 'The warden who hunts too.' },
-  { name: 'Ria', kills: 0, desc: 'You. Climbing.' },
-  { name: 'Mara', kills: 620, desc: 'Skins everything she shoots.' },
-  { name: 'Chef Ansel', kills: 310, desc: 'Hunts what he cooks.' },
-];
-
-export function huntingTipFor(day) {
-  return HUNTING_TIPS[day % HUNTING_TIPS.length];
-}
-
-export function huntingLeaderboardWith(playerKills) {
-  const board = HUNTING_LEADERBOARD.map((e) => ({
-    name: e.name, kills: e.name === 'Ria' ? playerKills : e.kills, desc: e.desc,
-  }));
-  board.sort((a, b) => b.kills - a.kills);
-  return board.map((e, i) => ({ rank: i + 1, ...e }));
-}
-
-export function huntingEfficiency(kills, shotsFired) {
-  if (shotsFired === 0) return 0;
-  return Math.round((kills / shotsFired) * 100);
-}
-
-export function huntingProfitPerDay(earned, hunts) {
-  if (hunts === 0) return 0;
-  return Math.round((earned / hunts) * 10) / 10;
-}
-
-export function huntingGrade(kills, misses, heartShots) {
-  const total = kills + misses;
-  if (total === 0) return 'D';
-  const acc = kills / total;
-  if (acc >= 0.9 && heartShots >= 3) return 'S';
-  if (acc >= 0.8) return 'A';
-  if (acc >= 0.6) return 'B';
-  if (acc >= 0.4) return 'C';
-  return 'D';
-}
-
-export const HUNTING_RECORDS = [
-  { id: 'most-kills', name: 'Most Kills', stat: 'kills', unit: 'kills', desc: 'Most animals taken.' },
-  { id: 'best-value', name: 'Best Animal', stat: 'bestValue', unit: '$', desc: 'Most valuable single animal.' },
-  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$', desc: 'Most money from hunting.' },
-  { id: 'heart-shots', name: 'Heart Shots', stat: 'heartShots', unit: 'shots', desc: 'Most clean heart shots.' },
-  { id: 'trophies', name: 'Trophies', stat: 'trophiesSold', unit: 'sold', desc: 'Most trophies sold.' },
-];
-
-export function huntingRecordFor(recordId, state) {
-  const r = HUNTING_RECORDS.find((x) => x.id === recordId);
-  if (!r) return null;
-  return { id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit };
-}
-
-export function huntingAllRecords(state) {
-  return HUNTING_RECORDS.map((r) => ({
-    id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit, desc: r.desc,
-  }));
-}
-
-export function huntingSummary(state) {
-  return `Hunt ${HUNTING_RANKS[state.rank].name}: ${state.kills} kills, ${state.heartShots} heart shots, $${Math.round(state.earned)} earned, ${state.trophies.length} trophies.`;
-}
-
-export function huntingNextGoal(state) {
-  if (state.kills < 5) return 'Take 5 animals.';
-  if (state.heartShots < 5) return 'Land 5 heart shots.';
-  if (state.rank < 2) return 'Reach rank Stalker.';
-  return 'Take down a ridge elk.';
-}
-
-export const HUNTING_QUICK_START = [
-  'Buy the hunting licence before your first hunt.',
-  'Start in the marsh at dawn — rabbits and ducks are easy.',
-  'Creep close before you shoot; a long shot usually misses.',
-  'Sell meat to the butcher and pelts to the tannery.',
-  'Take contracts for animals you already hunt.',
-  'Never hunt a bear without the bolt rifle.',
-];
-
-export function huntingQuickStart(step) {
-  return HUNTING_QUICK_START[step] || null;
-}
-
-export const HUNTING_META = {
-  system: 'hunting', version: '7-B1', author: 'builder-1',
-  animals: HUNTING_ANIMALS.length, habitats: HUNTING_HABITATS.length,
-  note: 'Wild Trails: stalk, shoot clean, sell the haul.',
-};

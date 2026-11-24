@@ -1,1143 +1,768 @@
-// Skydiving — Jett's drop zone at Solara Airfield.
-// Pay the plane, climb to altitude, and step out over the coast with
-// nothing between you and the ground but a rig and a plan. Stitch
-// tricks together in freefall — spins, flips, formation stars — then
-// open the canopy and ride it home. Sponsors pay for clean footage,
-// the crowd pays for courage, and every jump spends altitude you
-// never get back. Check the windsock, trust your altimeter.
-// Pure logic: no rendering, no imports. The game wires it through the
-// standard ctx { rng, getDay, getHour, getCash, addCash, addHeat, log,
-// getPlayerPos, getWeather } and drives tick/tickDay from the main loop.
-
 export const DROP_ZONES = [
-  { id: 'cloud-nine', name: 'Cloud Nine', price: 60, difficulty: 1,
-    steps: 4, duration: 20, risk: 0, altitude: 3000, wind: 1,
-    desc: 'Gentle air, big sky, perfect first jump.' },
-  { id: 'sunset-strip', name: 'Sunset Strip', price: 80, difficulty: 1,
-    steps: 5, duration: 25, risk: 0, altitude: 3500, wind: 1,
-    desc: 'Golden light over the coast at dusk.' },
-  { id: 'lake-mirror', name: 'Lake Mirror', price: 95, difficulty: 2,
-    steps: 5, duration: 25, risk: 1, altitude: 4000, wind: 2,
-    desc: 'A glass lake below, hard to judge distance.' },
-  { id: 'forest-canopy', name: 'Forest Canopy', price: 110, difficulty: 2,
-    steps: 5, duration: 30, risk: 1, altitude: 4000, wind: 2,
-    desc: 'Green carpet below, thermals that lift you.' },
-  { id: 'island-hop', name: 'Island Hop', price: 130, difficulty: 3,
-    steps: 6, duration: 30, risk: 1, altitude: 4500, wind: 2,
-    desc: 'Jump over one island, land on the next.' },
-  { id: 'desert-dunes', name: 'Desert Dunes', price: 150, difficulty: 3,
-    steps: 6, duration: 35, risk: 2, altitude: 4500, wind: 3,
-    desc: 'Sand seas and hard, shifty air.' },
-  { id: 'canyon-edge', name: 'Canyon Edge', price: 180, difficulty: 4,
-    steps: 7, duration: 35, risk: 2, altitude: 5000, wind: 3,
-    desc: 'Rock walls on both sides, no room for error.' },
-  { id: 'mountain-pass', name: 'Mountain Pass', price: 210, difficulty: 4,
-    steps: 7, duration: 40, risk: 3, altitude: 5500, wind: 3,
-    desc: 'Thin air and a landing strip like a ribbon.' },
-  { id: 'city-lights', name: 'City Lights', price: 240, difficulty: 5,
-    steps: 8, duration: 40, risk: 2, altitude: 5000, wind: 2,
-    desc: 'Night jump over the glittering grid.' },
-  { id: 'volcano-rim', name: 'Volcano Rim', price: 300, difficulty: 5,
-    steps: 8, duration: 45, risk: 3, altitude: 6000, wind: 3,
-    desc: 'Smoke, heat, and the best footage on earth.' },
+  { id: 'meadow-drop', name: 'Meadow Drop', price: 30, difficulty: 1, steps: 5, duration: 90, risk: 0.1, altitude: 8000, wind: 2, desc: 'A soft green meadow landing zone.' },
+  { id: 'river-drop', name: 'River Drop', price: 35, difficulty: 1, steps: 6, duration: 100, risk: 0.1, altitude: 9000, wind: 3, desc: 'Jump over the winding river below.' },
+  { id: 'lake-drop', name: 'Lake Drop', price: 45, difficulty: 2, steps: 7, duration: 120, risk: 0.2, altitude: 10000, wind: 3, desc: 'Blue water sparkles under the drop.' },
+  { id: 'canyon-drop', name: 'Canyon Drop', price: 55, difficulty: 2, steps: 8, duration: 140, risk: 0.2, altitude: 11000, wind: 4, desc: 'Red rock walls frame the fall.' },
+  { id: 'coastal-drop', name: 'Coastal Drop', price: 60, difficulty: 3, steps: 9, duration: 160, risk: 0.3, altitude: 12000, wind: 5, desc: 'Sea breeze and cliffs at the edge.' },
+  { id: 'mountain-drop', name: 'Mountain Drop', price: 70, difficulty: 3, steps: 10, duration: 180, risk: 0.4, altitude: 13000, wind: 6, desc: 'Thin air above the snowy peaks.' },
+  { id: 'desert-drop', name: 'Desert Drop', price: 50, difficulty: 3, steps: 8, duration: 150, risk: 0.3, altitude: 11000, wind: 5, desc: 'Golden dunes stretch to the horizon.' },
+  { id: 'city-drop', name: 'City Drop', price: 80, difficulty: 4, steps: 11, duration: 200, risk: 0.5, altitude: 13500, wind: 7, desc: 'Skyscrapers rush past as you fall.' },
+  { id: 'island-drop', name: 'Island Drop', price: 75, difficulty: 4, steps: 10, duration: 190, risk: 0.4, altitude: 12500, wind: 6, desc: 'A tiny island ringed by reef.' },
+  { id: 'sunset-drop', name: 'Sunset Drop', price: 90, difficulty: 5, steps: 12, duration: 220, risk: 0.5, altitude: 14000, wind: 8, desc: 'The famous golden-hour jump.' },
 ];
 
 export const SKYDIVE_TRICKS = [
-  { id: 'freefall-spin', name: 'Freefall Spin', value: 25, rarity: 0.26,
-    risk: 0, desc: 'A clean 360 in freefall.' },
-  { id: 'barrel-roll', name: 'Barrel Roll', value: 35, rarity: 0.18,
-    risk: 1, desc: 'One full roll, head over heels.' },
-  { id: 'backflip', name: 'Backflip', value: 50, rarity: 0.13,
-    risk: 1, desc: 'Backwards over the sky.' },
-  { id: 'sit-fly', name: 'Sit Fly', value: 65, rarity: 0.1,
-    risk: 1, desc: 'Flying seated, like the sky is a chair.' },
-  { id: 'angle-fly', name: 'Angle Fly', value: 80, rarity: 0.08,
-    risk: 2, desc: 'A steep diagonal dive across the sky.' },
-  { id: 'head-down', name: 'Head Down', value: 110, rarity: 0.06,
-    risk: 2, desc: 'Straight down, fastest a human can fall.' },
-  { id: 'canopy-swoop', name: 'Canopy Swoop', value: 140, rarity: 0.05,
-    risk: 2, desc: 'A low, fast pass under canopy.' },
-  { id: 'formation-star', name: 'Formation Star', value: 180, rarity: 0.04,
-    risk: 1, desc: 'Eight jumpers, one perfect star.' },
-  { id: 'wingsuit-glide', name: 'Wingsuit Glide', value: 260, rarity: 0.02,
-    risk: 3, desc: 'Flying like a bird past the canyon wall.' },
-  { id: 'tandem-flip', name: 'Tandem Flip', value: 340, rarity: 0.01,
-    risk: 3, desc: 'Two people, one flip, zero margin.' },
+  { id: 'belly-fly', name: 'Belly Fly', value: 6, rarity: 0.5, risk: 0.1, desc: 'The classic belly-to-earth fall.' },
+  { id: 'back-fly', name: 'Back Fly', value: 9, rarity: 0.45, risk: 0.15, desc: 'Flying on your back, sky above.' },
+  { id: 'sit-fly', name: 'Sit Fly', value: 14, rarity: 0.35, risk: 0.2, desc: 'Sitting upright in freefall.' },
+  { id: 'head-down', name: 'Head Down', value: 22, rarity: 0.28, risk: 0.3, desc: 'Diving headfirst at top speed.' },
+  { id: 'barrel-roll', name: 'Barrel Roll', value: 30, rarity: 0.2, risk: 0.25, desc: 'A full roll through the air.' },
+  { id: 'loop', name: 'Loop', value: 45, rarity: 0.14, risk: 0.35, desc: 'A clean loop in freefall.' },
+  { id: 'formation-4', name: 'Formation Four', value: 70, rarity: 0.09, risk: 0.2, desc: 'Four jumpers linked in the sky.' },
+  { id: 'formation-8', name: 'Formation Eight', value: 110, rarity: 0.06, risk: 0.3, desc: 'Eight jumpers in one pattern.' },
+  { id: 'wingsuit-glide', name: 'Wingsuit Glide', value: 180, rarity: 0.04, risk: 0.4, desc: 'Gliding like a bird in a wingsuit.' },
+  { id: 'canopy-swoop', name: 'Canopy Swoop', value: 320, rarity: 0.02, risk: 0.45, desc: 'A daring low swoop under canopy.' },
 ];
 
 export const SKYDIVE_UPGRADES = [
-  { id: 'jumpsuit', name: 'Pro Jumpsuit', cost: 90,
-    desc: 'Better grip, +4 trick slots per jump.', effect: 'carry-plus' },
-  { id: 'altimeter', name: 'Digital Altimeter', cost: 130,
-    desc: 'Never lose track of your height.', effect: 'altitude-plus' },
-  { id: 'helmetcam', name: 'Helmet Camera', cost: 280,
-    desc: 'Filmed tricks pay +20% from sponsors.', effect: 'price-plus' },
-  { id: 'rig', name: 'Lightweight Rig', cost: 200,
-    desc: 'Lighter rig, +6 trick slots per jump.', effect: 'carry-plus-2' },
-  { id: 'gps', name: 'Jump GPS', cost: 420,
-    desc: 'Tricks are 25% easier to chain.', effect: 'find-plus' },
-  { id: 'canopy', name: 'High-Performance Canopy', cost: 700,
-    desc: 'Altitude lasts +1000 on every jump.', effect: 'altitude-plus-2' },
-  { id: 'wingsuit', name: 'Wingsuit', cost: 850,
-    desc: 'Glide further, land bigger tricks.', effect: 'glide' },
-  { id: 'reserve', name: 'Smart Reserve', cost: 950,
-    desc: 'Hazards hurt half as much.', effect: 'safety' },
+  { id: 'canopy', name: 'Pro Canopy', cost: 420, desc: 'A bigger canopy for higher jumps.', effect: 'altitude max +1000' },
+  { id: 'find-plus', name: 'Trick Spotter', cost: 260, desc: 'Spots rare tricks more often.', effect: 'rare trick boost 1.25' },
+  { id: 'price-plus', name: 'Footage License', cost: 310, desc: 'Sells footage for more cash.', effect: 'sell price +20%' },
+  { id: 'carry-plus', name: 'Gear Bag', cost: 210, desc: 'Carry more footage per jump.', effect: 'carry cap +10' },
+  { id: 'altimeter', name: 'Digital Altimeter', cost: 180, desc: 'Exact altitude at a glance.', effect: 'altitude control up' },
+  { id: 'rig-pro', name: 'Pro Rig', cost: 340, desc: 'A lighter, faster rig.', effect: 'trick chance up' },
+  { id: 'suit-wings', name: 'Wingsuit', cost: 500, desc: 'Wings for long glides.', effect: 'glide time up' },
+  { id: 'camera-helmet', name: 'Camera Helmet', cost: 280, desc: 'Films every jump in 4K.', effect: 'footage value up' },
 ];
 
 export const SKYDIVE_RANKS = [
-  { level: 0, name: 'First Timer', xp: 0,
-    perk: 'Gentle zones pay base rate.' },
-  { level: 1, name: 'Licensed Jumper', xp: 120,
-    perk: '+10% sponsor pay.' },
-  { level: 2, name: 'Formation Flyer', xp: 300,
-    perk: 'Formation tricks open up.' },
-  { level: 3, name: 'Freeflyer', xp: 620,
-    perk: '+20% sponsor pay, head-down unlocked.' },
-  { level: 4, name: 'Sky Master', xp: 1100,
-    perk: '+30% sponsor pay, wingsuit glides.' },
+  { level: 0, name: 'Cloud Watcher', xp: 0, perk: 'Tandem jumps unlocked' },
+  { level: 1, name: 'Freefall Novice', xp: 120, perk: 'Solo jumps open up' },
+  { level: 2, name: 'Formation Flyer', xp: 300, perk: 'Formation tricks pay better' },
+  { level: 3, name: 'Wingsuit Pro', xp: 620, perk: 'Rare tricks appear more often' },
+  { level: 4, name: 'Stratosphere Legend', xp: 1100, perk: 'The sunset drop holds no fear' },
 ];
 
 export const SKYDIVE_EVENTS = [
-  { id: 'boogie-week', name: 'Boogie Week',
-    desc: 'Two hundred jumpers flood the airfield.' },
-  { id: 'thermal-day', name: 'Thermal Day',
-    desc: 'Warm air lifts canopies higher than usual.' },
-  { id: 'cloud-ceiling', name: 'Low Ceiling',
-    desc: 'Clouds sit at two thousand feet.' },
-  { id: 'wind-gust', name: 'Wind Gusts',
-    desc: 'Gusts to thirty knots across the field.' },
-  { id: 'sunset-special', name: 'Sunset Special',
-    desc: 'Everyone wants the golden-hour jump.' },
-  { id: 'record-attempt', name: 'Record Attempt',
-    desc: 'A forty-way formation is forming.' },
-  { id: 'camera-day', name: 'Camera Day',
-    desc: 'A film crew is shooting at the field.' },
-  { id: 'rain-front', name: 'Rain Front',
-    desc: 'A front rolls in by noon.' },
-  { id: 'clear-blue', name: 'Clear Blue',
-    desc: 'Not a cloud from here to the horizon.' },
-  { id: 'tandem-rush', name: 'Tandem Rush',
-    desc: 'A busload of first-timers arrives.' },
+  { id: 'blue-skies', name: 'Blue Skies', desc: 'Not a cloud in the sky.' },
+  { id: 'boogie-week', name: 'Boogie Week', desc: 'Jumpers arrive from everywhere.' },
+  { id: 'wind-gusts', name: 'Wind Gusts', desc: 'Gusty wind shakes the planes.' },
+  { id: 'record-attempt', name: 'Record Attempt', desc: 'A big formation record is tried.' },
+  { id: 'cloud-cover', name: 'Cloud Cover', desc: 'Low cloud hides the ground.' },
+  { id: 'airshow', name: 'Airshow Day', desc: 'Crowds gather to watch jumps.' },
+  { id: 'sunset-special', name: 'Sunset Special', desc: 'Golden light over the zone.' },
+  { id: 'rain-delay', name: 'Rain Delay', desc: 'Rain holds the planes on the ground.' },
+  { id: 'new-plane', name: 'New Plane', desc: 'A faster jump plane arrives.' },
+  { id: 'night-jump', name: 'Night Jump', desc: 'Glow sticks light the night sky.' },
 ];
 
 export const SKYDIVE_CONTRACTS = [
-  { id: 'spins-12', name: 'Spin Reel', material: 'freefall-spin', qty: 12,
-    pay: 320, days: 1, rep: 1,
-    desc: 'A sponsor needs twelve clean spins on film.' },
-  { id: 'flips-8', name: 'Flip Reel', material: 'backflip', qty: 8,
-    pay: 480, days: 2, rep: 2,
-    desc: 'An energy drink wants eight backflips.' },
-  { id: 'swoops-5', name: 'Swoop Reel', material: 'canopy-swoop', qty: 5,
-    pay: 700, days: 2, rep: 3,
-    desc: 'A canopy brand wants five low swoops.' },
-  { id: 'stars-3', name: 'Star Formation', material: 'formation-star', qty: 3,
-    pay: 650, days: 3, rep: 3,
-    desc: 'A magazine cover needs three formation stars.' },
-  { id: 'glides-2', name: 'Wingsuit Film', material: 'wingsuit-glide', qty: 2,
-    pay: 800, days: 3, rep: 4,
-    desc: 'A documentary crew needs two canyon glides.' },
-  { id: 'mixed-25', name: 'Showreel', material: 'mixed', qty: 25,
-    pay: 550, days: 2, rep: 2,
-    desc: 'Any twenty-five tricks for the season reel.' },
+  { id: 'belly-order', name: 'Belly Footage', material: 'belly-fly', qty: 6, pay: 130, days: 3, rep: 10, desc: 'A school wants belly-fly footage.' },
+  { id: 'loop-order', name: 'Loop Footage', material: 'loop', qty: 3, pay: 280, days: 4, rep: 20, desc: 'A channel wants three loops.' },
+  { id: 'formation-order', name: 'Formation Footage', material: 'formation-4', qty: 2, pay: 400, days: 4, rep: 25, desc: 'A sponsor wants formation footage.' },
+  { id: 'wingsuit-order', name: 'Wingsuit Footage', material: 'wingsuit-glide', qty: 2, pay: 550, days: 5, rep: 30, desc: 'A film wants wingsuit glides.' },
+  { id: 'sit-order', name: 'Sit-Fly Footage', material: 'sit-fly', qty: 5, pay: 200, days: 3, rep: 15, desc: 'A magazine wants sit-fly shots.' },
+  { id: 'swoop-order', name: 'Swoop Footage', material: 'canopy-swoop', qty: 1, pay: 700, days: 5, rep: 35, desc: 'A brand wants one canopy swoop.' },
 ];
 
 export const SKYDIVE_CHALLENGES = [
-  { id: 'jumps-10', name: 'Ten Jumps', target: 'sessions', goal: 10, xp: 90,
-    desc: 'Finish 10 jumps.' },
-  { id: 'tricks-100', name: 'Century of Tricks', target: 'findsFound', goal: 100, xp: 110,
-    desc: 'Land 100 tricks.' },
-  { id: 'earn-1000', name: 'Grand in the Sky', target: 'earned', goal: 1000, xp: 130,
-    desc: 'Earn $1,000 from skydiving.' },
-  { id: 'streak-8', name: 'Clean Eight', target: 'bestStreak', goal: 8, xp: 100,
-    desc: 'Eight clean steps in a row.' },
-  { id: 'contracts-3', name: 'Reliable Jumper', target: 'contractsDone', goal: 3, xp: 120,
-    desc: 'Complete 3 sponsor contracts.' },
-  { id: 'actions-200', name: 'Two Hundred Tricks', target: 'actions', goal: 200, xp: 140,
-    desc: 'Perform 200 trick steps.' },
-  { id: 'first-trick', name: 'First Trick', target: 'findsFound', goal: 1, xp: 60,
-    desc: 'Land your first trick.' },
-  { id: 'night-5', name: 'Night Five', target: 'sessions', goal: 5, xp: 80,
-    desc: 'Finish 5 jumps.' },
+  { id: 'first-jump', name: 'First Jump', target: 'sessions', goal: 1, xp: 20, desc: 'Finish one jump session.' },
+  { id: 'five-jumps', name: 'Five Jumps', target: 'sessions', goal: 5, xp: 60, desc: 'Finish five jump sessions.' },
+  { id: 'trick-ten', name: 'Trick Ten', target: 'findsFound', goal: 10, xp: 40, desc: 'Perform ten tricks.' },
+  { id: 'trick-fifty', name: 'Trick Fifty', target: 'findsFound', goal: 50, xp: 120, desc: 'Perform fifty tricks.' },
+  { id: 'earn-five-hundred', name: 'Earn Five Hundred', target: 'earned', goal: 500, xp: 100, desc: 'Earn 500 cash in total.' },
+  { id: 'sell-twenty', name: 'Sell Twenty', target: 'findsSold', goal: 20, xp: 80, desc: 'Sell twenty clips.' },
+  { id: 'contract-three', name: 'Contract Three', target: 'contractsDone', goal: 3, xp: 90, desc: 'Deliver three contracts.' },
+  { id: 'steps-hundred', name: 'Hundred Steps', target: 'stepsDone', goal: 100, xp: 110, desc: 'Take a hundred jump steps.' },
 ];
 
 export const SKYDIVE_ACHIEVEMENTS = [
-  { id: 'first-jump', name: 'First Jump', check: (s) => s.sessions >= 1,
-    desc: 'Finish your first jump.' },
-  { id: 'wingsuit-club', name: 'Wingsuit Club', check: (s) => (s.inventory['wingsuit-glide'] || 0) + s.findsSold >= 1,
-    desc: 'Land a wingsuit glide.' },
-  { id: 'rank-3', name: 'Freeflyer', check: (s) => s.rank >= 3,
-    desc: 'Reach rank Freeflyer.' },
-  { id: 'rich-sky', name: 'Sky Rich', check: (s) => s.earned >= 3000,
-    desc: 'Earn $3,000 from skydiving.' },
-  { id: 'full-kit', name: 'Full Kit', check: (s) => s.upgrades.length >= 8,
-    desc: 'Own every skydiving upgrade.' },
-  { id: 'no-hazard', name: 'Clean Canopy', check: (s) => s.sessions >= 10 && s.hazardsTaken === 0,
-    desc: 'Ten jumps with zero hazards.' },
-  { id: 'big-yield', name: 'Big Yield', check: (s) => s.bestSessionYield >= 500,
-    desc: 'One jump worth $500 or more.' },
-  { id: 'star-10', name: 'Star Ten', check: (s) => s.actions >= 50,
-    desc: 'Fifty trick steps in the air.' },
+  { id: 'feet-off', name: 'Feet Off', check: (s) => s.sessions >= 1, desc: 'Finish your first jump.' },
+  { id: 'sky-regular', name: 'Sky Regular', check: (s) => s.sessions >= 10, desc: 'Finish ten jumps.' },
+  { id: 'trickster', name: 'Trickster', check: (s) => s.findsFound >= 25, desc: 'Perform twenty-five tricks.' },
+  { id: 'air-artist', name: 'Air Artist', check: (s) => s.findsFound >= 100, desc: 'Perform a hundred tricks.' },
+  { id: 'rich-jumper', name: 'Rich Jumper', check: (s) => s.earned >= 1000, desc: 'Earn a thousand cash.' },
+  { id: 'deal-maker', name: 'Deal Maker', check: (s) => s.contractsDone >= 5, desc: 'Deliver five contracts.' },
+  { id: 'streak-five', name: 'Streak Five', check: (s) => s.bestStreak >= 5, desc: 'Reach a streak of five.' },
+  { id: 'sky-master', name: 'Sky Master', check: (s) => s.rank >= 4, desc: 'Reach the top rank.' },
 ];
 
 export const SKYDIVE_TIPS = [
-  { id: 'altitude-first', name: 'Altitude First',
-    text: 'Altitude is your only currency. Spend it on tricks, not panic.' },
-  { id: 'morning-air', name: 'Morning Air',
-    text: 'The air is calmest before nine. Jump early.' },
-  { id: 'helmetcam-money', name: 'Camera Money',
-    text: 'Sponsors pay for footage. Film everything.' },
-  { id: 'formation-first', name: 'Formation First',
-    text: 'Stars pay better than solo spins.' },
-  { id: 'wind-check', name: 'Wind Check',
-    text: 'Check the windsock before every load.' },
-  { id: 'contract-first', name: 'Contracts First',
-    text: 'Take a sponsor contract, then jump for its tricks.' },
-  { id: 'canopy-early', name: 'Canopy Early',
-    text: 'Open high when the wind is up.' },
-  { id: 'reserve-check', name: 'Reserve Check',
-    text: 'The smart reserve is the cheapest insurance in the sky.' },
+  { id: 'tip-alt', name: 'Watch Altitude', text: 'Land before your altitude runs out.' },
+  { id: 'tip-rare', name: 'Rare Tricks', text: 'High zones hide the rarest tricks.' },
+  { id: 'tip-rank', name: 'Rank Up', text: 'Higher rank boosts rare tricks.' },
+  { id: 'tip-sell', name: 'Sell Often', text: 'Sell footage before the drift turns.' },
+  { id: 'tip-contract', name: 'Contracts Pay', text: 'Contracts pay more than raw sales.' },
+  { id: 'tip-weather', name: 'Storm Watch', text: 'Storms and hurricanes block jumps.' },
+  { id: 'tip-cap', name: 'Carry Cap', text: 'Upgrade your bag to carry more.' },
+  { id: 'tip-season', name: 'Season Prices', text: 'Summer prices beat winter prices.' },
 ];
 
 export const SKYDIVE_LEADERBOARD = [
-  { name: 'Vera the Vet', value: 9400, desc: 'Nine thousand jumps, zero bad landings.' },
-  { name: 'Dario', value: 6800, desc: 'Formation captain, forty-way regular.' },
-  { name: 'Jett', value: 0, desc: 'You. Climbing.' },
-  { name: 'Sana', value: 4100, desc: 'Wingsuit pilot, canyon regular.' },
-  { name: 'Milo', value: 2200, desc: 'Films everything, lands most of it.' },
+  { name: 'Skye', value: 950, desc: 'Top jumper of the season.' },
+  { name: 'Jet', value: 720, desc: 'Fastest fall in the club.' },
+  { name: 'Aria', value: 540, desc: 'Formation queen of the sky.' },
+  { name: 'Marco', value: 310, desc: 'Steady jumper, steady hands.' },
+  { name: 'You', value: 0, desc: 'Your score on the board.' },
 ];
 
 export const SKYDIVE_RECORDS = [
-  { id: 'most-jumps', name: 'Most Jumps', stat: 'sessions', unit: 'jumps',
-    desc: 'Most jumps finished.' },
-  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$',
-    desc: 'Most money earned from skydiving.' },
-  { id: 'most-tricks', name: 'Most Tricks', stat: 'findsFound', unit: 'tricks',
-    desc: 'Most tricks landed.' },
-  { id: 'best-streak', name: 'Best Streak', stat: 'bestStreak', unit: 'steps',
-    desc: 'Longest clean streak.' },
-  { id: 'best-jump', name: 'Best Jump', stat: 'bestSessionYield', unit: '$',
-    desc: 'Best single-jump yield.' },
+  { id: 'most-jumps', name: 'Most Jumps', stat: 'sessions', unit: 'jumps', desc: 'Most jump sessions finished.' },
+  { id: 'most-tricks', name: 'Most Tricks', stat: 'findsFound', unit: 'tricks', desc: 'Most tricks performed.' },
+  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: 'cash', desc: 'Most cash earned.' },
+  { id: 'best-yield', name: 'Best Yield', stat: 'bestSessionYield', unit: 'cash', desc: 'Best single jump yield.' },
+  { id: 'best-streak', name: 'Best Streak', stat: 'bestStreak', unit: 'streak', desc: 'Longest good streak.' },
 ];
 
 export const SKYDIVE_MARKET = [
-  { id: 'spin-boom', name: 'Spin Boom', finds: ['freefall-spin'], mult: 1.3,
-    desc: 'A viral reel makes spins hot.' },
-  { id: 'flip-rush', name: 'Flip Rush', finds: ['backflip'], mult: 1.4,
-    desc: 'An ad campaign wants backflips.' },
-  { id: 'swoop-week', name: 'Swoop Week', finds: ['canopy-swoop'], mult: 1.5,
-    desc: 'Canopy brands are bidding up swoops.' },
-  { id: 'star-season', name: 'Star Season', finds: ['formation-star'], mult: 1.45,
-    desc: 'Formation season is here.' },
-  { id: 'wingsuit-film', name: 'Wingsuit Film', finds: ['wingsuit-glide'], mult: 1.6,
-    desc: 'A film crew pays double for glides.' },
-  { id: 'head-down-day', name: 'Head Down Day', finds: ['head-down'], mult: 1.35,
-    desc: 'Speed week at the field.' },
-  { id: 'roll-glut', name: 'Roll Glut', finds: ['barrel-roll'], mult: 0.7,
-    desc: 'Everyone is rolling; sponsors yawn.' },
-  { id: 'sit-dip', name: 'Sit Dip', finds: ['sit-fly'], mult: 0.75,
-    desc: 'Sit-fly is out of fashion this week.' },
+  { id: 'clip-shop', name: 'Clip Shop', finds: ['belly-fly', 'back-fly', 'sit-fly'], mult: 1.1, desc: 'Buys common jump clips.' },
+  { id: 'trick-channel', name: 'Trick Channel', finds: ['barrel-roll', 'loop'], mult: 1.25, desc: 'Pays well for trick footage.' },
+  { id: 'formation-tv', name: 'Formation TV', finds: ['formation-4', 'formation-8'], mult: 1.4, desc: 'Top price for formations.' },
+  { id: 'wingsuit-film', name: 'Wingsuit Film', finds: ['wingsuit-glide'], mult: 1.5, desc: 'Best buyer for wingsuit glides.' },
+  { id: 'swoop-brand', name: 'Swoop Brand', finds: ['canopy-swoop'], mult: 1.6, desc: 'Pays a premium for swoops.' },
+  { id: 'sky-magazine', name: 'Sky Magazine', finds: ['head-down', 'loop'], mult: 1.3, desc: 'Magazine buys head-down shots.' },
+  { id: 'tourist-stall', name: 'Tourist Stall', finds: ['belly-fly', 'back-fly'], mult: 1.05, desc: 'Quick sales to tourists.' },
+  { id: 'rare-buyer', name: 'Rare Buyer', finds: ['canopy-swoop', 'wingsuit-glide', 'formation-8'], mult: 1.45, desc: 'Buys only the rarest footage.' },
 ];
 
 export const SKYDIVE_SEASONS = [
-  { id: 'spring', name: 'Spring', mult: 1.1,
-    desc: 'Fresh winds and full bookings.' },
-  { id: 'summer', name: 'Summer', mult: 1.2,
-    desc: 'Peak season, everyone is jumping.' },
-  { id: 'autumn', name: 'Autumn', mult: 1.0,
-    desc: 'Steady work, thinner crowds.' },
-  { id: 'winter', name: 'Winter', mult: 0.85,
-    desc: 'Cold air, quiet days.' },
+  { id: 'spring', name: 'Spring', mult: 1.0, desc: 'Mild air, steady prices.' },
+  { id: 'summer', name: 'Summer', mult: 1.15, desc: 'Peak season, best prices.' },
+  { id: 'autumn', name: 'Autumn', mult: 0.95, desc: 'Cooling air, softer prices.' },
+  { id: 'winter', name: 'Winter', mult: 0.85, desc: 'Cold air, lowest prices.' },
 ];
 
 export const SKYDIVE_SEASONAL = [
-  { season: 'summer', find: 'formation-star', mult: 1.3 },
-  { season: 'summer', find: 'freefall-spin', mult: 1.2 },
-  { season: 'spring', find: 'canopy-swoop', mult: 1.25 },
-  { season: 'autumn', find: 'wingsuit-glide', mult: 1.35 },
-  { season: 'autumn', find: 'head-down', mult: 1.2 },
-  { season: 'winter', find: 'backflip', mult: 1.25 },
-  { season: 'winter', find: 'angle-fly', mult: 1.3 },
+  { season: 'summer', find: 'canopy-swoop', mult: 1.3 },
+  { season: 'summer', find: 'belly-fly', mult: 1.2 },
+  { season: 'spring', find: 'formation-4', mult: 1.2 },
   { season: 'spring', find: 'sit-fly', mult: 1.15 },
+  { season: 'autumn', find: 'wingsuit-glide', mult: 1.25 },
+  { season: 'autumn', find: 'loop', mult: 1.1 },
+  { season: 'winter', find: 'formation-8', mult: 1.4 },
+  { season: 'winter', find: 'head-down', mult: 1.2 },
 ];
 
 export const SKYDIVE_QUICK_START = [
-  'Jump the gentle zones first and learn your altitude burn.',
-  'Film every trick — sponsors pay for footage.',
-  'Buy the altimeter before the high zones.',
-  'Check the wind before every load.',
-  'Take sponsor contracts for tricks you already fly.',
-  'Save for the high-performance canopy.',
+  'Book the Meadow Drop and jump.',
+  'Perform tricks until altitude runs low.',
+  'Sell footage at the Clip Shop.',
+  'Buy the Gear Bag upgrade early.',
+  'Take a belly footage contract.',
+  'Save up for the Pro Canopy.',
 ];
 
 export const SKYDIVE_HELPERS = [
-  { id: 'coach', name: 'Vera the Coach', wage: 35, skill: 'collect', bonus: 0.15,
-    desc: 'A coach in the plane: +15% trick yield.' },
-  { id: 'cameraman', name: 'Milo the Cameraman', wage: 45, skill: 'find', bonus: 0.25,
-    desc: 'Flies with you: +25% rare tricks filmed.' },
-  { id: 'rigger', name: 'Dario the Rigger', wage: 55, skill: 'carry', bonus: 0.4,
-    desc: 'Packs fast: +40% trick slots.' },
-  { id: 'agent', name: 'Quiet Ana', wage: 75, skill: 'sell', bonus: 0.12,
-    desc: 'Knows the sponsors: +12% sponsor pay.' },
+  { id: 'packer', name: 'Packer', wage: 20, skill: 'packing', bonus: 0.1, desc: 'Packs every rig perfectly.' },
+  { id: 'coach', name: 'Jump Coach', wage: 40, skill: 'coaching', bonus: 0.25, desc: 'Teaches tricks that sell.' },
+  { id: 'cameraman', name: 'Cameraman', wage: 30, skill: 'filming', bonus: 0.15, desc: 'Films jumps from the air.' },
+  { id: 'safety-officer', name: 'Safety Officer', wage: 35, skill: 'safety', bonus: 0.2, desc: 'Keeps every jump safe.' },
 ];
 
-export function skydivingRankFor(xp) {
-  let rank = 0;
-  for (let i = 0; i < SKYDIVE_RANKS.length; i++) {
-    if (xp >= SKYDIVE_RANKS[i].xp) rank = i;
-  }
-  return rank;
-}
+export const SKYDIVING_META = { system: 'skydiving', version: '7c-B2', author: 'builder-2', dataCount: 10, findCount: 10, upgradeCount: 8, rankCount: 5 };
 
-export function skydivingPriceFor(trickId, dayDrift, rank, upgrades) {
-  const f = SKYDIVE_TRICKS.find((x) => x.id === trickId);
-  if (!f) return 0;
-  let price = f.value;
-  price *= 1 + (dayDrift[trickId] || 0);
-  price *= 1 + rank * 0.1;
-  if (upgrades.includes('helmetcam')) price *= 1.2;
-  return Math.max(1, Math.round(price * 10) / 10);
-}
+const zoneById = (id) => DROP_ZONES.find((z) => z.id === id) || null;
+const trickById = (id) => SKYDIVE_TRICKS.find((t) => t.id === id) || null;
+const upList = (v) => (Array.isArray(v) ? v : (v && Array.isArray(v.upgrades) ? v.upgrades : []));
+const rkOf = (v) => (typeof v === 'number' ? v : (v && typeof v.rank === 'number' ? v.rank : 0));
 
-export function skydivingCarryCap(upgrades) {
-  let cap = 12;
-  if (upgrades.includes('jumpsuit')) cap += 4;
-  if (upgrades.includes('rig')) cap += 6;
-  return cap;
-}
+export const skydivingRankFor = (xp) => {
+  let out = 0;
+  SKYDIVE_RANKS.forEach((r) => { if (xp >= r.xp) out = r.level; });
+  return out;
+};
 
-export function skydivingAltitudeMax(upgrades) {
-  let max = 4000;
-  if (upgrades.includes('canopy')) max += 1000;
-  return max;
-}
+export const skydivingAltitudeMax = (upgrades) => (upList(upgrades).includes('canopy') ? 5000 : 4000);
 
-export function skydivingEventMult(eventId, trickId) {
-  const ev = SKYDIVE_MARKET.find((x) => x.id === eventId);
-  if (!ev) return 1;
-  return ev.finds.includes(trickId) ? ev.mult : 1;
-}
+export const skydivingPriceFor = (trickId, drift, rank, upgrades) => {
+  const t = trickById(trickId);
+  if (!t) return 0;
+  const d = typeof drift === 'number' ? drift : 0;
+  const rk = rkOf(rank);
+  const owned = Array.isArray(upgrades) ? upgrades : upList(rank);
+  let p = t.value * (1 + d) * (1 + rk * 0.1);
+  if (owned.includes('price-plus')) p *= 1.2;
+  return Math.max(1, Math.round(p * 10) / 10);
+};
 
-export function skydivingSeasonMult(seasonId) {
+export const skydivingCarryCap = (rank, upgrades) => {
+  const owned = Array.isArray(upgrades) ? upgrades : upList(rank);
+  return 12 + rkOf(rank) * 2 + (owned.includes('carry-plus') ? 10 : 0);
+};
+
+export const skydivingScore = (sessions, yld, hazards) => Math.max(0, sessions * 10 + Math.round(yld) - hazards * 5);
+
+export const skydivingGrade = (score) => (score >= 400 ? 'S' : score >= 250 ? 'A' : score >= 140 ? 'B' : score >= 60 ? 'C' : 'D');
+
+export const skydivingWeeklyGoal = (state) => {
+  const s = state || {};
+  const mk = (have, goal) => ({ have, goal, done: have >= goal });
+  const sessions = mk(s.sessions || 0, 5);
+  const sold = mk(s.findsSold || 0, 40);
+  const earned = mk(s.earned || 0, 600);
+  return { sessions, sold, earned, allDone: sessions.done && sold.done && earned.done };
+};
+
+export const skydivingEfficiency = (state) => {
+  const s = state || {};
+  if (!s.sessions) return 100;
+  return Math.round((Math.max(0, s.sessions - (s.contractsFailed || 0)) / s.sessions) * 100);
+};
+
+export const skydivingProfitPerJump = (state) => {
+  const s = state || {};
+  return s.sessions ? Math.round(((s.earned || 0) / s.sessions) * 10) / 10 : 0;
+};
+
+export const skydivingInventoryValue = (state) => {
+  const s = state || {};
+  let total = 0;
+  Object.keys(s.inventory || {}).forEach((id) => {
+    total += (s.inventory[id] || 0) * skydivingPriceFor(id, s.dayDrift || 0, s.rank || 0, s.upgrades || []);
+  });
+  return Math.round(total * 10) / 10;
+};
+
+export const skydivingSummary = (state) => {
+  const s = state || {};
+  const rn = (SKYDIVE_RANKS[s.rank || 0] || {}).name || 'Cloud Watcher';
+  return 'Skydiving: ' + rn + ' with ' + (s.sessions || 0) + ' jumps, ' + (s.findsFound || 0) + ' tricks and ' + (s.earned || 0) + ' cash earned.';
+};
+
+export const skydivingNextGoal = (state) => {
+  const s = state || {};
+  if (!(s.sessions || 0)) return 'Finish your first jump.';
+  if ((s.sessions || 0) < 5) return 'Finish 5 jumps.';
+  if ((s.earned || 0) < 500) return 'Earn 500 cash in total.';
+  if ((s.rank || 0) < 4) return 'Reach rank ' + SKYDIVE_RANKS[(s.rank || 0) + 1].name + '.';
+  return 'Become a legend of Skydiving.';
+};
+
+export const skydivingRecordFor = (id, state) => {
+  const rec = SKYDIVE_RECORDS.find((r) => r.id === id);
+  if (!rec) return null;
+  return { id: rec.id, name: rec.name, stat: rec.stat, unit: rec.unit, desc: rec.desc, value: (state && state[rec.stat]) || 0 };
+};
+
+export const skydivingAllRecords = (state) => SKYDIVE_RECORDS.map((r) => skydivingRecordFor(r.id, state));
+
+export const skydivingLeaderboardWith = (playerScore) => {
+  const board = SKYDIVE_LEADERBOARD.map((e) => ({ name: e.name, value: e.name === 'You' ? playerScore : e.value, desc: e.desc }));
+  board.sort((a, b) => b.value - a.value);
+  return board.map((e, i) => ({ rank: i + 1, name: e.name, value: e.value, desc: e.desc }));
+};
+
+export const skydivingEventFor = (day) => SKYDIVE_MARKET[((day || 0) % SKYDIVE_MARKET.length + SKYDIVE_MARKET.length) % SKYDIVE_MARKET.length];
+
+export const skydivingEventMult = (eventId, trickId) => {
+  const ev = SKYDIVE_MARKET.find((m) => m.id === eventId);
+  return ev && ev.finds.includes(trickId) ? ev.mult : 1;
+};
+
+export const skydivingSeasonMult = (seasonId) => {
   const s = SKYDIVE_SEASONS.find((x) => x.id === seasonId);
   return s ? s.mult : 1;
-}
+};
 
-export function skydivingEventFor(day) {
-  return SKYDIVE_MARKET[day % SKYDIVE_MARKET.length];
-}
-
-export function skydivingSeasonalPriceMult(seasonId, trickId) {
+export const skydivingSeasonalPriceMult = (seasonId, trickId) => {
   const row = SKYDIVE_SEASONAL.find((x) => x.season === seasonId && x.find === trickId);
   return row ? row.mult : 1;
-}
+};
 
-export function skydivingBestSeason(trickId) {
-  let best = null;
-  let bestMult = 0;
-  for (const row of SKYDIVE_SEASONAL) {
-    if (row.find === trickId && row.mult > bestMult) { bestMult = row.mult; best = row.season; }
+export const skydivingBestBuyer = () => SKYDIVE_MARKET.reduce((b, m) => (m.mult > b.mult ? m : b), SKYDIVE_MARKET[0]);
+
+export const skydivingBestSeason = () => SKYDIVE_SEASONS.reduce((b, s) => (s.mult > b.mult ? s : b), SKYDIVE_SEASONS[0]);
+
+export const skydivingTipFor = (day) => SKYDIVE_TIPS[((day || 0) % SKYDIVE_TIPS.length + SKYDIVE_TIPS.length) % SKYDIVE_TIPS.length];
+
+export const skydivingQuickStart = () => SKYDIVE_QUICK_START.slice();
+
+export const skydivingChallengeProgress = (challenge, state) => {
+  const have = (state && state[challenge.target]) || 0;
+  return { id: challenge.id, name: challenge.name, have, goal: challenge.goal, done: have >= challenge.goal, xp: challenge.xp };
+};
+
+export const skydivingProgressPercent = (state) => {
+  const s = state || {};
+  if (!s.sessions) return 0;
+  return Math.round((Math.max(0, s.sessions - (s.contractsFailed || 0)) / s.sessions) * 100);
+};
+
+export const skydivingTotalValue = (state) => {
+  const s = state || {};
+  return Math.round((skydivingInventoryValue(s) + (s.earned || 0)) * 10) / 10;
+};
+
+export const skydivingHelperBonus = (helperIds, skill) => (helperIds || []).reduce((sum, id) => {
+  const h = SKYDIVE_HELPERS.find((x) => x.id === id);
+  return sum + (h && h.skill === skill ? h.bonus : 0);
+}, 0);
+
+export const skydivingTricksByRarity = (maxRarity) => SKYDIVE_TRICKS.filter((t) => t.rarity <= maxRarity).map((t) => t.id);
+
+export const skydivingZoneByAltitude = (altitude) => {
+  let pick = DROP_ZONES[DROP_ZONES.length - 1];
+  for (const z of DROP_ZONES) {
+    if (z.altitude >= altitude) { pick = z; break; }
   }
-  return best ? { season: best, mult: bestMult } : null;
-}
+  return pick;
+};
 
-export function skydivingBestBuyer(trickId, dayDrift, rank, upgrades) {
-  const base = skydivingPriceFor(trickId, dayDrift, rank, upgrades);
-  return { price: base, note: 'Sponsors pay best for clean, filmed tricks.' };
-}
-
-export function skydivingScore(sessions, yieldTotal, hazards) {
-  const base = sessions * 10 + Math.round(yieldTotal);
-  const penalty = hazards * 5;
-  return Math.max(0, base - penalty);
-}
-
-export function skydivingGrade(sessions, yieldTotal, hazards) {
-  const score = skydivingScore(sessions, yieldTotal, hazards);
-  if (score >= 400) return 'S';
-  if (score >= 250) return 'A';
-  if (score >= 140) return 'B';
-  if (score >= 60) return 'C';
-  return 'D';
-}
-
-export function skydivingWeeklyGoal(sessions, sold, earned) {
-  const goal = { sessions: 5, sold: 40, earned: 600 };
-  return {
-    sessions: { have: sessions, goal: goal.sessions, done: sessions >= goal.sessions },
-    sold: { have: sold, goal: goal.sold, done: sold >= goal.sold },
-    earned: { have: Math.round(earned), goal: goal.earned, done: earned >= goal.earned },
-    allDone: sessions >= goal.sessions && sold >= goal.sold && earned >= goal.earned,
-  };
-}
-
-export function skydivingTipFor(day) {
-  return SKYDIVE_TIPS[day % SKYDIVE_TIPS.length];
-}
-
-export function skydivingLeaderboardWith(playerValue) {
-  const board = SKYDIVE_LEADERBOARD.map((e) => ({
-    name: e.name, value: e.name === 'Jett' ? playerValue : e.value, desc: e.desc,
-  }));
-  board.sort((a, b) => b.value - a.value);
-  return board.map((e, i) => ({ rank: i + 1, ...e }));
-}
-
-export function skydivingRecordFor(recordId, state) {
-  const r = SKYDIVE_RECORDS.find((x) => x.id === recordId);
-  if (!r) return null;
-  return { id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit };
-}
-
-export function skydivingAllRecords(state) {
-  return SKYDIVE_RECORDS.map((r) => ({
-    id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit, desc: r.desc,
-  }));
-}
-
-export function skydivingEfficiency(actions, hazards) {
-  const total = actions + hazards;
-  if (total === 0) return 100;
-  return Math.round((actions / total) * 100);
-}
-
-export function skydivingProfitPerJump(earned, sessions) {
-  if (sessions === 0) return 0;
-  return Math.round((earned / sessions) * 10) / 10;
-}
-
-export function skydivingInventoryValue(inventory) {
-  let total = 0;
-  for (const [id, qty] of Object.entries(inventory)) {
-    const f = SKYDIVE_TRICKS.find((x) => x.id === id);
-    if (f) total += f.value * qty;
-  }
-  return Math.round(total * 10) / 10;
-}
-
-export function skydivingTotalValue(state) {
-  return skydivingInventoryValue(state.inventory);
-}
-
-export function skydivingProgressPercent(state) {
-  const total = state.actions + state.findsSold;
-  if (total === 0) return 0;
-  return Math.round((state.actions / total) * 100);
-}
-
-export function skydivingQuickStart(step) {
-  return SKYDIVE_QUICK_START[step] || null;
-}
-
-export function skydivingSummary(state) {
-  return `Skydiving ${SKYDIVE_RANKS[state.rank].name}: ${state.sessions} jumps, ${state.actions} tricks, $${Math.round(state.earned)} earned, ${state.findsFound} tricks landed.`;
-}
-
-export function skydivingNextGoal(state) {
-  if (state.sessions < 3) return 'Make 3 jumps.';
-  if (state.actions < 50) return 'Land 50 tricks.';
-  if (state.rank < 2) return 'Reach rank Formation Flyer.';
-  return 'Become the Sky Master.';
-}
-
-export function skydivingChallengeProgress(challenge, state) {
-  const v = state[challenge.target] || 0;
-  return { id: challenge.id, name: challenge.name, have: Math.floor(v), goal: challenge.goal, done: v >= challenge.goal };
-}
-
-export function skydivingHelperBonus(helpers, skill) {
-  let bonus = 0;
-  for (const h of SKYDIVE_HELPERS) {
-    if (helpers.includes(h.id) && h.skill === skill) bonus += h.bonus;
-  }
-  return bonus;
-}
-
-export function skydivingZoneByAltitude(altitude) {
-  let best = null;
-  for (const s of DROP_ZONES) {
-    if (s.altitude <= altitude && (!best || s.altitude > best.altitude)) best = s;
-  }
-  return best;
-}
-
-export function skydivingTricksByRarity(maxRarity) {
-  return SKYDIVE_TRICKS.filter((f) => f.rarity <= maxRarity).map((f) => f.id);
-}
+const blankState = () => ({
+  xp: 0, rank: 0, sessions: 0, actions: 0, stepsDone: 0, earned: 0, spent: 0,
+  findsFound: 0, findsSold: 0, contractsDone: 0, contractsFailed: 0, hazardsTaken: 0,
+  heatGained: 0, inventory: {}, upgrades: [], activeContract: null, contractProgress: 0,
+  contractDeadline: null, session: null, sessionStepsLeft: 0, sessionTimeLeft: 0,
+  resource: 0, dayDrift: 0, lastDay: 1, bestSession: null, bestSessionYield: 0,
+  dailyEarned: 0, dailySessions: 0, totalYield: 0, bestStreak: 0, streak: 0,
+  specialsUsed: 0, weatherStops: 0, sessionYield: 0, sessionFinds: [], season: 'summer',
+  event: null, wagesPaid: 0, challengesClaimed: [],
+});
 
 export function createSkydivingSystem(ctx) {
   const c = ctx || {};
-  const rng = typeof c.rng === 'function' ? c.rng : Math.random;
-  const getCash = typeof c.getCash === 'function' ? c.getCash : () => 0;
-  const addCash = typeof c.addCash === 'function' ? c.addCash : () => {};
-  const addHeat = typeof c.addHeat === 'function' ? c.addHeat : () => {};
-  const log = typeof c.log === 'function' ? c.log : () => {};
-  const getDay = typeof c.getDay === 'function' ? c.getDay : () => 1;
-  const getHour = typeof c.getHour === 'function' ? c.getHour : () => 12;
-  const getPos = typeof c.getPlayerPos === 'function' ? c.getPlayerPos : () => ({ x: 0, z: 0 });
-  const getWeather = typeof c.getWeather === 'function' ? c.getWeather : () => ({ condition: 'clear' });
+  const rng = c.rng || Math.random;
+  const getDay = c.getDay || (() => 1);
+  const getHour = c.getHour || (() => 12);
+  const getCash = c.getCash || (() => 0);
+  const addCash = c.addCash || (() => {});
+  const addHeat = c.addHeat || (() => {});
+  const log = c.log || (() => {});
+  const getPlayerPos = c.getPlayerPos || (() => ({ x: 0, z: 0 }));
+  const getWeather = c.getWeather || (() => ({ condition: 'clear' }));
+  const state = blankState();
 
-  const state = {
-    xp: 0,
-    rank: 0,
-    sessions: 0,
-    actions: 0,
-    stepsDone: 0,
-    earned: 0,
-    spent: 0,
-    findsFound: 0,
-    findsSold: 0,
-    contractsDone: 0,
-    contractsFailed: 0,
-    hazardsTaken: 0,
-    heatGained: 0,
-    inventory: {},
-    upgrades: [],
-    activeContract: null,
-    contractProgress: 0,
-    session: null,
-    sessionStepsLeft: 0,
-    sessionTimeLeft: 0,
-    resource: 4000,
-    dayDrift: {},
-    lastDay: 1,
-    bestSession: null,
-    bestSessionYield: 0,
-    dailyEarned: 0,
-    dailySessions: 0,
-    totalYield: 0,
-    bestStreak: 0,
-    streak: 0,
-    specialsUsed: 0,
-    weatherStops: 0,
-    sessionYield: 0,
-    sessionFinds: 0,
-    season: 'summer',
-    event: null,
+  const bumpRank = () => {
+    const lvl = skydivingRankFor(state.xp);
+    if (lvl > state.rank) log('Rank up: ' + SKYDIVE_RANKS[lvl].name);
+    state.rank = lvl;
   };
-  for (const f of SKYDIVE_TRICKS) { state.inventory[f.id] = 0; state.dayDrift[f.id] = 0; }
 
-  function refreshRank() {
-    const r = skydivingRankFor(state.xp);
-    if (r > state.rank) {
-      state.rank = r;
-      log(`Skydiving rank up: ${SKYDIVE_RANKS[r].name} — ${SKYDIVE_RANKS[r].perk}`);
-    }
-  }
-
-  function gainXp(n) {
-    state.xp += n;
-    refreshRank();
-  }
-
-  function driftPrices() {
-    for (const f of SKYDIVE_TRICKS) {
-      const roll = rng();
-      if (roll < 0.3) state.dayDrift[f.id] = Math.round((rng() * 0.5 - 0.2) * 100) / 100;
-      else if (roll < 0.4) state.dayDrift[f.id] = 0;
-    }
-  }
-
-  function weather() {
-    try {
-      const w = getWeather();
-      if (w && typeof w.condition === 'string') return w.condition;
-    } catch (e) { /* ignore */ }
-    return 'clear';
-  }
-
-  function weatherBlocks() {
-    const cond = weather();
-    return cond === 'storm' || cond === 'hurricane';
-  }
-
-  function pickTrick(zone) {
-    const bag = [];
-    for (const f of SKYDIVE_TRICKS) {
-      let w = f.rarity;
-      if (state.rank >= 3 && f.rarity < 0.08) w *= 1.6;
-      if (state.upgrades.includes('gps')) w *= 1.25;
-      bag.push({ f, w });
-    }
-    let total = 0;
-    for (const b of bag) total += b.w;
-    let roll = rng() * total;
-    for (const b of bag) {
-      roll -= b.w;
-      if (roll <= 0) return b.f;
-    }
-    return SKYDIVE_TRICKS[0];
-  }
-
-  function finishSession(reason) {
-    const done = state.session;
+  const closeSession = () => {
+    const yld = state.sessionYield;
+    const siteId = state.session;
+    state.totalYield += yld;
+    if (yld > state.bestSessionYield) { state.bestSessionYield = yld; state.bestSession = siteId; }
+    if (yld > 0) {
+      state.streak += 1;
+      state.bestStreak = Math.max(state.bestStreak, state.streak);
+    } else state.streak = 0;
     state.session = null;
     state.sessionStepsLeft = 0;
     state.sessionTimeLeft = 0;
-    state.sessions += 1;
-    state.dailySessions += 1;
-    if (state.sessionYield > state.bestSessionYield) {
-      state.bestSessionYield = state.sessionYield;
-      state.bestSession = done;
-    }
-    log(`Skydiving ${done} ${reason} — yield $${Math.round(state.sessionYield)}, ${state.sessionFinds} tricks.`);
-    state.sessionYield = 0;
-    state.sessionFinds = 0;
-  }
+  };
 
-  function jump(zoneId) {
-    const zone = DROP_ZONES.find((s) => s.id === zoneId);
-    if (!zone) return { ok: false, reason: 'no-such-site' };
-    if (state.session) return { ok: false, reason: 'session-active' };
-    if (weatherBlocks()) {
-      state.weatherStops += 1;
-      return { ok: false, reason: 'bad-weather', condition: weather() };
-    }
-    const hour = getHour();
-    if (hour < 7 || hour >= 18) return { ok: false, reason: 'too-late', hour };
-    if (getCash() < zone.price) return { ok: false, reason: 'not-enough-cash', cost: zone.price };
-    if (zone.price > 0) { addCash(-zone.price); state.spent += zone.price; }
-    state.session = zoneId;
-    state.sessionStepsLeft = zone.steps;
-    state.sessionTimeLeft = zone.duration * 60;
-    state.resource = skydivingAltitudeMax(state.upgrades);
-    log(`Skydiving started: ${zone.name} — ${zone.steps} tricks, ${zone.duration} min, ${zone.altitude}m up.`);
-    return { ok: true, site: zoneId, steps: zone.steps, duration: zone.duration };
-  }
-
-  function performTrick() {
-    if (!state.session) return { ok: false, reason: 'no-session' };
-    if (state.sessionStepsLeft <= 0) return { ok: false, reason: 'session-done' };
-    const zone = DROP_ZONES.find((s) => s.id === state.session);
-    state.resource -= 400;
-    if (state.resource < 0) state.resource = 0;
-    const cap = skydivingCarryCap(state.upgrades);
-    const held = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-    if (held >= cap) return { ok: false, reason: 'carry-full', cap };
-    const f = pickTrick(zone);
-    const qty = 1 + Math.floor(rng() * 2);
-    const add = Math.min(qty, Math.max(0, cap - held));
-    if (add <= 0) return { ok: false, reason: 'carry-full', cap };
-    state.inventory[f.id] += add;
-    state.findsFound += add;
-    state.totalYield += f.value * add;
-    state.sessionYield += f.value * add;
-    state.sessionFinds += add;
-    state.actions += 1;
-    state.stepsDone += 1;
-    state.sessionStepsLeft -= 1;
-    state.streak += 1;
-    state.bestStreak = Math.max(state.bestStreak, state.streak);
-    gainXp(4 + add);
-    const got = [{ id: f.id, name: f.name, qty: add, value: f.value }];
-    if (rng() < 0.05 + (state.rank >= 4 ? 0.05 : 0)) {
-      const rare = SKYDIVE_TRICKS.filter((x) => x.rarity < 0.06);
-      const pick = rare[Math.floor(rng() * rare.length)];
-      state.inventory[pick.id] += 1;
-      state.findsFound += 1;
-      state.sessionYield += pick.value;
-      state.totalYield += pick.value;
-      got.push({ id: pick.id, name: pick.name, qty: 1, value: pick.value, rare: true });
-      log(`Skydiving rare trick! ${pick.name} worth $${pick.value}.`);
-    }
-    if (rng() < zone.risk * 0.04) {
-      state.hazardsTaken += 1;
-      state.streak = 0;
-      state.resource -= 500;
-      if (rng() < 0.25) { addHeat(1); state.heatGained += 1; }
-      log(`Skydiving hazard at ${zone.name}: a line twist spun you hard and cost you altitude.`);
-    }
-    if (state.resource <= 0) {
-      finishSession('cut short — out of altitude');
-      return { ok: true, got, stepsLeft: 0, ended: 'resource-empty' };
-    }
-    if (state.sessionStepsLeft <= 0) {
-      finishSession('finished');
-      return { ok: true, got, stepsLeft: 0, ended: 'done' };
-    }
-    return { ok: true, got, stepsLeft: state.sessionStepsLeft, resource: state.resource };
-  }
-
-  function landEarly() {
-    if (!state.session) return { ok: false, reason: 'no-session' };
-    finishSession('ended early');
-    return { ok: true, ended: 'early' };
-  }
-
-  function trackDive() {
-    if (!state.session) return { ok: false, reason: 'no-session' };
-    const cost = 300;
-    if (state.resource < cost) return { ok: false, reason: 'not-enough-resource', need: cost };
-    state.resource -= cost;
-    state.specialsUsed += 1;
-    if (rng() < 0.55) {
-      const f = pickTrick(DROP_ZONES[0]);
-      state.inventory[f.id] += 1;
-      state.findsFound += 1;
-      state.sessionYield += f.value;
-      gainXp(10);
-      log(`Skydiving tracking run: clean tracking run — caught a ${f.name}.`);
-      return { ok: true, success: true, find: f.id, name: f.name };
-    }
-    log('Skydiving tracking run: tumbled out of formation.');
-    return { ok: true, success: false };
-  }
-
-  function sellFind(trickId, qty) {
-    const f = SKYDIVE_TRICKS.find((x) => x.id === trickId);
-    if (!f) return { ok: false, reason: 'no-such-find' };
-    if (qty <= 0) return { ok: false, reason: 'bad-qty' };
-    const have = state.inventory[trickId] || 0;
-    if (have < qty) return { ok: false, reason: 'not-enough', have };
-    const unit = skydivingPriceFor(trickId, state.dayDrift, state.rank, state.upgrades);
-    const total = Math.round(unit * qty * 10) / 10;
-    state.inventory[trickId] -= qty;
-    state.findsSold += qty;
-    state.earned += total;
-    state.dailyEarned += total;
-    addCash(total);
-    gainXp(qty);
-    log(`Cashed in ${qty}x ${f.name} for $${total}.`);
-    return { ok: true, total, unit, qty };
-  }
-
-  function sellAllFinds() {
-    let total = 0;
-    let units = 0;
-    const lines = [];
-    for (const f of SKYDIVE_TRICKS) {
-      const have = state.inventory[f.id] || 0;
-      if (have <= 0) continue;
-      const unit = skydivingPriceFor(f.id, state.dayDrift, state.rank, state.upgrades);
-      const line = Math.round(unit * have * 10) / 10;
-      total += line;
-      units += have;
-      lines.push({ id: f.id, qty: have, total: line });
-      state.inventory[f.id] = 0;
-    }
-    if (units === 0) return { ok: false, reason: 'nothing-to-sell' };
-    total = Math.round(total * 10) / 10;
-    state.findsSold += units;
-    state.earned += total;
-    state.dailyEarned += total;
-    addCash(total);
-    gainXp(units);
-    log(`Cashed in everything (${units} tricks) for $${total}.`);
-    return { ok: true, total, units, lines };
-  }
-
-  function buyUpgrade(id) {
-    const u = SKYDIVE_UPGRADES.find((x) => x.id === id);
-    if (!u) return { ok: false, reason: 'no-such-upgrade' };
-    if (state.upgrades.includes(id)) return { ok: false, reason: 'already-owned' };
-    if (getCash() < u.cost) return { ok: false, reason: 'not-enough-cash', cost: u.cost };
-    addCash(-u.cost);
-    state.spent += u.cost;
-    state.upgrades.push(id);
-    gainXp(20);
-    log(`Bought ${u.name} for $${u.cost}.`);
-    return { ok: true, id };
-  }
-
-  function takeContract(id) {
-    const ct = SKYDIVE_CONTRACTS.find((x) => x.id === id);
-    if (!ct) return { ok: false, reason: 'no-such-contract' };
-    if (state.activeContract) return { ok: false, reason: 'contract-active' };
-    state.activeContract = { ...ct, dayTaken: getDay(), deadlineDay: getDay() + ct.days };
-    state.contractProgress = 0;
-    log(`Contract taken: ${ct.name} — deliver ${ct.qty}x ${ct.material} by day ${state.activeContract.deadlineDay}.`);
-    return { ok: true, contract: state.activeContract };
-  }
-
-  function deliverContract() {
-    const ct = state.activeContract;
-    if (!ct) return { ok: false, reason: 'no-contract' };
-    if (ct.material === 'mixed') {
-      const total = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-      if (total < ct.qty) return { ok: false, reason: 'not-enough', have: total, need: ct.qty };
-      let left = ct.qty;
-      for (const f of SKYDIVE_TRICKS) {
-        if (left <= 0) break;
-        const take = Math.min(state.inventory[f.id], left);
-        state.inventory[f.id] -= take;
-        left -= take;
-      }
-    } else {
-      const have = state.inventory[ct.material] || 0;
-      if (have < ct.qty) return { ok: false, reason: 'not-enough', have, need: ct.qty };
-      state.inventory[ct.material] -= ct.qty;
-      state.contractProgress = ct.qty;
-    }
-    const bonus = ct.pay + state.rank * 40;
-    state.activeContract = null;
-    state.contractProgress = 0;
-    state.contractsDone += 1;
-    state.earned += bonus;
-    addCash(bonus);
-    gainXp(60);
-    log(`Contract delivered: ${ct.name} paid $${bonus}.`);
-    return { ok: true, pay: bonus };
-  }
-
-  function abandonContract() {
-    if (!state.activeContract) return { ok: false, reason: 'no-contract' };
-    state.activeContract = null;
-    state.contractProgress = 0;
-    state.contractsFailed += 1;
-    log('Contract abandoned — the client will remember that.');
-    return { ok: true };
-  }
-
-  function priceBoard() {
-    return SKYDIVE_TRICKS.map((f) => ({
-      id: f.id,
-      name: f.name,
-      price: skydivingPriceFor(f.id, state.dayDrift, state.rank, state.upgrades),
-      drift: state.dayDrift[f.id],
-      held: state.inventory[f.id],
-    }));
-  }
-
-  function siteReport() {
-    return DROP_ZONES.map((s) => ({
-      id: s.id, name: s.name, fee: s.price, difficulty: s.difficulty, steps: s.steps, risk: s.risk,
-    }));
-  }
-
-  function dailyEvent() {
+  const pickDaily = () => {
     const roll = rng();
-    if (roll < 0.16) {
-      const f = SKYDIVE_TRICKS[Math.floor(rng() * SKYDIVE_TRICKS.length)];
-      state.dayDrift[f.id] = Math.round((state.dayDrift[f.id] + 0.3) * 100) / 100;
-      log(`Skydiving news: ${f.name} is in demand — sponsors pay up today!`);
-      return { event: 'demand-spike', find: f.id };
-    }
-    if (roll < 0.28) {
-      const f = SKYDIVE_TRICKS[Math.floor(rng() * SKYDIVE_TRICKS.length)];
-      state.dayDrift[f.id] = Math.round((state.dayDrift[f.id] - 0.15) * 100) / 100;
-      log(`Skydiving news: too much ${f.name} around — sponsors pay less.`);
-      return { event: 'price-dip', find: f.id };
-    }
-    if (roll < 0.38) {
-      const f = SKYDIVE_TRICKS[Math.floor(rng() * SKYDIVE_TRICKS.length)];
-      state.inventory[f.id] += 3;
-      state.findsFound += 3;
-      log(`Skydiving gift: a coach gifts you 3x ${f.name} on film.`);
-      return { event: 'gift', find: f.id };
-    }
-    if (roll < 0.46) {
-      const ev = SKYDIVE_EVENTS[Math.floor(rng() * SKYDIVE_EVENTS.length)];
-      log(`Skydiving event: ${ev.name} — ${ev.desc}`);
-      return { event: ev.id, name: ev.name };
-    }
-    return { event: 'none' };
-  }
-
-  function tick(dt) {
-    if (state.session) {
-      state.sessionTimeLeft -= dt;
-      state.resource -= dt * 0.05;
-      if (state.sessionTimeLeft <= 0) {
-        finishSession('timed out — the shift ended');
-      } else if (state.resource <= 0) {
-        state.resource = 0;
-        finishSession('cut short — out of altitude');
+    switch (true) {
+      case roll < 0.16:
+        state.dayDrift = Math.round((state.dayDrift + 0.3) * 100) / 100;
+        state.event = 'demand-spike';
+        return { ok: true, event: 'demand-spike', name: 'Demand Spike', kind: 'demand' };
+      case roll < 0.28:
+        state.dayDrift = Math.round((state.dayDrift - 0.15) * 100) / 100;
+        state.event = 'price-dip';
+        return { ok: true, event: 'price-dip', name: 'Price Dip', kind: 'dip' };
+      case roll < 0.38: {
+        const pick = SKYDIVE_TRICKS[Math.floor(rng() * SKYDIVE_TRICKS.length)];
+        state.inventory[pick.id] = (state.inventory[pick.id] || 0) + 3;
+        state.findsFound += 3;
+        state.event = 'gift';
+        return { ok: true, event: 'gift', name: 'Gift', kind: 'gift', find: pick.id, qty: 3 };
       }
+      case roll < 0.46: {
+        const ev = SKYDIVE_EVENTS[Math.floor(rng() * SKYDIVE_EVENTS.length)];
+        state.event = ev.id;
+        return { ok: true, event: ev.id, name: ev.name, kind: 'named' };
+      }
+      default:
+        state.event = null;
+        return { ok: true, event: null, name: 'none', kind: 'none' };
     }
-  }
+  };
 
-  function tickDay(day) {
-    if (day === state.lastDay) return;
-    state.lastDay = day;
-    driftPrices();
-    state.dailyEarned = 0;
-    state.dailySessions = 0;
-    if (state.activeContract && day >= state.activeContract.deadlineDay && state.contractProgress < state.activeContract.qty) {
-      log(`Contract ${state.activeContract.name} expired — the client walked away.`);
-      state.activeContract = null;
-      state.contractProgress = 0;
-      state.contractsFailed += 1;
-    }
-    dailyEvent();
-  }
-
-  function serialize() {
-    return JSON.parse(JSON.stringify({
-      xp: state.xp, rank: state.rank, sessions: state.sessions,
-      actions: state.actions, stepsDone: state.stepsDone,
-      earned: state.earned, spent: state.spent,
-      findsFound: state.findsFound, findsSold: state.findsSold,
-      contractsDone: state.contractsDone, contractsFailed: state.contractsFailed,
-      hazardsTaken: state.hazardsTaken, heatGained: state.heatGained,
-      inventory: state.inventory, upgrades: state.upgrades,
-      activeContract: state.activeContract,
-      contractProgress: state.contractProgress, session: state.session,
-      sessionStepsLeft: state.sessionStepsLeft,
-      sessionTimeLeft: state.sessionTimeLeft, resource: state.resource,
-      dayDrift: state.dayDrift, lastDay: state.lastDay,
-      bestSession: state.bestSession,
-      bestSessionYield: state.bestSessionYield,
-      dailyEarned: state.dailyEarned, dailySessions: state.dailySessions,
-      totalYield: state.totalYield, bestStreak: state.bestStreak,
-      streak: state.streak, specialsUsed: state.specialsUsed,
-      weatherStops: state.weatherStops, sessionYield: state.sessionYield,
-      sessionFinds: state.sessionFinds, season: state.season,
-      event: state.event,
-    }));
-  }
-
-  function deserialize(d) {
-    if (!d || typeof d !== 'object') return;
-    for (const k of Object.keys(state)) {
-      if (d[k] !== undefined) state[k] = d[k];
-    }
-    for (const f of SKYDIVE_TRICKS) {
-      if (state.inventory[f.id] === undefined) state.inventory[f.id] = 0;
-      if (state.dayDrift[f.id] === undefined) state.dayDrift[f.id] = 0;
-    }
-    refreshRank();
-  }
-
-  function stats() {
-    return {
-      rank: SKYDIVE_RANKS[state.rank].name,
-      xp: state.xp,
-      sessions: state.sessions,
-      actions: state.actions,
-      stepsDone: state.stepsDone,
-      earned: Math.round(state.earned),
-      spent: state.spent,
-      findsFound: state.findsFound,
-      findsSold: state.findsSold,
-      contractsDone: state.contractsDone,
-      contractsFailed: state.contractsFailed,
-      hazardsTaken: state.hazardsTaken,
-      heatGained: state.heatGained,
-      upgrades: state.upgrades.length,
-      activeContract: state.activeContract ? state.activeContract.id : null,
-      contractProgress: state.contractProgress,
-      session: state.session,
-      stepsLeft: state.sessionStepsLeft,
-      resource: Math.round(state.resource * 10) / 10,
-      resourceMax: skydivingAltitudeMax(state.upgrades),
-      dailyEarned: Math.round(state.dailyEarned),
-      totalYield: Math.round(state.totalYield),
-      bestStreak: state.bestStreak,
-      bestSession: state.bestSession,
-      bestSessionYield: Math.round(state.bestSessionYield),
-      specialsUsed: state.specialsUsed,
-      weatherStops: state.weatherStops,
-      season: state.season,
-      event: state.event,
-    };
-  }
-
-  function hudLine() {
-    if (state.session) return `Skydiving: ${state.session} — ${state.sessionStepsLeft} tricks left, altitude ${Math.round(state.resource)}`;
-    if (state.activeContract) return `Skydiving: ${state.activeContract.name} ${state.contractProgress}/${state.activeContract.qty}`;
-    const held = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-    if (held > 0) return `Skydiving: ${held} tricks on film`;
-    return '';
-  }
-
-  function interact() {
-    const pos = getPos();
-    const near = Math.hypot(pos.x - 80, pos.z - (-220)) < 30;
-    if (!near) return false;
-    if (state.session) { performTrick(); return true; }
-    const held = Object.values(state.inventory).reduce((a, b) => a + b, 0);
-    if (held > 0) { sellAllFinds(); return true; }
-    jump(DROP_ZONES[0].id);
-    return true;
-  }
-
-  return {
+  const sys = {
     name: 'Skydiving',
     state,
-    jump, performTrick, landEarly, trackDive,
-    sellFind, sellAllFinds, buyUpgrade, takeContract,
-    deliverContract, abandonContract, priceBoard, siteReport,
-    dailyEvent, tick, tickDay, serialize, deserialize,
-    stats, hudLine, interact,
+    jump(zoneId) {
+      const zone = zoneById(zoneId);
+      if (!zone) return { ok: false, reason: 'no-such-site' };
+      if (state.session) return { ok: false, reason: 'already-in-session' };
+      const cond = (getWeather() || {}).condition || 'clear';
+      if (cond === 'storm' || cond === 'hurricane') {
+        state.weatherStops += 1;
+        return { ok: false, reason: 'bad-weather', condition: cond };
+      }
+      const hour = getHour();
+      if (hour < 7 || hour >= 18) return { ok: false, reason: 'closed', hour };
+      if (getCash() < zone.price) return { ok: false, reason: 'not-enough-cash', cost: zone.price };
+      addCash(-zone.price);
+      state.spent += zone.price;
+      state.session = zone.id;
+      state.sessionStepsLeft = zone.steps;
+      state.sessionTimeLeft = zone.duration;
+      state.resource = skydivingAltitudeMax(state.upgrades);
+      state.sessionYield = 0;
+      state.sessionFinds = [];
+      state.sessions += 1;
+      state.dailySessions += 1;
+      log('Jumping at ' + zone.name);
+      return { ok: true, id: zone.id, name: zone.name, price: zone.price, steps: zone.steps, duration: zone.duration };
+    },
+    performTrick() {
+      if (!state.session) return { ok: false, reason: 'no-session' };
+      const zone = zoneById(state.session);
+      state.resource -= 400;
+      state.sessionStepsLeft -= 1;
+      state.stepsDone += 1;
+      state.actions += 1;
+      const heldTotal = Object.values(state.inventory).reduce((a, b) => a + b, 0);
+      const cap = skydivingCarryCap(state.rank, state.upgrades);
+      let qty = 1 + Math.floor(rng() * 2);
+      qty = Math.min(qty, Math.max(0, cap - heldTotal));
+      let trick = null;
+      let bonus = false;
+      let hazard = false;
+      if (qty > 0) {
+        const cum = [];
+        let run = 0;
+        SKYDIVE_TRICKS.forEach((t) => {
+          let w = 1 / t.rarity;
+          if (t.rarity < 0.08 && state.rank >= 3) w *= 1.6;
+          if (t.rarity < 0.08 && state.upgrades.includes('find-plus')) w *= 1.25;
+          run += w;
+          cum.push(run);
+        });
+        const roll = rng() * run;
+        let i = 0;
+        while (i < cum.length - 1 && roll > cum[i]) i++;
+        trick = SKYDIVE_TRICKS[i];
+        if (rng() < 0.04) { qty += 1; bonus = true; }
+        state.inventory[trick.id] = (state.inventory[trick.id] || 0) + qty;
+        state.findsFound += qty;
+        state.sessionFinds.push(trick.id);
+        state.sessionYield += qty * trick.value;
+      }
+      if (zone && rng() < zone.risk * 0.04) {
+        hazard = true;
+        state.hazardsTaken += 1;
+      }
+      let ended = false;
+      if (state.resource <= 0 || state.sessionStepsLeft <= 0) {
+        state.resource = Math.max(0, state.resource);
+        closeSession();
+        ended = true;
+      }
+      return { ok: true, find: trick ? { id: trick.id, name: trick.name, qty } : null, qty, bonus, hazard, stepsLeft: state.sessionStepsLeft, resource: state.resource, ended };
+    },
+    landEarly() {
+      if (!state.session) return { ok: false, reason: 'no-session' };
+      const id = state.session;
+      closeSession();
+      log('Landed early from ' + id);
+      return { ok: true, id, yield: state.totalYield };
+    },
+    trackDive() {
+      const zone = state.session ? zoneById(state.session) : null;
+      return { ok: true, site: zone ? zone.id : null, siteName: zone ? zone.name : null, weather: (getWeather() || {}).condition || 'clear', hour: getHour(), resource: state.resource, resourceMax: skydivingAltitudeMax(state.upgrades), stepsLeft: state.sessionStepsLeft };
+    },
+    sellFind(trickId) {
+      const t = trickById(trickId);
+      if (!t) return { ok: false, reason: 'no-such-find' };
+      const held = state.inventory[trickId] || 0;
+      if (held <= 0) return { ok: false, reason: 'not-held', id: trickId };
+      const price = skydivingPriceFor(trickId, state.dayDrift, state.rank, state.upgrades);
+      state.inventory[trickId] = held - 1;
+      if (state.inventory[trickId] <= 0) delete state.inventory[trickId];
+      state.findsSold += 1;
+      state.earned += price;
+      state.dailyEarned += price;
+      addCash(price);
+      return { ok: true, id: trickId, name: t.name, qty: 1, price, total: price };
+    },
+    sellAllFinds() {
+      const ids = Object.keys(state.inventory);
+      if (ids.length === 0) return { ok: false, reason: 'nothing-held' };
+      let total = 0;
+      let count = 0;
+      ids.forEach((id) => {
+        const price = skydivingPriceFor(id, state.dayDrift, state.rank, state.upgrades);
+        total += price * state.inventory[id];
+        count += state.inventory[id];
+      });
+      total = Math.round(total * 10) / 10;
+      state.inventory = {};
+      state.findsSold += count;
+      state.earned += total;
+      state.dailyEarned += total;
+      addCash(total);
+      return { ok: true, total, sold: count, count };
+    },
+    buyUpgrade(upId) {
+      const up = SKYDIVE_UPGRADES.find((u) => u.id === upId);
+      if (!up) return { ok: false, reason: 'no-such-upgrade' };
+      if (state.upgrades.includes(upId)) return { ok: false, reason: 'already-owned', id: upId };
+      if (getCash() < up.cost) return { ok: false, reason: 'not-enough-cash', cost: up.cost };
+      addCash(-up.cost);
+      state.spent += up.cost;
+      state.upgrades.push(upId);
+      log('Bought upgrade ' + up.name);
+      return { ok: true, id: up.id, name: up.name, cost: up.cost };
+    },
+    takeContract(contractId) {
+      const ct = SKYDIVE_CONTRACTS.find((x) => x.id === contractId);
+      if (!ct) return { ok: false, reason: 'no-such-contract' };
+      if (state.activeContract) return { ok: false, reason: 'already-active', id: state.activeContract };
+      state.activeContract = ct.id;
+      state.contractProgress = 0;
+      state.contractDeadline = getDay() + ct.days;
+      log('Took contract ' + ct.name);
+      return { ok: true, id: ct.id, name: ct.name, qty: ct.qty, pay: ct.pay };
+    },
+    deliverContract() {
+      if (!state.activeContract) return { ok: false, reason: 'no-active-contract' };
+      const ct = SKYDIVE_CONTRACTS.find((x) => x.id === state.activeContract);
+      const have = state.inventory[ct.material] || 0;
+      if (have < ct.qty) return { ok: false, reason: 'not-enough', have, need: ct.qty, material: ct.material };
+      state.inventory[ct.material] = have - ct.qty;
+      if (state.inventory[ct.material] <= 0) delete state.inventory[ct.material];
+      state.contractsDone += 1;
+      state.earned += ct.pay;
+      state.dailyEarned += ct.pay;
+      addCash(ct.pay);
+      state.xp += ct.rep;
+      bumpRank();
+      state.activeContract = null;
+      state.contractProgress = 0;
+      state.contractDeadline = null;
+      return { ok: true, id: ct.id, name: ct.name, pay: ct.pay, rep: ct.rep };
+    },
+    abandonContract() {
+      if (!state.activeContract) return { ok: false, reason: 'no-active-contract' };
+      const id = state.activeContract;
+      state.activeContract = null;
+      state.contractProgress = 0;
+      state.contractDeadline = null;
+      state.contractsFailed += 1;
+      return { ok: true, id };
+    },
+    priceBoard() {
+      return SKYDIVE_TRICKS.map((t) => ({ id: t.id, name: t.name, price: skydivingPriceFor(t.id, state.dayDrift, state.rank, state.upgrades), base: t.value, drift: state.dayDrift, held: state.inventory[t.id] || 0 }));
+    },
+    siteReport(zoneId) {
+      const zone = zoneById(zoneId);
+      if (!zone) return { ok: false, reason: 'no-such-site' };
+      return { ok: true, id: zone.id, name: zone.name, price: zone.price, difficulty: zone.difficulty, steps: zone.steps, duration: zone.duration, risk: zone.risk, altitude: zone.altitude, wind: zone.wind, desc: zone.desc };
+    },
+    dailyEvent() {
+      return pickDaily();
+    },
+    tick(dt) {
+      if (!state.session) return;
+      state.sessionTimeLeft -= dt;
+      state.resource -= dt * 0.05;
+      if (state.sessionTimeLeft <= 0 || state.resource <= 0) {
+        state.resource = Math.max(0, state.resource);
+        state.sessionTimeLeft = Math.max(0, state.sessionTimeLeft);
+        closeSession();
+      }
+    },
+    tickDay(day) {
+      if (day === state.lastDay) return null;
+      state.lastDay = day;
+      state.dayDrift = Math.round((state.dayDrift + (rng() * 0.24 - 0.12)) * 100) / 100;
+      state.dailyEarned = 0;
+      state.dailySessions = 0;
+      if (state.activeContract && state.contractDeadline !== null && day >= state.contractDeadline) {
+        state.activeContract = null;
+        state.contractProgress = 0;
+        state.contractDeadline = null;
+        state.contractsFailed += 1;
+        log('Contract expired.');
+      }
+      return pickDaily();
+    },
+    serialize() {
+      return JSON.parse(JSON.stringify(state));
+    },
+    deserialize(saved) {
+      if (!saved || typeof saved !== 'object') return;
+      Object.keys(saved).forEach((k) => { state[k] = saved[k]; });
+      if (!state.inventory || typeof state.inventory !== 'object') state.inventory = {};
+      if (!Array.isArray(state.upgrades)) state.upgrades = [];
+      if (!Array.isArray(state.sessionFinds)) state.sessionFinds = [];
+      if (!Array.isArray(state.challengesClaimed)) state.challengesClaimed = [];
+      if (typeof state.wagesPaid !== 'number') state.wagesPaid = 0;
+      bumpRank();
+    },
+    stats() {
+      return { rank: (SKYDIVE_RANKS[state.rank] || {}).name || 'Cloud Watcher', xp: state.xp, sessions: state.sessions, actions: state.actions, stepsDone: state.stepsDone, earned: state.earned, spent: state.spent, findsFound: state.findsFound, findsSold: state.findsSold, contractsDone: state.contractsDone, contractsFailed: state.contractsFailed, hazardsTaken: state.hazardsTaken, heatGained: state.heatGained, upgrades: state.upgrades.length, activeContract: state.activeContract, contractProgress: state.contractProgress, session: state.session, stepsLeft: state.sessionStepsLeft, resource: state.resource, resourceMax: skydivingAltitudeMax(state.upgrades), dailyEarned: state.dailyEarned, totalYield: state.totalYield, bestStreak: state.bestStreak, bestSession: state.bestSession, bestSessionYield: state.bestSessionYield, specialsUsed: state.specialsUsed, weatherStops: state.weatherStops, season: state.season, event: state.event };
+    },
+    hudLine() {
+      if (!state.session) return '';
+      return 'Skydiving: ' + state.session + ' — ' + state.sessionStepsLeft + ' steps left, altitude ' + state.resource;
+    },
+    interact() {
+      const pos = getPlayerPos() || { x: 0, z: 0 };
+      const dx = pos.x - 80;
+      const dz = pos.z - (-220);
+      if (Math.sqrt(dx * dx + dz * dz) > 30) return false;
+      if (state.session) { sys.performTrick(); return true; }
+      const held = Object.values(state.inventory).reduce((a, b) => a + b, 0);
+      if (held > 0) { sys.sellAllFinds(); return true; }
+      sys.jump(DROP_ZONES[0].id);
+      return true;
+    },
   };
+  return sys;
 }
 
 export function createSkydivingExtras(system) {
-  const helpers = [];
-  const claimed = [];
-  let helperWagesPaid = 0;
-
-  function hireHelper(id) {
+  const st = system.state;
+  let hired = [];
+  let claimed = [];
+  let wages = 0;
+  const bonusFor = (skill) => hired.reduce((sum, id) => {
     const h = SKYDIVE_HELPERS.find((x) => x.id === id);
-    if (!h) return { ok: false, reason: 'no-such-helper' };
-    if (helpers.includes(id)) return { ok: false, reason: 'already-hired' };
-    helpers.push(id);
-    return { ok: true, id, name: h.name, wage: h.wage };
-  }
-
-  function fireHelper(id) {
-    const i = helpers.indexOf(id);
-    if (i < 0) return { ok: false, reason: 'not-hired' };
-    helpers.splice(i, 1);
-    return { ok: true, id };
-  }
-
-  function payWages() {
-    let due = 0;
-    for (const id of helpers) {
-      const h = SKYDIVE_HELPERS.find((x) => x.id === id);
-      due += h.wage;
-    }
-    helperWagesPaid += due;
-    return { due, helpers: [...helpers], totalPaid: helperWagesPaid };
-  }
-
-  function helperBonus(skill) {
-    return skydivingHelperBonus(helpers, skill);
-  }
-
-  function challenges() {
-    return SKYDIVE_CHALLENGES.map((ch) => skydivingChallengeProgress(ch, system.state));
-  }
-
-  function claimChallenge(id) {
-    const ch = SKYDIVE_CHALLENGES.find((x) => x.id === id);
-    if (!ch) return { ok: false, reason: 'no-such-challenge' };
-    if (claimed.includes(id)) return { ok: false, reason: 'already-claimed' };
-    const p = skydivingChallengeProgress(ch, system.state);
-    if (!p.done) return { ok: false, reason: 'not-done', have: p.have, goal: p.goal };
-    claimed.push(id);
-    return { ok: true, id, xp: ch.xp };
-  }
-
-  function achievements() {
-    return SKYDIVE_ACHIEVEMENTS.map((a) => ({
-      id: a.id, name: a.name, desc: a.desc, done: !!a.check(system.state),
-    }));
-  }
-
-  function donateFinds(trickId, qty) {
-    const have = system.state.inventory[trickId] || 0;
-    if (have < qty || qty <= 0) return { ok: false, reason: 'not-enough', have };
-    system.state.inventory[trickId] -= qty;
-    const rep = Math.floor(qty / 5);
-    return { ok: true, qty, rep, note: 'The jump club thanks you. Blue skies.' };
-  }
-
-  function bundleSale(trickId, qty) {
-    const have = system.state.inventory[trickId] || 0;
-    if (have < qty || qty < 10) return { ok: false, reason: 'need-10-plus', have };
-    const unit = skydivingPriceFor(trickId, system.state.dayDrift, system.state.rank, system.state.upgrades);
-    const total = Math.round(unit * qty * 1.1 * 10) / 10;
-    system.state.inventory[trickId] -= qty;
-    system.state.findsSold += qty;
-    system.state.earned += total;
-    return { ok: true, total, qty, bonus: 'bundle +10%' };
-  }
-
-  function checkAltitude() {
-    const max = skydivingAltitudeMax(system.state.upgrades);
-    return {
-      resource: Math.round(system.state.resource * 10) / 10,
-      max,
-      pct: Math.round((system.state.resource / max) * 100),
-    };
-  }
-
-  function repackRig() {
-    system.state.resource = skydivingAltitudeMax(system.state.upgrades);
-    return { ok: true, resource: system.state.resource };
-  }
-
-  function countFootage() {
-    const held = Object.values(system.state.inventory).reduce((a, b) => a + b, 0);
-    return { tricks: held, cap: skydivingCarryCap(system.state.upgrades) };
-  }
+    return sum + (h && h.skill === skill ? h.bonus : 0);
+  }, 0);
 
   return {
-    hireHelper, fireHelper, payWages, helperBonus, challenges,
-    claimChallenge, achievements, donateFinds, bundleSale,
-    checkAltitude, repackRig, countFootage,
-    get helpers() { return [...helpers]; },
-    get claimed() { return [...claimed]; },
-    get wagesPaid() { return helperWagesPaid; },
+    hireHelper(id) {
+      const h = SKYDIVE_HELPERS.find((x) => x.id === id);
+      if (!h) return { ok: false, reason: 'no-such-helper' };
+      if (hired.includes(id)) return { ok: false, reason: 'already-hired', id };
+      hired.push(id);
+      return { ok: true, id: h.id, name: h.name, wage: h.wage };
+    },
+    fireHelper(id) {
+      if (!hired.includes(id)) return { ok: false, reason: 'not-hired', id };
+      hired = hired.filter((x) => x !== id);
+      return { ok: true, id };
+    },
+    payWages() {
+      const due = hired.reduce((sum, id) => {
+        const h = SKYDIVE_HELPERS.find((x) => x.id === id);
+        return sum + (h ? h.wage : 0);
+      }, 0);
+      wages += due;
+      st.wagesPaid = (st.wagesPaid || 0) + due;
+      return { ok: true, due, helpers: hired.length, totalPaid: due };
+    },
+    helperBonus(skill) {
+      return bonusFor(skill);
+    },
+    challenges() {
+      return SKYDIVE_CHALLENGES.map((ch) => skydivingChallengeProgress(ch, st));
+    },
+    claimChallenge(id) {
+      const ch = SKYDIVE_CHALLENGES.find((x) => x.id === id);
+      if (!ch) return { ok: false, reason: 'no-such-challenge' };
+      if (claimed.includes(id)) return { ok: false, reason: 'already-claimed', id };
+      const prog = skydivingChallengeProgress(ch, st);
+      if (!prog.done) return { ok: false, reason: 'not-done', have: prog.have, goal: prog.goal };
+      claimed.push(id);
+      st.challengesClaimed.push(id);
+      st.xp += ch.xp;
+      st.rank = skydivingRankFor(st.xp);
+      return { ok: true, id: ch.id, xp: ch.xp };
+    },
+    achievements() {
+      return SKYDIVE_ACHIEVEMENTS.map((a) => ({ id: a.id, name: a.name, desc: a.desc, done: !!a.check(st) }));
+    },
+    donateFinds() {
+      const ids = Object.keys(st.inventory);
+      const donated = ids.reduce((sum, id) => sum + st.inventory[id], 0);
+      st.inventory = {};
+      return { ok: true, donated, finds: ids };
+    },
+    bundleSale() {
+      const count = Object.values(st.inventory).reduce((a, b) => a + b, 0);
+      if (count < 10) return { ok: false, reason: 'not-enough', have: count, need: 10 };
+      let total = 0;
+      Object.keys(st.inventory).forEach((id) => {
+        total += skydivingPriceFor(id, st.dayDrift, st.rank, st.upgrades) * st.inventory[id];
+      });
+      total = Math.round(total * 1.1 * 10) / 10;
+      st.inventory = {};
+      st.findsSold += count;
+      st.earned += total;
+      st.dailyEarned += total;
+      return { ok: true, total, count, bonus: 'bundle +10%' };
+    },
+    checkAltitude() {
+      const max = skydivingAltitudeMax(st.upgrades);
+      return { ok: true, resource: st.resource, max, name: 'altitude', percent: max ? Math.round((st.resource / max) * 100) : 0 };
+    },
+    repackRig() {
+      st.resource = skydivingAltitudeMax(st.upgrades);
+      return { ok: true, resource: st.resource, max: st.resource };
+    },
+    countFootage() {
+      const count = Object.values(st.inventory).reduce((a, b) => a + b, 0);
+      return { ok: true, count, total: count };
+    },
+    get helpers() { return hired.slice(); },
+    get claimed() { return claimed.slice(); },
+    get wagesPaid() { return wages; },
   };
 }
 
 export function createSkydivingMarket(system) {
+  const st = system.state;
   let currentEvent = null;
-  let currentSeason = 'summer';
+  let currentSeason = st.season || 'summer';
   let dealsClaimed = 0;
-  let bulkSold = 0;
+  let bulkTraded = 0;
 
-  function setEvent(eventId) {
-    const ev = SKYDIVE_MARKET.find((x) => x.id === eventId);
-    if (!ev) return { ok: false, reason: 'no-such-event' };
-    currentEvent = eventId;
-    return { ok: true, event: eventId, name: ev.name };
-  }
-
-  function setSeason(seasonId) {
-    const s = SKYDIVE_SEASONS.find((x) => x.id === seasonId);
-    if (!s) return { ok: false, reason: 'no-such-season' };
-    currentSeason = seasonId;
-    system.state.season = seasonId;
-    return { ok: true, season: seasonId };
-  }
-
-  function eventPrice(trickId, basePrice) {
-    let price = basePrice;
-    price *= skydivingEventMult(currentEvent, trickId);
-    price *= skydivingSeasonMult(currentSeason);
-    return Math.round(price * 10) / 10;
-  }
-
-  function bulkDeal(trickId, qty) {
-    const have = system.state.inventory[trickId] || 0;
-    if (have < qty || qty < 20) return { ok: false, reason: 'need-20-plus', have };
-    const unit = skydivingPriceFor(trickId, system.state.dayDrift, system.state.rank, system.state.upgrades);
-    const total = Math.round(eventPrice(trickId, unit) * qty * 1.1 * 10) / 10;
-    system.state.inventory[trickId] -= qty;
-    system.state.findsSold += qty;
-    system.state.earned += total;
-    bulkSold += qty;
-    dealsClaimed += 1;
-    return { ok: true, total, qty, bonus: 'bulk +10%' };
-  }
-
-  function dailyDeals() {
-    const deals = [];
-    for (const f of SKYDIVE_TRICKS) {
-      const mult = skydivingEventMult(currentEvent, f.id);
-      if (mult !== 1) {
-        deals.push({ find: f.id, name: f.name, mult, event: currentEvent });
-      }
-    }
-    return deals;
-  }
-
-  function marketSummary() {
-    return {
-      event: currentEvent,
-      season: currentSeason,
-      dealsClaimed,
-      bulkSold,
-      deals: dailyDeals(),
-    };
-  }
+  const priceOf = (itemId, basePrice) => {
+    const em = currentEvent ? skydivingEventMult(currentEvent, itemId) : 1;
+    const sm = skydivingSeasonMult(currentSeason);
+    return Math.round(basePrice * em * sm * 10) / 10;
+  };
 
   return {
-    setEvent, setSeason, eventPrice, bulkDeal, dailyDeals, marketSummary,
+    setEvent(id) {
+      const ev = SKYDIVE_MARKET.find((m) => m.id === id);
+      if (!ev) return { ok: false, reason: 'no-such-event' };
+      currentEvent = id;
+      st.event = id;
+      return { ok: true, event: id };
+    },
+    setSeason(id) {
+      const s = SKYDIVE_SEASONS.find((x) => x.id === id);
+      if (!s) return { ok: false, reason: 'no-such-season' };
+      currentSeason = id;
+      st.season = id;
+      return { ok: true, season: id };
+    },
+    eventPrice(itemId, basePrice) {
+      return priceOf(itemId, basePrice);
+    },
+    bulkDeal(trickId, qty) {
+      if (!qty || qty < 20) return { ok: false, reason: 'not-enough', qty: qty || 0, need: 20 };
+      const held = st.inventory[trickId] || 0;
+      if (held < qty) return { ok: false, reason: 'not-enough-held', have: held, need: qty };
+      const t = trickById(trickId);
+      if (!t) return { ok: false, reason: 'no-such-find' };
+      const unit = priceOf(trickId, t.value);
+      const total = Math.round(unit * qty * 1.1 * 10) / 10;
+      st.inventory[trickId] = held - qty;
+      if (st.inventory[trickId] <= 0) delete st.inventory[trickId];
+      st.findsSold += qty;
+      st.earned += total;
+      st.dailyEarned += total;
+      bulkTraded += qty;
+      dealsClaimed += 1;
+      return { ok: true, total, qty, unit, bonus: 'bulk +10%' };
+    },
+    dailyDeals() {
+      return SKYDIVE_MARKET.map((m) => ({ id: m.id, name: m.name, finds: m.finds.slice(), mult: m.mult, desc: m.desc }));
+    },
+    marketSummary() {
+      return { event: currentEvent, season: currentSeason, dealsClaimed, bulkTraded, deals: this.dailyDeals() };
+    },
     get event() { return currentEvent; },
     get season() { return currentSeason; },
   };
 }
-
-export const SKYDIVING_META = {
-  system: 'skydiving',
-  version: '7c-B2',
-  author: 'builder-2',
-  dataCount: DROP_ZONES.length,
-  findCount: SKYDIVE_TRICKS.length,
-  upgradeCount: SKYDIVE_UPGRADES.length,
-  rankCount: SKYDIVE_RANKS.length,
-};

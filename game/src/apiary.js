@@ -1,144 +1,332 @@
-// Solara Nights — Apiary / Honey & Hive (Round 7, written fresh).
-// Ria keeps bees across Solara's meadows, orchards and rooftop gardens:
-// place hives, tend the colonies through the seasons, harvest honey,
-// wax and royal jelly, and sell to the market, the bakery and the
-// apothecary. A strong queen makes a strong hive; mites, wasps and a
-// cold snap can wipe a colony out overnight. Breed better bees, split
-// strong hives, and chase the rare blossom flows — lavender, orange
-// blossom and the fabled black mangrove honey that pays like gold.
-// Pure logic: no rendering, no imports. The game wires it through the
-// standard ctx { rng, getDay, getHour, getCash, addCash, addHeat, log,
-// getPlayerPos, getWeather } and drives tick/tickDay from the main loop.
-
 export const APIARY_HIVES = [
-  { id: 'langstroth', name: 'Langstroth Hive', value: 60, honey: 8, wax: 2, capacity: 10, difficulty: 1, rarity: 0.3, desc: 'The classic box hive — reliable and easy.' },
-  { id: 'topbar', name: 'Top-Bar Hive', value: 45, honey: 6, wax: 3, capacity: 8, difficulty: 1, rarity: 0.24, desc: 'A long low hive the bees love to build in.' },
-  { id: 'warre', name: 'Warré Hive', value: 55, honey: 7, wax: 2, capacity: 9, difficulty: 2, rarity: 0.16, desc: 'Stacked boxes, hands-off, natural comb.' },
-  { id: 'skep', name: 'Straw Skep', value: 25, honey: 4, wax: 1, capacity: 5, difficulty: 1, rarity: 0.2, desc: 'The old straw basket — charming, small yield.' },
-  { id: 'flow', name: 'Flow Hive', value: 180, honey: 12, wax: 1, capacity: 12, difficulty: 2, rarity: 0.08, desc: 'Turn a tap and honey flows out. Modern magic.' },
-  { id: 'observation', name: 'Observation Hive', value: 120, honey: 3, wax: 1, capacity: 4, difficulty: 3, rarity: 0.06, desc: 'Glass walls — visitors pay to watch the bees work.' },
-  { id: 'nuc', name: 'Nucleus Hive', value: 40, honey: 2, wax: 1, capacity: 3, difficulty: 2, rarity: 0.18, desc: 'A small starter colony, perfect for splits.' },
-  { id: 'rooftop', name: 'Rooftop Hive', value: 90, honey: 9, wax: 2, capacity: 8, difficulty: 2, rarity: 0.1, desc: 'City bees on a sunny roof — strong flow.' },
-  { id: 'mangrove', name: 'Mangrove Hive', value: 220, honey: 14, wax: 3, capacity: 12, difficulty: 4, rarity: 0.03, desc: 'Black mangrove honey — dark, rare, priceless.' },
-  { id: 'orchard', name: 'Orchard Hive', value: 75, honey: 10, wax: 2, capacity: 9, difficulty: 1, rarity: 0.14, desc: 'Set among the apple rows at blossom time.' },
+  { id: 'langstroth', name: 'Langstroth Hive', value: 60, honey: 8, wax: 3, capacity: 8, difficulty: 1, rarity: 0.3, desc: 'The standard box hive, steady and reliable.' },
+  { id: 'topbar', name: 'Top-Bar Hive', value: 45, honey: 6, wax: 2, capacity: 6, difficulty: 1, rarity: 0.25, desc: 'Simple bars the bees build on themselves.' },
+  { id: 'warre', name: 'Warre Hive', value: 50, honey: 7, wax: 3, capacity: 7, difficulty: 2, rarity: 0.2, desc: 'A tall, quiet hive for patient keepers.' },
+  { id: 'skep', name: 'Skep', value: 25, honey: 4, wax: 2, capacity: 4, difficulty: 1, rarity: 0.28, desc: 'A woven straw basket, the old way.' },
+  { id: 'flow', name: 'Flow Hive', value: 150, honey: 12, wax: 4, capacity: 10, difficulty: 3, rarity: 0.08, desc: 'Honey on tap, no smoke needed.' },
+  { id: 'observation', name: 'Observation Hive', value: 90, honey: 5, wax: 2, capacity: 5, difficulty: 2, rarity: 0.12, desc: 'Glass walls for watching the colony work.' },
+  { id: 'nuc', name: 'Nucleus Hive', value: 40, honey: 3, wax: 1, capacity: 3, difficulty: 1, rarity: 0.22, desc: 'A small starter colony in a small box.' },
+  { id: 'rooftop', name: 'Rooftop Hive', value: 80, honey: 6, wax: 3, capacity: 6, difficulty: 2, rarity: 0.15, desc: 'Bees above the town, working the gardens.' },
+  { id: 'mangrove', name: 'Mangrove Hive', value: 220, honey: 14, wax: 5, capacity: 12, difficulty: 4, rarity: 0.04, desc: 'A great hive in the mangroves, heavy with honey.' },
+  { id: 'orchard', name: 'Orchard Hive', value: 110, honey: 10, wax: 4, capacity: 9, difficulty: 3, rarity: 0.07, desc: 'Bees working the blossom rows.' },
 ];
 
 export const APIARY_FLOWERS = [
-  { id: 'clover', name: 'Clover Meadow', nectar: 1.0, season: 'spring', desc: 'Sweet white clover, the classic honey.' },
-  { id: 'lavender', name: 'Lavender Field', nectar: 1.4, season: 'summer', desc: 'Purple rows that hum with bees.' },
-  { id: 'orange', name: 'Orange Grove', nectar: 1.5, season: 'spring', desc: 'Citrus blossom — bright, floral honey.' },
-  { id: 'acacia', name: 'Acacia Stand', nectar: 1.3, season: 'summer', desc: 'Pale, clear honey that never crystallises.' },
-  { id: 'sunflower', name: 'Sunflower Field', nectar: 1.2, season: 'summer', desc: 'Golden giants, golden honey.' },
-  { id: 'buckwheat', name: 'Buckwheat Field', nectar: 1.1, season: 'autumn', desc: 'Dark, malty honey for the bakery.' },
-  { id: 'mangrove', name: 'Mangrove Bloom', nectar: 2.0, season: 'autumn', desc: 'The rarest flow in Solara.' },
-  { id: 'wildflower', name: 'Wildflower Bank', nectar: 1.0, season: 'all', desc: 'A little of everything, all year.' },
+  { id: 'clover', name: 'Clover', nectar: 1.2, season: 'spring', desc: 'Low white blossom, steady nectar.' },
+  { id: 'lavender', name: 'Lavender', nectar: 1.4, season: 'summer', desc: 'Purple rows that bees adore.' },
+  { id: 'orange', name: 'Orange Blossom', nectar: 1.3, season: 'spring', desc: 'Sweet citrus blossom.' },
+  { id: 'acacia', name: 'Acacia', nectar: 1.5, season: 'summer', desc: 'Pale blossom with a clear, light honey.' },
+  { id: 'sunflower', name: 'Sunflower', nectar: 1.2, season: 'summer', desc: 'Big yellow faces full of pollen.' },
+  { id: 'buckwheat', name: 'Buckwheat', nectar: 1.1, season: 'autumn', desc: 'Dark, strong honey from late blossom.' },
+  { id: 'mangrove', name: 'Mangrove Bloom', nectar: 2.0, season: 'summer', desc: 'The richest flow in the county.' },
+  { id: 'wildflower', name: 'Wildflower', nectar: 1.0, season: 'all', desc: 'Whatever is blooming nearby.' },
 ];
 
 export const APIARY_BUYERS = [
-  { id: 'market', name: 'Market Stall', mult: 1.0, likes: ['honey'], dislikes: [], mood: 'steady', minRank: 0, desc: 'Jars on the stall, cash in hand.' },
-  { id: 'bakery', name: 'Bakery Rosa', mult: 1.2, likes: ['honey', 'wax'], dislikes: [], mood: 'steady', minRank: 0, desc: 'Bakes with your honey every morning.' },
-  { id: 'apothecary', name: 'Apothecary Venn', mult: 1.5, likes: ['jelly', 'propolis'], dislikes: ['honey'], mood: 'fancy', minRank: 2, desc: 'Royal jelly and propolis for medicine.' },
-  { id: 'candle', name: 'Candle Maker', mult: 1.3, likes: ['wax'], dislikes: ['honey'], mood: 'steady', minRank: 1, desc: 'Pure beeswax candles, top price.' },
-  { id: 'exporter', name: 'Honey Exporter', mult: 1.4, likes: ['rare'], dislikes: [], mood: 'odd', minRank: 3, desc: 'Ships Solara honey overseas for big money.' },
+  { id: 'market', name: 'Town Market', mult: 1.0, likes: ['honey'], dislikes: ['propolis'], mood: 'steady', minRank: 0, desc: 'Buys jars of honey by the dozen.' },
+  { id: 'bakery', name: 'The Bakery', mult: 1.1, likes: ['honey', 'mead'], dislikes: ['wax'], mood: 'busy', minRank: 0, desc: 'Honey for buns and sweet bread.' },
+  { id: 'apothecary', name: 'The Apothecary', mult: 1.3, likes: ['jelly', 'propolis'], dislikes: ['comb'], mood: 'picky', minRank: 2, desc: 'Pays dearly for royal jelly and propolis.' },
+  { id: 'candle', name: 'Candle Maker', mult: 1.2, likes: ['wax', 'comb'], dislikes: ['mead'], mood: 'keen', minRank: 1, desc: 'Wants wax for fine candles.' },
+  { id: 'exporter', name: 'Honey Exporter', mult: 1.4, likes: ['honey', 'mead', 'jelly'], dislikes: ['wax'], mood: 'eager', minRank: 3, desc: 'Ships the best honey overseas.' },
 ];
 
 export const APIARY_UPGRADES = [
-  { id: 'veil', name: 'Bee Veil', cost: 50, desc: 'No more stings: sting chance halved.', effect: 'veil' },
-  { id: 'smoker', name: 'Bee Smoker', cost: 90, desc: 'Calm bees: harvests are 25% bigger.', effect: 'smoker' },
-  { id: 'queen', name: 'Pedigree Queen', cost: 200, desc: 'Strong queens: colonies grow twice as fast.', effect: 'queen' },
-  { id: 'extractor', name: 'Honey Extractor', cost: 320, desc: 'Spin comb clean: +30% honey per harvest.', effect: 'extractor' },
-  { id: 'mite', name: 'Mite Treatment', cost: 180, desc: 'Mite outbreaks cut by two thirds.', effect: 'mite' },
-  { id: 'frames', name: 'Extra Frames', cost: 260, desc: 'More comb space: +2 capacity per hive.', effect: 'frames' },
-  { id: 'apiary', name: 'Apiary Shed', cost: 600, desc: 'Winter shelter: colonies survive the cold.', effect: 'shed' },
-  { id: 'breeder', name: 'Queen Breeder', cost: 900, desc: 'Raise your own queens: splits are free.', effect: 'breeder' },
+  { id: 'veil', name: 'Bee Veil', cost: 50, desc: 'A veil that keeps stings off your face.', effect: 'safety' },
+  { id: 'smoker', name: 'Smoker', cost: 90, desc: 'Cool smoke that calms the bees.', effect: 'harvest' },
+  { id: 'queen', name: 'Pedigree Queen', cost: 200, desc: 'A fine queen whose daughters work twice as hard.', effect: 'queen' },
+  { id: 'extractor', name: 'Honey Extractor', cost: 320, desc: 'A spinner that pulls every drop of honey.', effect: 'harvest' },
+  { id: 'mite', name: 'Mite Treatment', cost: 180, desc: 'Treatment that keeps the mites down.', effect: 'health' },
+  { id: 'frames', name: 'Extra Frames', cost: 260, desc: 'More frames means roomier hives.', effect: 'capacity' },
+  { id: 'apiary', name: 'Apiary Shed', cost: 600, desc: 'A shed that shelters hives from the cold.', effect: 'shelter' },
+  { id: 'breeder', name: 'Breeder Kit', cost: 900, desc: 'Everything needed to split colonies free.', effect: 'breed' },
 ];
 
 export const APIARY_RANKS = [
-  { level: 0, name: 'Bee Friend', xp: 0, perk: 'Base prices, base yield.' },
-  { level: 1, name: 'Beekeeper', xp: 120, perk: '+10% sale prices.' },
-  { level: 2, name: 'Apiarist', xp: 300, perk: '+10% honey yield.' },
-  { level: 3, name: 'Honey Master', xp: 620, perk: '+20% sale prices, the apothecary buys.' },
-  { level: 4, name: 'Queen of Bees', xp: 1100, perk: '+30% sale prices, rare honey doubled.' },
+  { level: 0, name: 'Bee Friend', xp: 0, perk: 'The bees tolerate you.' },
+  { level: 1, name: 'Beekeeper', xp: 120, perk: 'A steady hand with the smoker.' },
+  { level: 2, name: 'Apiarist', xp: 300, perk: 'Colonies thrive under your care.' },
+  { level: 3, name: 'Honey Master', xp: 620, perk: 'The apothecary asks for you by name.' },
+  { level: 4, name: 'Queen of Bees', xp: 1100, perk: 'Every hive in the county is yours.' },
 ];
 
 export const APIARY_PRODUCTS = [
-  { id: 'honey', name: 'Honey Jar', value: 8, desc: 'A golden jar of Solara honey.' },
-  { id: 'wax', name: 'Beeswax Block', value: 12, desc: 'Clean yellow wax for candles.' },
-  { id: 'jelly', name: 'Royal Jelly', value: 45, desc: 'A tiny pot of precious jelly.' },
-  { id: 'propolis', name: 'Propolis Tincture', value: 30, desc: 'Sticky bee glue, bottled for medicine.' },
-  { id: 'comb', name: 'Honeycomb Section', value: 20, desc: 'Comb still in the frame, ready to eat.' },
-  { id: 'mead', name: 'Mead Bottle', value: 60, desc: 'Fermented honey wine, aged a season.' },
+  { id: 'honey', name: 'Honey', value: 8, desc: 'Golden jars of honey.' },
+  { id: 'wax', name: 'Beeswax', value: 12, desc: 'Clean yellow wax.' },
+  { id: 'jelly', name: 'Royal Jelly', value: 45, desc: 'Precious jelly for queens.' },
+  { id: 'propolis', name: 'Propolis', value: 30, desc: 'Sticky resin the bees gather.' },
+  { id: 'comb', name: 'Honeycomb', value: 20, desc: 'Sections of comb dripping with honey.' },
+  { id: 'mead', name: 'Mead', value: 60, desc: 'Bottled honey wine.' },
 ];
 
 export const APIARY_EVENTS = [
-  { id: 'blossom', name: 'Blossom Rush', mult: 1.5, flowers: ['orange', 'lavender', 'clover'], desc: 'Every flower opens at once — the bees go wild.' },
-  { id: 'swarm', name: 'Swarm Season', mult: 1.3, flowers: [], desc: 'Swarms everywhere — catch one and gain a hive.' },
-  { id: 'mite-outbreak', name: 'Mite Outbreak', mult: 0.7, flowers: [], desc: 'Mites spread through the apiary.' },
-  { id: 'wasp-attack', name: 'Wasp Attack', mult: 0.75, flowers: [], desc: 'Wasps raid the hives — defend them.' },
-  { id: 'cold-snap', name: 'Cold Snap', mult: 0.6, flowers: [], desc: 'A sudden frost kills the blossom.' },
-  { id: 'mangrove-bloom', name: 'Mangrove Bloom', mult: 2.0, flowers: ['mangrove'], desc: 'The black mangrove flowers — once a year.' },
+  { id: 'blossom', name: 'Full Blossom', mult: 1.3, flowers: ['clover', 'lavender'], desc: 'Every blossom in the county is open.' },
+  { id: 'swarm', name: 'Swarm Season', mult: 1.0, flowers: [], desc: 'Swarms are on the move; catch one free.' },
+  { id: 'mite-outbreak', name: 'Mite Outbreak', mult: 0.7, flowers: [], desc: 'Mites are spreading through the hives.' },
+  { id: 'wasp-attack', name: 'Wasp Attack', mult: 0.8, flowers: [], desc: 'Wasps are raiding the weaker colonies.' },
+  { id: 'cold-snap', name: 'Cold Snap', mult: 0.6, flowers: [], desc: 'A bitter cold snap chills the hives.' },
+  { id: 'mangrove-bloom', name: 'Mangrove Bloom', mult: 1.5, flowers: ['mangrove'], desc: 'The mangroves burst into flower.' },
 ];
 
 export const APIARY_CONTRACTS = [
-  { id: 'honey-20', name: 'Honey Order', product: 'honey', qty: 20, pay: 240, days: 2, rep: 0, desc: 'The market needs twenty jars.' },
-  { id: 'wax-10', name: 'Wax Order', product: 'wax', qty: 10, pay: 220, days: 2, rep: 1, desc: 'The candle maker needs ten wax blocks.' },
-  { id: 'jelly-4', name: 'Jelly Call', product: 'jelly', qty: 4, pay: 320, days: 3, rep: 2, desc: 'The apothecary wants four pots of jelly.' },
-  { id: 'mead-6', name: 'Mead Run', product: 'mead', qty: 6, pay: 480, days: 3, rep: 2, desc: 'The tavern orders six bottles of mead.' },
-  { id: 'comb-12', name: 'Comb Order', product: 'comb', qty: 12, pay: 360, days: 2, rep: 1, desc: 'A chef wants twelve comb sections.' },
-  { id: 'mangrove-5', name: 'Black Honey', product: 'honey', qty: 5, pay: 600, days: 3, rep: 3, desc: 'Five jars of black mangrove honey.' },
+  { id: 'honey-20', name: 'Honey Twenty', product: 'honey', qty: 20, pay: 240, days: 2, rep: 0, desc: 'Twenty jars of honey for the market.' },
+  { id: 'wax-10', name: 'Wax Ten', product: 'wax', qty: 10, pay: 220, days: 2, rep: 1, desc: 'Ten blocks of wax for the candle maker.' },
+  { id: 'jelly-4', name: 'Jelly Four', product: 'jelly', qty: 4, pay: 320, days: 3, rep: 2, desc: 'Four vials of royal jelly.' },
+  { id: 'mead-6', name: 'Mead Six', product: 'mead', qty: 6, pay: 480, days: 3, rep: 2, desc: 'Six bottles of mead for the tavern.' },
+  { id: 'comb-12', name: 'Comb Twelve', product: 'comb', qty: 12, pay: 360, days: 2, rep: 1, desc: 'Twelve comb sections for the fair.' },
+  { id: 'mangrove-5', name: 'Mangrove Five', product: 'honey', qty: 5, pay: 600, days: 3, rep: 3, desc: 'Five jars of rare mangrove honey.' },
 ];
 
 export const APIARY_PESTS = [
-  { id: 'mite', name: 'Varroa Mite', chance: 0.08, damage: 1, desc: 'Tiny mites weaken the colony.' },
-  { id: 'wasp', name: 'Wasp Raid', chance: 0.05, damage: 2, desc: 'Wasps steal honey and kill bees.' },
-  { id: 'moth', name: 'Wax Moth', chance: 0.06, damage: 1, desc: 'Moths eat the comb from inside.' },
-  { id: 'bear', name: 'Honey Bear', chance: 0.02, damage: 3, desc: 'A bear smashes a hive for the honey.' },
-  { id: 'foulbrood', name: 'Foulbrood', chance: 0.03, damage: 2, desc: 'A brood disease — burn the frames.' },
+  { id: 'mite', name: 'Varroa Mite', chance: 0.15, damage: 2, desc: 'Tiny mites that weaken the bees.' },
+  { id: 'wasp', name: 'Wasp', chance: 0.1, damage: 3, desc: 'Wasps rob honey and kill bees.' },
+  { id: 'moth', name: 'Wax Moth', chance: 0.08, damage: 1, desc: 'Moths chew the comb.' },
+  { id: 'bear', name: 'Bear', chance: 0.05, damage: 5, desc: 'A bear that smashes hives for honey.' },
+  { id: 'foulbrood', name: 'Foulbrood', chance: 0.04, damage: 4, desc: 'A sickness that kills the brood.' },
 ];
+
+export const APIARY_HELPERS = [
+  { id: 'mentor', name: 'Old Mentor', wage: 30, skill: 'tend', bonus: 0.25, desc: 'Sixty years of beekeeping wisdom.' },
+  { id: 'smoker-hand', name: 'Smoker Hand', wage: 35, skill: 'harvest', bonus: 0.2, desc: 'Calms bees with a puff of smoke.' },
+  { id: 'queen-breeder', name: 'Queen Breeder', wage: 60, skill: 'queen', bonus: 0.5, desc: 'Raises queens worth their weight in gold.' },
+  { id: 'seller', name: 'Market Seller', wage: 45, skill: 'sell', bonus: 0.15, desc: 'Sells honey with a smile.' },
+];
+
+export const APIARY_CHALLENGES = [
+  { id: 'hives-5', name: 'Five Hives', target: 'hiveCount', goal: 5, xp: 80, desc: 'Place five hives.' },
+  { id: 'honey-100', name: 'A Hundred Honey', target: 'honeyMade', goal: 100, xp: 100, desc: 'Make a hundred honey.' },
+  { id: 'harvests-20', name: 'Twenty Harvests', target: 'harvests', goal: 20, xp: 110, desc: 'Harvest twenty times.' },
+  { id: 'earn-1000', name: 'A Thousand Earned', target: 'earned', goal: 1000, xp: 120, desc: 'Earn a thousand from the apiary.' },
+  { id: 'splits-3', name: 'Three Splits', target: 'splits', goal: 3, xp: 130, desc: 'Split three colonies.' },
+  { id: 'swarms-2', name: 'Two Swarms', target: 'swarmsCaught', goal: 2, xp: 140, desc: 'Catch two swarms.' },
+  { id: 'mead-10', name: 'Ten Mead', target: 'meadMade', goal: 10, xp: 120, desc: 'Brew ten bottles of mead.' },
+  { id: 'contracts-5', name: 'Five Contracts', target: 'contractsDone', goal: 5, xp: 140, desc: 'Finish five apiary contracts.' },
+];
+
+export const APIARY_ACHIEVEMENTS = [
+  { id: 'first-hive', name: 'First Hive', check: (s) => s.hiveCount >= 1, desc: 'Your first placed hive.' },
+  { id: 'first-harvest', name: 'First Harvest', check: (s) => s.harvests >= 1, desc: 'Your first honey harvest.' },
+  { id: 'first-mead', name: 'First Mead', check: (s) => s.meadMade >= 1, desc: 'Your first bottle of mead.' },
+  { id: 'rank-3', name: 'Honey Master', check: (s) => s.rank >= 3, desc: 'Reach rank three.' },
+  { id: 'rich-keeper', name: 'Rich Keeper', check: (s) => s.earned >= 1000, desc: 'Earn a thousand from the apiary.' },
+  { id: 'full-kit', name: 'Full Kit', check: (s) => s.upgrades.length >= 8, desc: 'Own every apiary upgrade.' },
+  { id: 'no-loss', name: 'No Loss', check: (s) => s.hiveCount >= 5 && s.coloniesLost === 0, desc: 'Five hives without losing one.' },
+  { id: 'mangrove', name: 'Mangrove Gold', check: (s) => s.bestHive === 'mangrove', desc: 'Your best harvest came from a mangrove hive.' },
+];
+
+export const APIARY_TIPS = [
+  { id: 'veil-first', name: 'Veil First', text: 'Buy the veil before your first hive; stings add up.' },
+  { id: 'blossom', name: 'Follow the Blossom', text: 'Set your flower to whatever is blooming.' },
+  { id: 'split', name: 'Split Strong Colonies', text: 'Split a colony at strength eight for a free hive.' },
+  { id: 'mite', name: 'Watch the Mites', text: 'Mite treatment saves colonies in an outbreak.' },
+  { id: 'mead', name: 'Brew the Spare', text: 'Spare honey brews into mead worth far more.' },
+  { id: 'mangrove', name: 'Mangrove Gold', text: 'Mangrove honey is the richest flow in the county.' },
+  { id: 'winter', name: 'Winter Care', text: 'Cold snaps kill weak colonies; keep them strong.' },
+  { id: 'jelly', name: 'Royal Jelly', text: 'Strong colonies make royal jelly worth a fortune.' },
+];
+
+export const APIARY_LEADERBOARD = [
+  { name: 'Old Hana', jars: 4200, desc: 'Keeps bees the old way, and well.' },
+  { name: 'Breeder Luz', jars: 3100, desc: 'Raises queens for the whole county.' },
+  { name: 'Ria', jars: 0, desc: 'The new beekeeper in town.' },
+  { name: 'Market Maya', jars: 2200, desc: 'Sells honey at every market.' },
+  { name: 'Smoker Sam', jars: 1500, desc: 'Calm hands, calm bees.' },
+];
+
+export const APIARY_RECORDS = [
+  { id: 'most-honey', name: 'Most Honey', stat: 'honeyMade', unit: 'jars', desc: 'Honey made in total.' },
+  { id: 'most-hives', name: 'Most Hives', stat: 'hiveCount', unit: 'hives', desc: 'Hives placed in total.' },
+  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$', desc: 'Coin earned from the apiary.' },
+  { id: 'best-harvest', name: 'Best Harvest', stat: 'bestYield', unit: 'jars', desc: 'Biggest single harvest.' },
+  { id: 'swarms', name: 'Swarms Caught', stat: 'swarmsCaught', unit: 'swarms', desc: 'Swarms caught in total.' },
+];
+
+export const APIARY_QUICK_START = [
+  'Place a Langstroth hive in the clover meadow to start.',
+  'Tend your colonies often so strength stays high.',
+  'Harvest when a hive holds at least two honey.',
+  'Split strong colonies instead of buying new hives.',
+  'Sell honey to the bakery and jelly to the apothecary.',
+  'Brew mead from spare honey; it sells for far more.',
+];
+
+export const APIARY_META = {
+  system: 'apiary',
+  version: '7-B1',
+  author: 'builder-1',
+  hives: 10,
+  flowers: 8,
+  note: 'Tend, harvest, brew, sell.',
+};
 
 export function apiaryRankFor(xp) {
   let rank = 0;
-  for (let i = 0; i < APIARY_RANKS.length; i++) {
-    if (xp >= APIARY_RANKS[i].xp) rank = i;
+  for (let i = APIARY_RANKS.length - 1; i >= 0; i--) {
+    if (xp >= APIARY_RANKS[i].xp) {
+      rank = i;
+      break;
+    }
   }
   return rank;
 }
 
 export function apiaryPriceFor(product, rank, upgrades) {
-  let price = product.value;
-  price *= 1 + rank * 0.1;
-  if (upgrades.includes('extractor') && product.id === 'honey') price *= 1.1;
+  if (!product) return 1;
+  const owned = upgrades || [];
+  let price = product.value * (1 + 0.1 * rank);
+  if (product.id === 'honey' && owned.includes('extractor')) price *= 1.15;
   return Math.max(1, Math.round(price));
 }
 
 export function apiaryBuyerPrice(product, buyerId, rank, upgrades) {
   const buyer = APIARY_BUYERS.find((b) => b.id === buyerId);
-  if (!buyer) return 0;
-  let mult = buyer.mult;
-  if (buyer.likes.includes(product.id)) mult += 0.2;
-  if (product.id === 'jelly' && buyer.likes.includes('rare')) mult += 0.2;
-  return Math.max(1, Math.round(apiaryPriceFor(product, rank, upgrades) * mult));
+  if (!buyer || !product) return 0;
+  let price = apiaryPriceFor(product, rank, upgrades) * buyer.mult;
+  if (buyer.likes.includes(product.id)) price *= 1.1;
+  if (buyer.dislikes.includes(product.id)) price *= 0.9;
+  if (product.id === 'jelly') price *= 1.15;
+  return Math.max(1, Math.round(price));
 }
 
 export function apiaryHiveCapacity(hive, upgrades) {
+  const owned = upgrades || [];
   let cap = hive.capacity;
-  if (upgrades.includes('frames')) cap += 2;
+  if (owned.includes('frames')) cap += 2;
   return cap;
 }
 
-export function createApiarySystem(ctx) {
-  const c = ctx || {};
-  const rng = typeof c.rng === 'function' ? c.rng : Math.random;
-  const getCash = typeof c.getCash === 'function' ? c.getCash : () => 0;
-  const addCash = typeof c.addCash === 'function' ? c.addCash : () => {};
-  const addHeat = typeof c.addHeat === 'function' ? c.addHeat : () => {};
-  const log = typeof c.log === 'function' ? c.log : () => {};
-  const getDay = typeof c.getDay === 'function' ? c.getDay : () => 1;
-  const getHour = typeof c.getHour === 'function' ? c.getHour : () => 12;
-  const getPos = typeof c.getPlayerPos === 'function' ? c.getPlayerPos : () => ({ x: 0, z: 0 });
-  const getWeather = typeof c.getWeather === 'function' ? c.getWeather : () => ({ condition: 'clear' });
+const APIARY_STATE_KEYS = [
+  'xp', 'rank', 'hives', 'hiveCount', 'harvests', 'honeyMade', 'waxMade',
+  'jellyMade', 'earned', 'spent', 'stings', 'coloniesLost', 'swarmsCaught',
+  'splits', 'products', 'upgrades', 'lastDay', 'activeContract', 'contractProgress',
+  'contractsDone', 'contractsFailed', 'bestHive', 'bestYield', 'dailyHoney',
+  'dailyEarned', 'currentEvent', 'flower', 'queens', 'meadMade',
+];
 
-  const state = {
+function apiaryChallengeAmount(target, st) {
+  const table = {
+    hiveCount: st.hiveCount,
+    honeyMade: st.honeyMade,
+    harvests: st.harvests,
+    earned: st.earned,
+    splits: st.splits,
+    swarmsCaught: st.swarmsCaught,
+    meadMade: st.meadMade,
+    contractsDone: st.contractsDone,
+  };
+  return table[target] !== undefined ? table[target] : 0;
+}
+
+export function apiaryHelperBonus(ids, skill) {
+  let sum = 0;
+  for (const id of ids || []) {
+    const helper = APIARY_HELPERS.find((h) => h.id === id);
+    if (helper && helper.skill === skill) sum += helper.bonus;
+  }
+  return sum;
+}
+
+export function apiaryChallengeProgress(challenge, state) {
+  const amount = Math.floor(apiaryChallengeAmount(challenge.target, state));
+  return { id: challenge.id, name: challenge.name, amount, goal: challenge.goal, done: amount >= challenge.goal };
+}
+
+export function apiaryTipFor(day) {
+  const idx = ((day || 0) % APIARY_TIPS.length + APIARY_TIPS.length) % APIARY_TIPS.length;
+  return APIARY_TIPS[idx];
+}
+
+export function apiaryLeaderboardWith(jars) {
+  const rows = APIARY_LEADERBOARD.map((row) => ({
+    name: row.name,
+    jars: row.name === 'Ria' ? jars : row.jars,
+    desc: row.desc,
+  }));
+  rows.sort((a, b) => b.jars - a.jars);
+  return rows.map((row, i) => ({ rank: i + 1, name: row.name, jars: row.jars, desc: row.desc }));
+}
+
+export function apiaryEfficiency(honeyMade, harvests) {
+  if (!harvests) return 0;
+  return Math.round((honeyMade / harvests) * 10) / 10;
+}
+
+export function apiaryProfitPerHive(earned, hives) {
+  if (!hives) return 0;
+  return Math.round((earned / hives) * 10) / 10;
+}
+
+export function apiaryGrade(honeyMade, coloniesLost, harvests) {
+  if (!honeyMade) return 'D';
+  const score = honeyMade - coloniesLost * 20 + harvests * 2;
+  if (score >= 120) return 'S';
+  if (score >= 70) return 'A';
+  if (score >= 35) return 'B';
+  if (score >= 12) return 'C';
+  return 'D';
+}
+
+function apiaryRecordValue(stat, state) {
+  const table = {
+    honeyMade: state.honeyMade,
+    hiveCount: state.hiveCount,
+    earned: Math.round(state.earned),
+    bestYield: state.bestYield,
+    swarmsCaught: state.swarmsCaught,
+  };
+  return table[stat] !== undefined ? table[stat] : 0;
+}
+
+export function apiaryRecordFor(id, state) {
+  const rec = APIARY_RECORDS.find((r) => r.id === id);
+  if (!rec) return null;
+  return { id: rec.id, name: rec.name, value: apiaryRecordValue(rec.stat, state), unit: rec.unit };
+}
+
+export function apiaryAllRecords(state) {
+  return APIARY_RECORDS.map((rec) => ({
+    id: rec.id,
+    name: rec.name,
+    value: apiaryRecordValue(rec.stat, state),
+    unit: rec.unit,
+    desc: rec.desc,
+  }));
+}
+
+export function apiarySummary(state) {
+  const rankName = APIARY_RANKS[state.rank] ? APIARY_RANKS[state.rank].name : 'Bee Friend';
+  return `${rankName} — ${state.hiveCount} hives, ${Math.round(state.honeyMade)} honey, ${state.harvests} harvests, $${Math.round(state.earned)} earned.`;
+}
+
+export function apiaryNextGoal(state) {
+  if (state.hiveCount < 5) return 'Place five hives in the meadow.';
+  if (state.honeyMade < 100) return 'Make a hundred honey.';
+  if (state.rank < 2) return 'Reach rank 2 and become an Apiarist.';
+  return 'Brew ten bottles of mead.';
+}
+
+export function apiaryQuickStart(step) {
+  if (step < 0 || step >= APIARY_QUICK_START.length) return null;
+  return APIARY_QUICK_START[step];
+}
+
+export function createApiarySystem(ctx = {}) {
+  const rng = ctx.rng || Math.random;
+  const getDay = ctx.getDay || (() => 1);
+  const getCash = ctx.getCash || (() => 0);
+  const addCash = ctx.addCash || (() => {});
+  const log = ctx.log || (() => {});
+  const getPlayerPos = ctx.getPlayerPos || (() => ({ x: 0, z: 0 }));
+  const getHour = ctx.getHour || (() => 12);
+  const addHeat = ctx.addHeat || (() => {});
+  const getWeather = ctx.getWeather || (() => ({ condition: 'clear' }));
+
+  const seedProducts = () => {
+    const products = {};
+    for (const p of APIARY_PRODUCTS) products[p.id] = 0;
+    return products;
+  };
+
+  const sys = {
     xp: 0,
     rank: 0,
     hives: [],
@@ -153,7 +341,7 @@ export function createApiarySystem(ctx) {
     coloniesLost: 0,
     swarmsCaught: 0,
     splits: 0,
-    products: {},
+    products: seedProducts(),
     upgrades: [],
     lastDay: 1,
     activeContract: null,
@@ -169,40 +357,65 @@ export function createApiarySystem(ctx) {
     queens: 0,
     meadMade: 0,
   };
-  for (const p of APIARY_PRODUCTS) state.products[p.id] = 0;
 
-  function refreshRank() {
-    const r = apiaryRankFor(state.xp);
-    if (r > state.rank) {
-      state.rank = r;
-      log(`Apiary rank up: ${APIARY_RANKS[r].name} — ${APIARY_RANKS[r].perk}`);
+  function giveXp(amount) {
+    sys.xp += amount;
+    const next = apiaryRankFor(sys.xp);
+    if (next > sys.rank) {
+      sys.rank = next;
+      log(`Rank up! You are now ${APIARY_RANKS[next].name}.`);
     }
   }
 
-  function gainXp(n) {
-    state.xp += n;
-    refreshRank();
+  function refuse(reason) {
+    return { ok: false, reason };
   }
 
-  function flowerNectar() {
-    const f = APIARY_FLOWERS.find((x) => x.id === state.flower);
-    let n = f ? f.nectar : 1;
-    if (state.currentEvent) {
-      const ev = APIARY_EVENTS.find((e) => e.id === state.currentEvent);
-      if (ev && ev.flowers.includes(state.flower)) n *= ev.mult;
+  function allow(extra) {
+    return { ok: true, ...extra };
+  }
+
+  function findColony(colonyId) {
+    return sys.hives.find((h) => h.id === colonyId) || null;
+  }
+
+  function flowerRow() {
+    return APIARY_FLOWERS.find((f) => f.id === sys.flower) || APIARY_FLOWERS[APIARY_FLOWERS.length - 1];
+  }
+
+  function maybeSting() {
+    const chance = sys.upgrades.includes('veil') ? 0.05 : 0.15;
+    if (rng() < chance) {
+      sys.stings += 1;
+      log('Ouch! A bee got you.');
     }
-    return n;
   }
 
-  function placeHive(hiveId) {
+  function settleContract(productId, qty) {
+    if (!sys.activeContract || sys.activeContract.product !== productId) return;
+    sys.contractProgress += qty;
+    if (sys.contractProgress < sys.activeContract.qty) return;
+    const pay = sys.activeContract.pay + 40 * sys.rank;
+    sys.earned += pay;
+    sys.dailyEarned += pay;
+    addCash(pay);
+    sys.contractsDone += 1;
+    log(`Contract done: ${sys.activeContract.name} paid $${pay}.`);
+    sys.activeContract = null;
+    sys.contractProgress = 0;
+    giveXp(60);
+  }
+
+  sys.placeHive = function placeHive(hiveId) {
     const hive = APIARY_HIVES.find((h) => h.id === hiveId);
-    if (!hive) return { ok: false, reason: 'no-such-hive' };
-    if (state.hives.length >= 12) return { ok: false, reason: 'apiary-full' };
-    if (getCash() < hive.value) return { ok: false, reason: 'not-enough-cash', cost: hive.value };
+    if (!hive) return refuse('unknown-hive');
+    if (sys.hives.length >= 12) return refuse('apiary-full');
+    if (getCash() < hive.value) return refuse('not-enough-cash');
     addCash(-hive.value);
-    state.spent += hive.value;
+    sys.spent += hive.value;
+    sys.hiveCount += 1;
     const colony = {
-      id: `${hiveId}-${state.hiveCount + 1}`,
+      id: `${hiveId}-${sys.hiveCount}`,
       type: hiveId,
       strength: 5,
       honey: 0,
@@ -210,96 +423,94 @@ export function createApiarySystem(ctx) {
       queen: true,
       health: 100,
       age: 0,
-      flower: state.flower,
+      flower: sys.flower,
     };
-    state.hives.push(colony);
-    state.hiveCount += 1;
-    state.queens += 1;
-    gainXp(15);
-    log(`Placed a ${hive.name} in the apiary — the bees settle in.`);
-    return { ok: true, hive: colony.id, type: hiveId };
-  }
+    sys.hives.push(colony);
+    sys.queens += 1;
+    giveXp(15);
+    log(`Placed a ${hive.name} in the meadow.`);
+    return allow({ hive: colony.id, type: hiveId });
+  };
 
-  function tendHive(hiveId) {
-    const colony = state.hives.find((h) => h.id === hiveId);
-    if (!colony) return { ok: false, reason: 'no-such-hive' };
+  sys.tendHive = function tendHive(colonyId) {
+    const colony = findColony(colonyId);
+    if (!colony) return refuse('unknown-colony');
     colony.health = Math.min(100, colony.health + 15);
     colony.strength = Math.min(10, colony.strength + 1);
-    if (rng() < (state.upgrades.includes('veil') ? 0.05 : 0.15)) {
-      state.stings += 1;
-      log('Ouch — a guard bee stings your wrist.');
-    }
-    gainXp(5);
-    log(`Tended ${colony.id} — health ${colony.health}, strength ${colony.strength}.`);
-    return { ok: true, health: colony.health, strength: colony.strength };
-  }
+    maybeSting();
+    giveXp(5);
+    return allow({ health: colony.health, strength: colony.strength });
+  };
 
-  function feedHive(hiveId) {
-    const colony = state.hives.find((h) => h.id === hiveId);
-    if (!colony) return { ok: false, reason: 'no-such-hive' };
-    const cost = 10;
-    if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost };
-    addCash(-cost);
-    state.spent += cost;
+  sys.feedHive = function feedHive(colonyId) {
+    const colony = findColony(colonyId);
+    if (!colony) return refuse('unknown-colony');
+    if (getCash() < 10) return refuse('not-enough-cash');
+    addCash(-10);
+    sys.spent += 10;
     colony.strength = Math.min(10, colony.strength + 2);
     colony.health = Math.min(100, colony.health + 10);
-    gainXp(4);
-    log(`Fed ${colony.id} sugar syrup — the bees hum louder.`);
-    return { ok: true, strength: colony.strength };
-  }
+    giveXp(4);
+    return allow({ strength: colony.strength });
+  };
 
-  function harvestHive(hiveId) {
-    const colony = state.hives.find((h) => h.id === hiveId);
-    if (!colony) return { ok: false, reason: 'no-such-hive' };
-    if (colony.honey < 2) return { ok: false, reason: 'not-ready', honey: colony.honey };
-    const hive = APIARY_HIVES.find((x) => x.id === colony.type);
+  sys.harvestHive = function harvestHive(colonyId) {
+    const colony = findColony(colonyId);
+    if (!colony) return refuse('unknown-colony');
+    if (colony.honey < 2) return refuse('not-ready');
     let honey = colony.honey;
-    if (state.upgrades.includes('smoker')) honey = Math.round(honey * 1.25);
-    if (state.upgrades.includes('extractor')) honey = Math.round(honey * 1.3);
+    if (sys.upgrades.includes('smoker')) honey *= 1.25;
+    if (sys.upgrades.includes('extractor')) honey *= 1.25;
+    honey = Math.round(honey * 10) / 10;
     const wax = colony.wax;
     colony.honey = 0;
     colony.wax = 0;
-    state.products.honey += honey;
-    state.products.wax += wax;
-    state.honeyMade += honey;
-    state.waxMade += wax;
-    state.dailyHoney += honey;
-    state.harvests += 1;
-    if (honey > state.bestYield) { state.bestYield = honey; state.bestHive = colony.id; }
-    if (rng() < (state.upgrades.includes('veil') ? 0.05 : 0.2)) {
-      state.stings += 1;
-      log('The bees object to the harvest — one sting for your trouble.');
+    sys.products.honey += honey;
+    sys.products.wax += wax;
+    sys.honeyMade += honey;
+    sys.waxMade += wax;
+    sys.dailyHoney += honey;
+    sys.harvests += 1;
+    if (honey > sys.bestYield) {
+      sys.bestYield = honey;
+      sys.bestHive = colony.type;
     }
-    gainXp(8 + honey);
-    log(`Harvested ${colony.id}: +${honey} honey, +${wax} wax.`);
-    return { ok: true, honey, wax, hive: colony.id };
-  }
+    maybeSting();
+    giveXp(Math.floor(honey));
+    return allow({ honey, wax, hive: colony.id });
+  };
 
-  function harvestAll() {
+  sys.harvestAll = function harvestAll() {
+    const ready = sys.hives.filter((h) => h.honey >= 2);
+    if (!ready.length) return refuse('none-ready');
     let honey = 0;
     let wax = 0;
-    let count = 0;
-    for (const colony of state.hives) {
-      if (colony.honey < 2) continue;
-      const r = harvestHive(colony.id);
-      if (r.ok) { honey += r.honey; wax += r.wax; count += 1; }
+    for (const colony of ready) {
+      const res = sys.harvestHive(colony.id);
+      if (res.ok) {
+        honey += res.honey;
+        wax += res.wax;
+      }
     }
-    if (count === 0) return { ok: false, reason: 'nothing-ready' };
-    return { ok: true, hives: count, honey, wax };
-  }
+    return allow({ hives: ready.length, honey: Math.round(honey * 10) / 10, wax: Math.round(wax * 10) / 10 });
+  };
 
-  function splitHive(hiveId) {
-    const colony = state.hives.find((h) => h.id === hiveId);
-    if (!colony) return { ok: false, reason: 'no-such-hive' };
-    if (colony.strength < 8) return { ok: false, reason: 'too-weak', strength: colony.strength };
-    if (state.hives.length >= 12) return { ok: false, reason: 'apiary-full' };
-    const cost = state.upgrades.includes('breeder') ? 0 : 40;
-    if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost };
-    addCash(-cost);
-    state.spent += cost;
+  sys.splitHive = function splitHive(colonyId) {
+    const colony = findColony(colonyId);
+    if (!colony) return refuse('unknown-colony');
+    if (colony.strength < 8) return refuse('too-weak');
+    if (sys.hives.length >= 12) return refuse('apiary-full');
+    const free = sys.upgrades.includes('breeder');
+    const cost = free ? 0 : 40;
+    if (getCash() < cost) return refuse('not-enough-cash');
+    if (cost > 0) {
+      addCash(-cost);
+      sys.spent += cost;
+    }
     colony.strength = 5;
+    sys.hiveCount += 1;
     const child = {
-      id: `${colony.type}-${state.hiveCount + 1}`,
+      id: `${colony.type}-${sys.hiveCount}`,
       type: colony.type,
       strength: 5,
       honey: 0,
@@ -307,22 +518,21 @@ export function createApiarySystem(ctx) {
       queen: true,
       health: 90,
       age: 0,
-      flower: state.flower,
+      flower: sys.flower,
     };
-    state.hives.push(child);
-    state.hiveCount += 1;
-    state.queens += 1;
-    state.splits += 1;
-    gainXp(25);
-    log(`Split ${colony.id} — a new colony, ${child.id}, starts life.`);
-    return { ok: true, newHive: child.id, cost };
-  }
+    sys.hives.push(child);
+    sys.splits += 1;
+    sys.queens += 1;
+    giveXp(25);
+    return allow({ hive: child.id, cost });
+  };
 
-  function catchSwarm() {
-    if (state.currentEvent !== 'swarm') return { ok: false, reason: 'no-swarm' };
-    if (state.hives.length >= 12) return { ok: false, reason: 'apiary-full' };
+  sys.catchSwarm = function catchSwarm() {
+    if (sys.currentEvent !== 'swarm') return refuse('no-swarm');
+    if (sys.hives.length >= 12) return refuse('apiary-full');
+    sys.hiveCount += 1;
     const colony = {
-      id: `skep-${state.hiveCount + 1}`,
+      id: `skep-${sys.hiveCount}`,
       type: 'skep',
       strength: 4,
       honey: 0,
@@ -330,583 +540,431 @@ export function createApiarySystem(ctx) {
       queen: true,
       health: 80,
       age: 0,
-      flower: state.flower,
+      flower: sys.flower,
     };
-    state.hives.push(colony);
-    state.hiveCount += 1;
-    state.queens += 1;
-    state.swarmsCaught += 1;
-    gainXp(30);
-    log(`Caught a wild swarm! A new skep colony joins the apiary.`);
-    return { ok: true, hive: colony.id };
-  }
+    sys.hives.push(colony);
+    sys.swarmsCaught += 1;
+    sys.queens += 1;
+    giveXp(30);
+    log('Caught a passing swarm in a skep, free of charge.');
+    return allow({ hive: colony.id });
+  };
 
-  function makeJelly(hiveId) {
-    const colony = state.hives.find((h) => h.id === hiveId);
-    if (!colony) return { ok: false, reason: 'no-such-hive' };
-    if (colony.strength < 7) return { ok: false, reason: 'too-weak', strength: colony.strength };
+  sys.makeJelly = function makeJelly(colonyId) {
+    const colony = findColony(colonyId);
+    if (!colony) return refuse('unknown-colony');
+    if (colony.strength < 7) return refuse('too-weak');
     const qty = 1 + Math.floor(rng() * 2);
-    state.products.jelly += qty;
-    state.jellyMade += qty;
+    sys.products.jelly += qty;
+    sys.jellyMade += qty;
     colony.strength -= 1;
-    gainXp(10);
-    log(`Collected ${qty} royal jelly from ${colony.id}.`);
-    return { ok: true, qty };
-  }
+    giveXp(10);
+    return allow({ quantity: qty });
+  };
 
-  function makePropolis() {
-    let total = 0;
-    for (const colony of state.hives) {
-      if (colony.strength >= 6) total += 1;
+  sys.makePropolis = function makePropolis() {
+    const strong = sys.hives.filter((h) => h.strength >= 6);
+    if (!strong.length) return refuse('no-strong-colonies');
+    const qty = strong.length;
+    sys.products.propolis += qty;
+    giveXp(qty * 3);
+    return allow({ quantity: qty });
+  };
+
+  sys.makeComb = function makeComb() {
+    const ready = sys.hives.filter((h) => h.honey >= 4);
+    if (!ready.length) return refuse('none-ready');
+    let qty = 0;
+    for (const colony of ready) {
+      colony.honey -= 2;
+      sys.products.honey += 0;
+      sys.products.comb += 1;
+      qty += 1;
     }
-    if (total === 0) return { ok: false, reason: 'no-strong-hives' };
-    state.products.propolis += total;
-    gainXp(total * 3);
-    log(`Scraped ${total} propolis from the hive entrances.`);
-    return { ok: true, qty: total };
-  }
+    giveXp(qty * 5);
+    return allow({ quantity: qty });
+  };
 
-  function makeComb() {
-    let made = 0;
-    for (const colony of state.hives) {
-      if (colony.honey >= 4) {
-        colony.honey -= 2;
-        state.products.comb += 1;
-        state.products.honey = Math.max(0, state.products.honey - 0);
-        made += 1;
+  sys.makeMead = function makeMead(qty) {
+    if (!qty || qty <= 0) return refuse('bad-quantity');
+    if ((sys.products.honey || 0) < qty * 3) return refuse('not-enough-honey');
+    sys.products.honey -= qty * 3;
+    sys.products.mead += qty;
+    sys.meadMade += qty;
+    giveXp(qty * 8);
+    return allow({ quantity: qty });
+  };
+
+  sys.sellProduct = function sellProduct(buyerId, productId, qty) {
+    const buyer = APIARY_BUYERS.find((b) => b.id === buyerId);
+    if (!buyer) return refuse('unknown-buyer');
+    if (sys.rank < buyer.minRank) return refuse('rank-too-low');
+    const product = APIARY_PRODUCTS.find((p) => p.id === productId);
+    if (!product) return refuse('unknown-product');
+    if ((sys.products[productId] || 0) < qty) return refuse('not-enough');
+    const unitPrice = apiaryBuyerPrice(product, buyerId, sys.rank, sys.upgrades);
+    const total = unitPrice * qty;
+    sys.products[productId] -= qty;
+    sys.earned += total;
+    sys.dailyEarned += total;
+    addCash(total);
+    giveXp(qty * 2);
+    settleContract(productId, qty);
+    return allow({ total, unitPrice, quantity: qty });
+  };
+
+  sys.sellAll = function sellAll(buyerId) {
+    const buyer = APIARY_BUYERS.find((b) => b.id === buyerId);
+    if (!buyer) return refuse('unknown-buyer');
+    if (sys.rank < buyer.minRank) return refuse('rank-too-low');
+    const lines = [];
+    let total = 0;
+    let count = 0;
+    for (const product of APIARY_PRODUCTS) {
+      const qty = sys.products[product.id] || 0;
+      if (qty > 0) {
+        const unitPrice = apiaryBuyerPrice(product, buyerId, sys.rank, sys.upgrades);
+        const lineTotal = unitPrice * qty;
+        lines.push({ id: product.id, quantity: qty, total: lineTotal });
+        total += lineTotal;
+        count += qty;
+        sys.products[product.id] = 0;
       }
     }
-    if (made === 0) return { ok: false, reason: 'not-enough-honey' };
-    gainXp(made * 4);
-    log(`Cut ${made} honeycomb sections.`);
-    return { ok: true, qty: made };
-  }
-
-  function makeMead(qty) {
-    const need = qty * 3;
-    if (qty <= 0) return { ok: false, reason: 'bad-qty' };
-    if ((state.products.honey || 0) < need) return { ok: false, reason: 'not-enough-honey', have: state.products.honey, need };
-    state.products.honey -= need;
-    state.products.mead += qty;
-    state.meadMade += qty;
-    gainXp(qty * 8);
-    log(`Brewed ${qty} bottles of mead — they need a season to age.`);
-    return { ok: true, qty };
-  }
-
-  function sellProduct(buyerId, productId, qty) {
-    const buyer = APIARY_BUYERS.find((b) => b.id === buyerId);
-    if (!buyer) return { ok: false, reason: 'no-such-buyer' };
-    if (state.rank < buyer.minRank) return { ok: false, reason: 'rank-too-low', need: buyer.minRank };
-    const product = APIARY_PRODUCTS.find((p) => p.id === productId);
-    if (!product) return { ok: false, reason: 'no-such-product' };
-    const have = state.products[productId] || 0;
-    if (qty <= 0 || have < qty) return { ok: false, reason: 'not-enough', have };
-    const unit = apiaryBuyerPrice(product, buyerId, state.rank, state.upgrades);
-    const total = unit * qty;
-    state.products[productId] -= qty;
-    state.earned += total;
-    state.dailyEarned += total;
+    if (!lines.length) return refuse('nothing-to-sell');
+    sys.earned += total;
+    sys.dailyEarned += total;
     addCash(total);
-    gainXp(qty * 2);
-    if (state.activeContract) checkContract(productId, qty);
-    log(`Sold ${qty}x ${product.name} to ${buyer.name} for $${total}.`);
-    return { ok: true, total, unit, qty };
-  }
+    giveXp(count);
+    return allow({ total, count, lines });
+  };
 
-  function sellAll(buyerId) {
-    const buyer = APIARY_BUYERS.find((b) => b.id === buyerId);
-    if (!buyer) return { ok: false, reason: 'no-such-buyer' };
-    let total = 0;
-    let units = 0;
-    const lines = [];
-    for (const p of APIARY_PRODUCTS) {
-      const q = state.products[p.id] || 0;
-      if (q <= 0) continue;
-      const unit = apiaryBuyerPrice(p, buyerId, state.rank, state.upgrades);
-      const line = unit * q;
-      total += line; units += q;
-      lines.push({ id: p.id, qty: q, total: line });
-      state.products[p.id] = 0;
-    }
-    if (units === 0) return { ok: false, reason: 'nothing-to-sell' };
-    state.earned += total;
-    state.dailyEarned += total;
-    addCash(total);
-    gainXp(units);
-    log(`Sold the whole honey store to ${buyer.name} for $${total}.`);
-    return { ok: true, total, units, lines };
-  }
+  sys.setFlower = function setFlower(flowerId) {
+    const flower = APIARY_FLOWERS.find((f) => f.id === flowerId);
+    if (!flower) return refuse('unknown-flower');
+    sys.flower = flowerId;
+    for (const colony of sys.hives) colony.flower = flowerId;
+    return allow({ flower: flowerId });
+  };
 
-  function setFlower(flowerId) {
-    const f = APIARY_FLOWERS.find((x) => x.id === flowerId);
-    if (!f) return { ok: false, reason: 'no-such-flower' };
-    state.flower = flowerId;
-    for (const colony of state.hives) colony.flower = flowerId;
-    log(`Hives moved to the ${f.name} — nectar ${f.nectar}x.`);
-    return { ok: true, flower: flowerId };
-  }
+  sys.buyUpgrade = function buyUpgrade(upgradeId) {
+    const upgrade = APIARY_UPGRADES.find((u) => u.id === upgradeId);
+    if (!upgrade) return refuse('unknown-upgrade');
+    if (sys.upgrades.includes(upgradeId)) return refuse('already-owned');
+    if (getCash() < upgrade.cost) return refuse('not-enough-cash');
+    addCash(-upgrade.cost);
+    sys.spent += upgrade.cost;
+    sys.upgrades.push(upgradeId);
+    giveXp(20);
+    return allow({ id: upgradeId });
+  };
 
-  function buyUpgrade(id) {
-    const u = APIARY_UPGRADES.find((x) => x.id === id);
-    if (!u) return { ok: false, reason: 'no-such-upgrade' };
-    if (state.upgrades.includes(id)) return { ok: false, reason: 'already-owned' };
-    if (getCash() < u.cost) return { ok: false, reason: 'not-enough-cash', cost: u.cost };
-    addCash(-u.cost);
-    state.spent += u.cost;
-    state.upgrades.push(id);
-    gainXp(20);
-    log(`Bought ${u.name} for $${u.cost}.`);
-    return { ok: true, id };
-  }
+  sys.takeContract = function takeContract(contractId) {
+    const contract = APIARY_CONTRACTS.find((c) => c.id === contractId);
+    if (!contract) return refuse('unknown-contract');
+    if (sys.activeContract) return refuse('contract-active');
+    if (sys.rank < contract.rep) return refuse('rank-too-low');
+    const day = getDay();
+    sys.activeContract = { ...contract, dayTaken: day, deadline: day + contract.days };
+    sys.contractProgress = 0;
+    return allow({ contract: sys.activeContract });
+  };
 
-  function takeContract(id) {
-    const ct = APIARY_CONTRACTS.find((x) => x.id === id);
-    if (!ct) return { ok: false, reason: 'no-such-contract' };
-    if (state.activeContract) return { ok: false, reason: 'contract-active' };
-    if (state.rank < ct.rep) return { ok: false, reason: 'rep-too-low', need: ct.rep };
-    state.activeContract = { ...ct, dayTaken: getDay(), deadlineDay: getDay() + ct.days };
-    state.contractProgress = 0;
-    log(`Contract taken: ${ct.name} — ${ct.qty}x ${ct.product} by day ${state.activeContract.deadlineDay}.`);
-    return { ok: true, contract: state.activeContract };
-  }
+  sys.deliverContract = function deliverContract() {
+    if (!sys.activeContract) return refuse('no-contract');
+    if (sys.contractProgress < sys.activeContract.qty) return refuse('not-ready');
+    const pay = sys.activeContract.pay + 40 * sys.rank;
+    sys.earned += pay;
+    sys.dailyEarned += pay;
+    addCash(pay);
+    sys.contractsDone += 1;
+    sys.activeContract = null;
+    sys.contractProgress = 0;
+    giveXp(60);
+    return allow({ pay });
+  };
 
-  function checkContract(productId, qty) {
-    const ct = state.activeContract;
-    if (!ct || ct.product !== productId) return;
-    state.contractProgress += qty;
-    if (state.contractProgress >= ct.qty) {
-      const bonus = ct.pay + state.rank * 40;
-      state.activeContract = null;
-      state.contractProgress = 0;
-      state.contractsDone += 1;
-      state.earned += bonus;
-      addCash(bonus);
-      gainXp(60);
-      log(`Contract complete: ${ct.name} paid $${bonus}.`);
-    }
-  }
+  sys.abandonContract = function abandonContract() {
+    if (!sys.activeContract) return refuse('no-contract');
+    sys.activeContract = null;
+    sys.contractProgress = 0;
+    sys.contractsFailed += 1;
+    return allow({});
+  };
 
-  function deliverContract() {
-    const ct = state.activeContract;
-    if (!ct) return { ok: false, reason: 'no-contract' };
-    if (state.contractProgress < ct.qty) return { ok: false, reason: 'not-enough', have: state.contractProgress, need: ct.qty };
-    const bonus = ct.pay + state.rank * 40;
-    state.activeContract = null;
-    state.contractProgress = 0;
-    state.contractsDone += 1;
-    state.earned += bonus;
-    addCash(bonus);
-    gainXp(60);
-    log(`Contract delivered: ${ct.name} paid $${bonus}.`);
-    return { ok: true, pay: bonus };
-  }
-
-  function abandonContract() {
-    if (!state.activeContract) return { ok: false, reason: 'no-contract' };
-    state.activeContract = null;
-    state.contractProgress = 0;
-    state.contractsFailed += 1;
-    log('Contract abandoned — the buyer will remember that.');
-    return { ok: true };
-  }
-
-  function priceBoard() {
+  sys.priceBoard = function priceBoard() {
     return APIARY_PRODUCTS.map((p) => ({
-      id: p.id, name: p.name,
-      price: apiaryPriceFor(p, state.rank, state.upgrades),
-      stock: state.products[p.id],
+      id: p.id,
+      name: p.name,
+      price: apiaryPriceFor(p, sys.rank, sys.upgrades),
+      stock: sys.products[p.id] || 0,
     }));
-  }
+  };
 
-  function hiveReport() {
-    return state.hives.map((colony) => {
-      const hive = APIARY_HIVES.find((h) => h.id === colony.type);
+  sys.hiveReport = function hiveReport() {
+    return sys.hives.map((c) => {
+      const hive = APIARY_HIVES.find((h) => h.id === c.type);
       return {
-        id: colony.id, type: colony.type, name: hive ? hive.name : colony.type,
-        strength: colony.strength, honey: colony.honey, wax: colony.wax,
-        health: colony.health, queen: colony.queen, flower: colony.flower,
+        id: c.id,
+        type: c.type,
+        name: hive ? hive.name : c.type,
+        strength: c.strength,
+        honey: Math.round(c.honey * 10) / 10,
+        wax: Math.round(c.wax * 10) / 10,
+        health: c.health,
+        queen: c.queen,
+        flower: c.flower,
       };
     });
-  }
+  };
 
-  function dailyEvent() {
+  sys.dailyEvent = function dailyEvent() {
     const roll = rng();
     if (roll < 0.2) {
       const ev = APIARY_EVENTS[Math.floor(rng() * APIARY_EVENTS.length)];
-      state.currentEvent = ev.id;
-      log(`Apiary news: ${ev.name} — ${ev.desc}`);
-      return { event: ev.id, name: ev.name };
+      sys.currentEvent = ev.id;
+      log(`Today's event: ${ev.name}.`);
+      return allow({ event: ev.id, name: ev.name });
     }
     if (roll < 0.3) {
-      state.products.honey += 3;
-      state.honeyMade += 3;
-      log('A neighbour beekeeper gifts you 3 jars of honey.');
-      return { event: 'gift' };
+      sys.products.honey += 3;
+      sys.currentEvent = null;
+      return allow({ event: 'gift', name: 'Gift' });
     }
-    state.currentEvent = null;
-    return { event: 'none' };
-  }
+    sys.currentEvent = null;
+    return allow({ event: 'none', name: 'None' });
+  };
 
-  function tick(dt) {
-    const nectar = flowerNectar();
-    for (const colony of state.hives) {
+  sys.tick = function tick(dt) {
+    const step = dt || 0;
+    const flower = flowerRow();
+    for (const colony of sys.hives) {
       if (colony.health <= 0) continue;
-      const rate = (colony.strength / 10) * nectar * dt * 0.05;
       const hive = APIARY_HIVES.find((h) => h.id === colony.type);
-      const cap = apiaryHiveCapacity(hive, state.upgrades);
-      colony.honey = Math.min(cap * 2, colony.honey + rate);
-      colony.wax = Math.min(cap, colony.wax + rate * 0.2);
-      colony.age += dt * 0.001;
+      const cap = hive ? apiaryHiveCapacity(hive, sys.upgrades) : 8;
+      const gain = (colony.strength / 10) * flower.nectar * step * 0.05;
+      colony.honey = Math.min(cap * 2, colony.honey + gain);
+      colony.wax = Math.min(cap, colony.wax + gain * 0.2);
+      colony.age += step * 0.01;
     }
-  }
+  };
 
-  function tickDay(day) {
-    if (day === state.lastDay) return;
-    state.lastDay = day;
-    state.dailyHoney = 0;
-    state.dailyEarned = 0;
-    if (state.activeContract && day >= state.activeContract.deadlineDay && state.contractProgress < state.activeContract.qty) {
-      log(`Contract ${state.activeContract.name} expired — the buyer walked away.`);
-      state.activeContract = null;
-      state.contractProgress = 0;
-      state.contractsFailed += 1;
+  sys.tickDay = function tickDay(day) {
+    if (day === sys.lastDay) return;
+    sys.lastDay = day;
+    sys.dailyHoney = 0;
+    sys.dailyEarned = 0;
+    if (sys.activeContract && day > sys.activeContract.deadline && sys.contractProgress < sys.activeContract.qty) {
+      sys.contractsFailed += 1;
+      log(`Contract failed: ${sys.activeContract.name}.`);
+      sys.activeContract = null;
+      sys.contractProgress = 0;
     }
     const survivors = [];
-    for (const colony of state.hives) {
+    for (const colony of sys.hives) {
       colony.age += 1;
-      const growth = state.upgrades.includes('queen') ? 2 : 1;
-      colony.strength = Math.min(10, colony.strength + growth * 0.2);
-      if (state.currentEvent === 'mite-outbreak' && rng() < (state.upgrades.includes('mite') ? 0.1 : 0.3)) {
-        colony.health -= 30;
-        log(`Mites hit ${colony.id} — health ${colony.health}.`);
+      const boost = sys.upgrades.includes('queen') ? 1 : 0.5;
+      colony.strength = Math.min(10, colony.strength + boost);
+      if (sys.currentEvent === 'mite-outbreak') {
+        colony.health -= sys.upgrades.includes('mite') ? 5 : 10;
       }
-      if (state.currentEvent === 'wasp-attack' && rng() < 0.2) {
-        colony.health -= 20;
+      if (sys.currentEvent === 'wasp-attack') {
+        colony.health -= 5;
         colony.honey = Math.max(0, colony.honey - 2);
-        log(`Wasps raided ${colony.id} — honey stolen.`);
       }
-      if (state.currentEvent === 'cold-snap' && !state.upgrades.includes('shed') && rng() < 0.25) {
-        colony.health -= 25;
-        log(`Cold snap chills ${colony.id} — health ${colony.health}.`);
+      if (sys.currentEvent === 'cold-snap') {
+        colony.health -= 8;
       }
       if (colony.health <= 0) {
-        state.coloniesLost += 1;
-        log(`Colony ${colony.id} has died. A sad, silent hive.`);
-        continue;
+        sys.coloniesLost += 1;
+        log(`Lost a ${colony.type} colony.`);
+      } else {
+        survivors.push(colony);
       }
-      survivors.push(colony);
     }
-    state.hives = survivors;
-    dailyEvent();
-  }
+    sys.hives = survivors;
+    sys.dailyEvent();
+  };
 
-  function serialize() {
-    return JSON.parse(JSON.stringify({
-      xp: state.xp, rank: state.rank, hives: state.hives, hiveCount: state.hiveCount,
-      harvests: state.harvests, honeyMade: state.honeyMade, waxMade: state.waxMade,
-      jellyMade: state.jellyMade, earned: state.earned, spent: state.spent,
-      stings: state.stings, coloniesLost: state.coloniesLost,
-      swarmsCaught: state.swarmsCaught, splits: state.splits,
-      products: state.products, upgrades: state.upgrades, lastDay: state.lastDay,
-      activeContract: state.activeContract, contractProgress: state.contractProgress,
-      contractsDone: state.contractsDone, contractsFailed: state.contractsFailed,
-      bestHive: state.bestHive, bestYield: state.bestYield,
-      dailyHoney: state.dailyHoney, dailyEarned: state.dailyEarned,
-      currentEvent: state.currentEvent, flower: state.flower,
-      queens: state.queens, meadMade: state.meadMade,
-    }));
-  }
+  sys.serialize = function serialize() {
+    const out = {};
+    for (const key of APIARY_STATE_KEYS) {
+      out[key] = JSON.parse(JSON.stringify(sys[key]));
+    }
+    return out;
+  };
 
-  function deserialize(d) {
-    if (!d || typeof d !== 'object') return;
-    for (const k of Object.keys(state)) {
-      if (d[k] !== undefined) state[k] = d[k];
+  sys.deserialize = function deserialize(saved) {
+    if (!saved || typeof saved !== 'object') return;
+    for (const key of APIARY_STATE_KEYS) {
+      if (key in saved) sys[key] = JSON.parse(JSON.stringify(saved[key]));
     }
     for (const p of APIARY_PRODUCTS) {
-      if (state.products[p.id] === undefined) state.products[p.id] = 0;
+      if (sys.products[p.id] === undefined) sys.products[p.id] = 0;
     }
-    refreshRank();
-  }
-
-  function stats() {
-    return {
-      rank: APIARY_RANKS[state.rank].name,
-      xp: state.xp,
-      hives: state.hives.length,
-      hiveCount: state.hiveCount,
-      harvests: state.harvests,
-      honeyMade: Math.round(state.honeyMade * 10) / 10,
-      waxMade: Math.round(state.waxMade * 10) / 10,
-      jellyMade: state.jellyMade,
-      meadMade: state.meadMade,
-      earned: Math.round(state.earned),
-      spent: state.spent,
-      stings: state.stings,
-      coloniesLost: state.coloniesLost,
-      swarmsCaught: state.swarmsCaught,
-      splits: state.splits,
-      upgrades: state.upgrades.length,
-      activeContract: state.activeContract ? state.activeContract.id : null,
-      contractsDone: state.contractsDone,
-      contractsFailed: state.contractsFailed,
-      bestHive: state.bestHive,
-      bestYield: Math.round(state.bestYield * 10) / 10,
-      dailyHoney: Math.round(state.dailyHoney * 10) / 10,
-      dailyEarned: Math.round(state.dailyEarned),
-      flower: state.flower,
-      event: state.currentEvent,
-    };
-  }
-
-  function hudLine() {
-    const ready = state.hives.filter((h) => h.honey >= 2).length;
-    if (ready > 0) return `Apiary: ${ready} hive${ready > 1 ? 's' : ''} ready to harvest`;
-    if (state.hives.length > 0) return `Apiary: ${state.hives.length} hives working the ${state.flower} flow`;
-    if (state.activeContract) return `Apiary: ${state.activeContract.name} ${state.contractProgress}/${state.activeContract.qty}`;
-    return '';
-  }
-
-  function interact() {
-    const pos = getPos();
-    const nearMeadow = Math.hypot(pos.x - 480, pos.z - 260) < 40;
-    if (!nearMeadow) return false;
-    if (state.hives.length === 0) { placeHive('langstroth'); return true; }
-    const ready = state.hives.find((h) => h.honey >= 2);
-    if (ready) { harvestHive(ready.id); return true; }
-    tendHive(state.hives[0].id);
-    return true;
-  }
-
-  return {
-    state, placeHive, tendHive, feedHive, harvestHive, harvestAll,
-    splitHive, catchSwarm, makeJelly, makePropolis, makeComb, makeMead,
-    sellProduct, sellAll, setFlower, buyUpgrade, takeContract,
-    deliverContract, abandonContract, priceBoard, hiveReport, dailyEvent,
-    tick, tickDay, serialize, deserialize, stats, hudLine, interact,
+    const next = apiaryRankFor(sys.xp);
+    if (next > sys.rank) sys.rank = next;
   };
-}
 
-export const APIARY_HELPERS = [
-  { id: 'mentor', name: 'Old Beekeeper Hana', wage: 30, skill: 'tend', bonus: 0.25, desc: 'Forty seasons: colonies grow 25% faster.' },
-  { id: 'smoker-hand', name: 'Smoker Sam', wage: 35, skill: 'harvest', bonus: 0.2, desc: 'Calm hands: +20% harvest yield.' },
-  { id: 'queen-breeder', name: 'Breeder Luz', wage: 60, skill: 'queen', bonus: 0.5, desc: 'Raises queens: splits always succeed.' },
-  { id: 'seller', name: 'Market Maya', wage: 45, skill: 'sell', bonus: 0.15, desc: 'Sells sweet: +15% sale prices.' },
-];
+  sys.stats = function stats() {
+    return {
+      rank: APIARY_RANKS[sys.rank].name,
+      xp: sys.xp,
+      hives: sys.hives.length,
+      hiveCount: sys.hiveCount,
+      harvests: sys.harvests,
+      honeyMade: Math.round(sys.honeyMade * 10) / 10,
+      waxMade: Math.round(sys.waxMade * 10) / 10,
+      jellyMade: sys.jellyMade,
+      meadMade: sys.meadMade,
+      earned: Math.round(sys.earned),
+      spent: sys.spent,
+      stings: sys.stings,
+      coloniesLost: sys.coloniesLost,
+      swarmsCaught: sys.swarmsCaught,
+      splits: sys.splits,
+      upgrades: sys.upgrades.length,
+      activeContract: sys.activeContract ? sys.activeContract.id : null,
+      contractsDone: sys.contractsDone,
+      contractsFailed: sys.contractsFailed,
+      bestHive: sys.bestHive,
+      bestYield: Math.round(sys.bestYield * 10) / 10,
+      dailyHoney: Math.round(sys.dailyHoney * 10) / 10,
+      dailyEarned: Math.round(sys.dailyEarned),
+      flower: sys.flower,
+      event: sys.currentEvent,
+    };
+  };
 
-export const APIARY_CHALLENGES = [
-  { id: 'hives-5', name: 'Five Hives', target: 'hiveCount', goal: 5, xp: 80, desc: 'Place 5 hives in total.' },
-  { id: 'honey-100', name: 'Hundred Jars', target: 'honeyMade', goal: 100, xp: 100, desc: 'Make 100 honey in total.' },
-  { id: 'harvests-20', name: 'Busy Hands', target: 'harvests', goal: 20, xp: 100, desc: 'Harvest 20 times.' },
-  { id: 'earn-1000', name: 'Sweet Purse', target: 'earned', goal: 1000, xp: 120, desc: 'Earn $1,000 from the apiary.' },
-  { id: 'splits-3', name: 'Growing Family', target: 'splits', goal: 3, xp: 120, desc: 'Split 3 colonies.' },
-  { id: 'swarms-2', name: 'Swarm Catcher', target: 'swarmsCaught', goal: 2, xp: 150, desc: 'Catch 2 wild swarms.' },
-  { id: 'mead-10', name: 'Mead Maker', target: 'meadMade', goal: 10, xp: 140, desc: 'Brew 10 bottles of mead.' },
-  { id: 'contracts-5', name: 'Reliable Keeper', target: 'contractsDone', goal: 5, xp: 140, desc: 'Complete 5 apiary contracts.' },
-];
+  sys.hudLine = function hudLine() {
+    const ready = sys.hives.filter((h) => h.honey >= 2);
+    if (ready.length > 0) {
+      return ready.length === 1
+        ? '1 hive ready to harvest'
+        : `${ready.length} hives ready to harvest`;
+    }
+    if (sys.hives.length > 0) {
+      const flower = flowerRow();
+      return `${sys.hives.length} hives on ${flower.name} flow`;
+    }
+    if (sys.activeContract) {
+      return `Contract ${sys.activeContract.name} ${sys.contractProgress}/${sys.activeContract.qty}`;
+    }
+    return '';
+  };
 
-export const APIARY_ACHIEVEMENTS = [
-  { id: 'first-hive', name: 'First Hive', check: (s) => s.hiveCount >= 1, desc: 'Place your first hive.' },
-  { id: 'first-harvest', name: 'First Harvest', check: (s) => s.harvests >= 1, desc: 'Harvest your first honey.' },
-  { id: 'first-mead', name: 'First Mead', check: (s) => s.meadMade >= 1, desc: 'Brew your first mead.' },
-  { id: 'rank-3', name: 'Honey Master', check: (s) => s.rank >= 3, desc: 'Reach rank Honey Master.' },
-  { id: 'rich-keeper', name: 'Rich Keeper', check: (s) => s.earned >= 3000, desc: 'Earn $3,000 from the apiary.' },
-  { id: 'full-kit', name: 'Full Kit', check: (s) => s.upgrades.length >= 8, desc: 'Own every apiary upgrade.' },
-  { id: 'no-loss', name: 'Keeper’s Luck', check: (s) => s.hiveCount >= 10 && s.coloniesLost === 0, desc: 'Ten hives placed, none lost.' },
-  { id: 'mangrove', name: 'Black Gold', check: (s) => s.bestYield >= 14, desc: 'Harvest 14 honey from one hive.' },
-];
+  sys.interact = function interact() {
+    const pos = getPlayerPos();
+    const dx = (pos.x || 0) - 480;
+    const dz = (pos.z || 0) - 260;
+    if (Math.hypot(dx, dz) > 40) return false;
+    if (!sys.hives.length) {
+      sys.placeHive('langstroth');
+      return true;
+    }
+    const ready = sys.hives.find((h) => h.honey >= 2);
+    if (ready) {
+      sys.harvestHive(ready.id);
+      return true;
+    }
+    sys.tendHive(sys.hives[0].id);
+    return true;
+  };
 
-export function apiaryHelperBonus(helpers, skill) {
-  let bonus = 0;
-  for (const h of APIARY_HELPERS) {
-    if (helpers.includes(h.id) && h.skill === skill) bonus += h.bonus;
-  }
-  return bonus;
-}
-
-export function apiaryChallengeProgress(challenge, state) {
-  const v = state[challenge.target] || 0;
-  return { id: challenge.id, name: challenge.name, have: Math.floor(v), goal: challenge.goal, done: v >= challenge.goal };
+  return sys;
 }
 
 export function createApiaryExtras(system) {
-  const helpers = [];
-  const claimed = [];
+  const sys = system;
+  let hired = [];
+  let claimed = [];
   let wagesPaid = 0;
 
-  function hireHelper(id) {
-    const h = APIARY_HELPERS.find((x) => x.id === id);
-    if (!h) return { ok: false, reason: 'no-such-helper' };
-    if (helpers.includes(id)) return { ok: false, reason: 'already-hired' };
-    helpers.push(id);
-    return { ok: true, id, name: h.name, wage: h.wage };
+  function refuse(reason) {
+    return { ok: false, reason };
   }
 
-  function fireHelper(id) {
-    const i = helpers.indexOf(id);
-    if (i < 0) return { ok: false, reason: 'not-hired' };
-    helpers.splice(i, 1);
-    return { ok: true, id };
+  function allow(extra) {
+    return { ok: true, ...extra };
   }
 
-  function payWages() {
-    let due = 0;
-    for (const id of helpers) {
-      const h = APIARY_HELPERS.find((x) => x.id === id);
-      due += h.wage;
-    }
-    wagesPaid += due;
-    return { due, helpers: [...helpers], totalPaid: wagesPaid };
-  }
-
-  function helperBonus(skill) {
-    return apiaryHelperBonus(helpers, skill);
-  }
-
-  function challenges() {
-    return APIARY_CHALLENGES.map((ch) => apiaryChallengeProgress(ch, system.state));
-  }
-
-  function claimChallenge(id) {
-    const ch = APIARY_CHALLENGES.find((x) => x.id === id);
-    if (!ch) return { ok: false, reason: 'no-such-challenge' };
-    if (claimed.includes(id)) return { ok: false, reason: 'already-claimed' };
-    const p = apiaryChallengeProgress(ch, system.state);
-    if (!p.done) return { ok: false, reason: 'not-done', have: p.have, goal: p.goal };
-    claimed.push(id);
-    return { ok: true, id, xp: ch.xp };
-  }
-
-  function achievements() {
-    return APIARY_ACHIEVEMENTS.map((a) => ({
-      id: a.id, name: a.name, desc: a.desc, done: !!a.check(system.state),
-    }));
-  }
-
-  function inspectHive(hiveId) {
-    const colony = system.state.hives.find((h) => h.id === hiveId);
-    if (!colony) return { ok: false, reason: 'no-such-hive' };
-    return { ok: true, ...colony };
-  }
-
-  function inventoryValue() {
-    let total = 0;
-    for (const p of APIARY_PRODUCTS) {
-      total += (system.state.products[p.id] || 0) * p.value;
-    }
-    return { ok: true, value: Math.round(total) };
-  }
-
-  function colonyCount() {
-    return { total: system.state.hives.length, strong: system.state.hives.filter((h) => h.strength >= 7).length, weak: system.state.hives.filter((h) => h.strength < 4).length };
-  }
-
-  return {
-    hireHelper, fireHelper, payWages, helperBonus, challenges,
-    claimChallenge, achievements, inspectHive, inventoryValue, colonyCount,
-    get helpers() { return [...helpers]; },
-    get claimed() { return [...claimed]; },
-    get wagesPaid() { return wagesPaid; },
+  const extras = {
+    hireHelper(id) {
+      const helper = APIARY_HELPERS.find((h) => h.id === id);
+      if (!helper) return refuse('unknown-helper');
+      if (hired.includes(id)) return refuse('already-hired');
+      hired.push(id);
+      return allow({ id, name: helper.name, wage: helper.wage });
+    },
+    fireHelper(id) {
+      if (!hired.includes(id)) return refuse('not-hired');
+      hired = hired.filter((h) => h !== id);
+      return allow({ id });
+    },
+    payWages() {
+      let due = 0;
+      for (const id of hired) {
+        const helper = APIARY_HELPERS.find((h) => h.id === id);
+        if (helper) due += helper.wage;
+      }
+      wagesPaid += due;
+      return allow({ due, helpers: [...hired], wagesPaid });
+    },
+    helperBonus(skill) {
+      let sum = 0;
+      for (const id of hired) {
+        const helper = APIARY_HELPERS.find((h) => h.id === id);
+        if (helper && helper.skill === skill) sum += helper.bonus;
+      }
+      return sum;
+    },
+    challenges() {
+      return APIARY_CHALLENGES.map((c) => apiaryChallengeProgress(c, sys));
+    },
+    claimChallenge(id) {
+      const challenge = APIARY_CHALLENGES.find((c) => c.id === id);
+      if (!challenge) return refuse('unknown-challenge');
+      if (claimed.includes(id)) return refuse('already-claimed');
+      const progress = apiaryChallengeProgress(challenge, sys);
+      if (!progress.done) return refuse('not-done');
+      claimed.push(id);
+      return allow({ id, xp: challenge.xp });
+    },
+    achievements() {
+      return APIARY_ACHIEVEMENTS.map((a) => ({
+        id: a.id,
+        name: a.name,
+        desc: a.desc,
+        done: !!a.check(sys),
+      }));
+    },
+    inspectHive(colonyId) {
+      const colony = sys.hives.find((h) => h.id === colonyId);
+      if (!colony) return refuse('unknown-colony');
+      return allow({ colony: JSON.parse(JSON.stringify(colony)) });
+    },
+    inventoryValue() {
+      let value = 0;
+      for (const p of APIARY_PRODUCTS) {
+        value += (sys.products[p.id] || 0) * p.value;
+      }
+      return allow({ value: Math.round(value) });
+    },
+    colonyCount() {
+      const strong = sys.hives.filter((h) => h.strength >= 7).length;
+      const weak = sys.hives.filter((h) => h.strength < 4).length;
+      return allow({ total: sys.hives.length, strong, weak });
+    },
+    get helpers() {
+      return [...hired];
+    },
+    get claimed() {
+      return [...claimed];
+    },
+    get wagesPaid() {
+      return wagesPaid;
+    },
   };
+
+  return extras;
 }
-
-export const APIARY_TIPS = [
-  { id: 'veil-first', name: 'Veil First', text: 'A veil costs little and saves many stings.' },
-  { id: 'blossom', name: 'Follow the Blossom', text: 'Move hives to where the flowers are open.' },
-  { id: 'split', name: 'Split Strong Hives', text: 'A strong hive split is a free hive.' },
-  { id: 'mite', name: 'Watch for Mites', text: 'Treat mites early or lose the colony.' },
-  { id: 'mead', name: 'Mead Pays', text: 'Three jars of honey become one bottle of mead worth more.' },
-  { id: 'mangrove', name: 'Black Mangrove', text: 'The mangrove bloom comes once a year. Be ready.' },
-  { id: 'winter', name: 'Winter Shelter', text: 'Without a shed, cold snaps kill colonies.' },
-  { id: 'jelly', name: 'Royal Jelly', text: 'The apothecary pays a fortune for royal jelly.' },
-];
-
-export const APIARY_LEADERBOARD = [
-  { name: 'Old Hana', jars: 4200, desc: 'Forty seasons of honey.' },
-  { name: 'Breeder Luz', jars: 3100, desc: 'Queens for the whole valley.' },
-  { name: 'Ria', jars: 0, desc: 'You. Climbing.' },
-  { name: 'Market Maya', jars: 2200, desc: 'Sells every jar she makes.' },
-  { name: 'Smoker Sam', jars: 1500, desc: 'Calm hands, full hives.' },
-];
-
-export function apiaryTipFor(day) {
-  return APIARY_TIPS[day % APIARY_TIPS.length];
-}
-
-export function apiaryLeaderboardWith(playerJars) {
-  const board = APIARY_LEADERBOARD.map((e) => ({
-    name: e.name, jars: e.name === 'Ria' ? playerJars : e.jars, desc: e.desc,
-  }));
-  board.sort((a, b) => b.jars - a.jars);
-  return board.map((e, i) => ({ rank: i + 1, ...e }));
-}
-
-export function apiaryEfficiency(honeyMade, harvests) {
-  if (harvests === 0) return 0;
-  return Math.round((honeyMade / harvests) * 10) / 10;
-}
-
-export function apiaryProfitPerHive(earned, hiveCount) {
-  if (hiveCount === 0) return 0;
-  return Math.round((earned / hiveCount) * 10) / 10;
-}
-
-export function apiaryGrade(honeyMade, coloniesLost, harvests) {
-  if (harvests === 0) return 'D';
-  const score = honeyMade - coloniesLost * 20 + harvests * 2;
-  if (score >= 400) return 'S';
-  if (score >= 250) return 'A';
-  if (score >= 120) return 'B';
-  if (score >= 50) return 'C';
-  return 'D';
-}
-
-export const APIARY_RECORDS = [
-  { id: 'most-honey', name: 'Most Honey', stat: 'honeyMade', unit: 'honey', desc: 'Most honey made in total.' },
-  { id: 'most-hives', name: 'Most Hives', stat: 'hiveCount', unit: 'hives', desc: 'Most hives placed.' },
-  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$', desc: 'Most money from the apiary.' },
-  { id: 'best-harvest', name: 'Best Harvest', stat: 'bestYield', unit: 'honey', desc: 'Best single-hive harvest.' },
-  { id: 'swarms', name: 'Swarm Catcher', stat: 'swarmsCaught', unit: 'swarms', desc: 'Most wild swarms caught.' },
-];
-
-export function apiaryRecordFor(recordId, state) {
-  const r = APIARY_RECORDS.find((x) => x.id === recordId);
-  if (!r) return null;
-  return { id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit };
-}
-
-export function apiaryAllRecords(state) {
-  return APIARY_RECORDS.map((r) => ({
-    id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit, desc: r.desc,
-  }));
-}
-
-export function apiarySummary(state) {
-  return `Apiary ${APIARY_RANKS[state.rank].name}: ${state.hives.length} hives, ${Math.round(state.honeyMade)} honey, ${state.harvests} harvests, $${Math.round(state.earned)} earned.`;
-}
-
-export function apiaryNextGoal(state) {
-  if (state.hiveCount < 3) return 'Place 3 hives.';
-  if (state.honeyMade < 50) return 'Make 50 honey.';
-  if (state.rank < 2) return 'Reach rank Apiarist.';
-  return 'Catch a wild swarm in swarm season.';
-}
-
-export const APIARY_QUICK_START = [
-  'Place a Langstroth hive in the clover meadow first.',
-  'Tend hives daily — strong colonies make more honey.',
-  'Harvest when a hive holds 2 or more honey.',
-  'Sell honey to the bakery, wax to the candle maker.',
-  'Split strong hives instead of buying new ones.',
-  'Brew mead from spare honey — it pays more per jar.',
-];
-
-export function apiaryQuickStart(step) {
-  return APIARY_QUICK_START[step] || null;
-}
-
-export const APIARY_META = {
-  system: 'apiary', version: '7-B1', author: 'builder-1',
-  hives: APIARY_HIVES.length, flowers: APIARY_FLOWERS.length,
-  note: 'Honey & Hive: tend, harvest, brew, sell.',
-};

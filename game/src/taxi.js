@@ -1,344 +1,312 @@
-// Solara Nights — Taxi (round 4 attempt 6, NEW module).
-// Drive a cab for Solara Bay: pick up fares, drive them to their
-// destination, and get paid by the metre plus a tip that depends on
-// how smooth the ride was. Passengers rate the ride out of five
-// stars; a high rating unlocks VIP fares who pay triple and never
-// complain about the route. A low rating gets the player fired from
-// the cab company for the day. Passengers have personalities — the
-// tourist who wants the scenic route, the businessman in a hurry,
-// the nervous granny who hates speed, the drunk who just wants to
-// go home — and each one scores the ride differently.
-//
-// Fares appear near the player; the player drives to the pickup,
-// the passenger gets in, and a timer starts. Drive like a maniac
-// and the tip evaporates; drive smooth and fast and the stars pile
-// up. The module is self-contained and talks to the game only
-// through the optional `ctx` hooks: position, speed, cash, and a
-// collision feed for the smoothness score.
-
 export const TAXI_VERSION = 1;
+export const FARE_RATE_PER_M = 0.35;
+export const BASE_FARE = 8;
 
 export const TAXI_SPOTS = [
-  { id: 'plaza', name: 'Central Plaza', x: 0, z: 0 },
-  { id: 'hotel', name: 'Palms Hotel', x: 120, z: -220 },
-  { id: 'mall', name: 'Solara Mall', x: -40, z: 160 },
-  { id: 'airport', name: 'Bay Airfield', x: -280, z: 240 },
-  { id: 'pier', name: 'Old Pier', x: 312, z: -40 },
-  { id: 'bar', name: 'Neon Palms Bar', x: 180, z: 40 },
-  { id: 'station', name: 'Metro Station', x: -160, z: 100 },
-  { id: 'hospital', name: 'Bay General', x: 200, z: -120 },
-  { id: 'studio', name: 'Vice Studios', x: -140, z: -220 },
-  { id: 'beach', name: 'South Beach', x: 306, z: 260 },
+  { id: 'plaza', name: 'Plaza', x: 0, z: 0 },
+  { id: 'hotel', name: 'Grand Hotel', x: 45, z: -60 },
+  { id: 'mall', name: 'Solara Mall', x: -70, z: 30 },
+  { id: 'airport', name: 'Airport', x: 200, z: -180 },
+  { id: 'pier', name: 'Old Pier', x: -120, z: 210 },
+  { id: 'bar', name: 'Neon Bar', x: 80, z: 90 },
+  { id: 'station', name: 'Train Station', x: -40, z: -120 },
+  { id: 'hospital', name: 'Hospital', x: 110, z: -30 },
+  { id: 'studio', name: 'Film Studio', x: -150, z: -90 },
+  { id: 'beach', name: 'Beach', x: 180, z: 150 },
 ];
 
 export const PASSENGER_TYPES = [
-  {
-    id: 'tourist', name: 'Tourist', patience: 1.3, tipMult: 1.2,
-    speedPref: 0.6, desc: 'Wants the scenic route. Tips well for views.',
-    lines: ['Is that the bay? Amazing!', 'Take the long way, I am not in a hurry.'],
-  },
-  {
-    id: 'business', name: 'Businessman', patience: 0.7, tipMult: 1.5,
-    speedPref: 1.4, desc: 'Late for a meeting. Speed is everything.',
-    lines: ['Faster, please. My meeting started ten minutes ago.', 'Do you know a shortcut?'],
-  },
-  {
-    id: 'granny', name: 'Granny', patience: 1.5, tipMult: 0.9,
-    speedPref: 0.35, desc: 'Hates speed, loves a gentle ride.',
-    lines: ['Slow down, dear, my heart!', 'Such a nice young driver.'],
-  },
-  {
-    id: 'drunk', name: 'Drunk Reveller', patience: 1.0, tipMult: 1.1,
-    speedPref: 0.8, desc: 'Just wants to get home. May fall asleep.',
-    lines: ['Hic! That was a great night.', 'Zzz… wake me at home.'],
-  },
-  {
-    id: 'vip', name: 'VIP', patience: 0.9, tipMult: 3.0,
-    speedPref: 1.1, desc: 'Pays triple. Expects perfection.',
-    lines: ['I do not wait. Nobody makes me wait.', 'Impress me.'],
-  },
-  {
-    id: 'student', name: 'Student', patience: 1.1, tipMult: 0.7,
-    speedPref: 1.0, desc: 'Broke, but rates honestly.',
-    lines: ['Can you drop me at campus?', 'Five stars if you play good music.'],
-  },
+  { id: 'tourist', name: 'Tourist', patience: 1.0, tipMult: 1.2, speedPref: 0.9, desc: 'Snapping photos of everything.', lines: ['Take the scenic route!', 'Wow, this city is beautiful!'] },
+  { id: 'businessman', name: 'Businessman', patience: 0.7, tipMult: 1.5, speedPref: 1.2, desc: 'Late for a meeting, as always.', lines: ['Step on it, I am late.', 'Time is money, driver.'] },
+  { id: 'granny', name: 'Granny', patience: 1.4, tipMult: 0.9, speedPref: 0.6, desc: 'In no rush at all.', lines: ['No hurry, dear.', 'Mind the bumps, my back!'] },
+  { id: 'drunk', name: 'Drunk Reveller', patience: 0.9, tipMult: 1.1, speedPref: 1.0, desc: 'Singing along to nothing.', lines: ['To the next bar!', 'You are my best friend, driver.'] },
+  { id: 'vip', name: 'VIP', patience: 0.8, tipMult: 3.0, speedPref: 1.1, desc: 'Expects the best, pays for it.', lines: ['Discretion, please.', 'Make it smooth.'] },
+  { id: 'student', name: 'Student', patience: 1.2, tipMult: 0.7, speedPref: 0.8, desc: 'Counting every coin.', lines: ['Cheapest route, please.', 'Can we stop for a snack?'] },
 ];
-
-export const FARE_RATE_PER_M = 0.35;
-export const BASE_FARE = 8;
 
 export function passengerById(id) {
   return PASSENGER_TYPES.find((p) => p.id === id) || PASSENGER_TYPES[0];
 }
 
-export function fareForDistance(dist, passenger) {
-  return Math.round(BASE_FARE + dist * FARE_RATE_PER_M * passenger.tipMult);
+export function fareForDistance(distance, passenger) {
+  const p = passenger || PASSENGER_TYPES[0];
+  return Math.round(BASE_FARE + distance * FARE_RATE_PER_M * p.tipMult);
 }
 
 export function tipForRide(fare, smoothness, speedScore, passenger) {
-  // smoothness 0..1 (1 = no bumps), speedScore 0..1 (1 = matched preference).
+  const p = passenger || PASSENGER_TYPES[0];
   const quality = smoothness * 0.6 + speedScore * 0.4;
-  const tipRate = Math.max(0, quality - 0.35) * 0.8;
-  return Math.round(fare * tipRate * passenger.tipMult);
+  const rate = quality > 0.35 ? (quality - 0.35) * 0.8 : 0;
+  return Math.round(fare * rate * (p.tipMult || 1));
 }
 
-export function starsForRide(smoothness, speedScore, onTime) {
-  let stars = 1;
+export function starsForRide(smoothness, speedScore, late) {
   const quality = smoothness * 0.6 + speedScore * 0.4;
+  let stars = 1;
   if (quality > 0.85) stars = 5;
   else if (quality > 0.7) stars = 4;
   else if (quality > 0.5) stars = 3;
   else if (quality > 0.35) stars = 2;
-  if (!onTime) stars = Math.max(1, stars - 1);
-  return stars;
+  if (late) stars -= 1;
+  return Math.max(1, stars);
 }
 
 export function averageRating(ratings) {
-  if (!ratings.length) return 0;
+  if (!ratings || ratings.length === 0) return 0;
   return ratings.reduce((a, b) => a + b, 0) / ratings.length;
 }
 
+function clone(v) {
+  return JSON.parse(JSON.stringify(v));
+}
+
 export function createTaxiSystem(ctx = {}) {
-  const rng = ctx.rng || Math.random;
+  const c = ctx || {};
+  const roll = typeof c.rng === 'function' ? c.rng : () => Math.random();
+
   const state = {
     version: TAXI_VERSION,
     onShift: false,
-    fare: null, // { id, passenger, from, to, dist, fare, phase, timeLeft, bumps, topSpeed, timeInCar }
-    offered: null,
+    offer: null,
+    fare: null,
     completed: 0,
     failed: 0,
     earned: 0,
     tips: 0,
     ratings: [],
-    bestStreak: 0,
     streak: 0,
-    firedUntil: 0,
-    log: [],
+    bestStreak: 0,
+    firedUntilDay: -1,
+    offerSeq: 0,
   };
 
-  function note(msg) {
-    state.log.push(msg);
-    if (state.log.length > 40) state.log.shift();
-    if (typeof ctx.log === 'function') ctx.log(msg);
+  function say(msg) {
+    if (typeof c.log === 'function') c.log(msg);
   }
 
-  function addCash(amount) {
-    if (typeof ctx.addCash === 'function') ctx.addCash(amount);
-    else if (typeof ctx.cash === 'number') ctx.cash += amount;
+  function dayNow() {
+    return typeof c.getDay === 'function' ? c.getDay() : 0;
   }
 
-  function playerPos() {
-    if (typeof ctx.getPlayerPos === 'function') return ctx.getPlayerPos();
+  function posNow() {
+    if (typeof c.getPlayerPos === 'function') return c.getPlayerPos();
     return { x: 0, z: 0 };
   }
 
   function speedNow() {
-    if (typeof ctx.getSpeed === 'function') return ctx.getSpeed();
-    return 0;
+    return typeof c.getSpeed === 'function' ? c.getSpeed() : 0;
   }
 
-  function dayNow() {
-    if (typeof ctx.getDay === 'function') return ctx.getDay();
-    return 1;
-  }
-
-  function avgRating() {
-    return averageRating(state.ratings);
-  }
-
-  function startShift() {
-    if (state.onShift) return { ok: false, reason: 'already-on-shift' };
-    if (dayNow() < state.firedUntil) {
-      return { ok: false, reason: 'fired', until: state.firedUntil };
+  function pickSpot(except) {
+    let s = TAXI_SPOTS[Math.floor(roll() * TAXI_SPOTS.length)];
+    let guard = 0;
+    while (except && s.id === except.id && guard < 10) {
+      s = TAXI_SPOTS[Math.floor(roll() * TAXI_SPOTS.length)];
+      guard += 1;
     }
-    state.onShift = true;
-    offerFare();
-    note('🚕 Shift started. Pick up fares, drive smooth, earn stars.');
-    return { ok: true };
-  }
-
-  function endShift() {
-    if (!state.onShift) return { ok: false, reason: 'not-on-shift' };
-    state.onShift = false;
-    state.fare = null;
-    state.offered = null;
-    note(`🚕 Shift over. ${state.completed} fares, $${state.earned} earned, rating ${avgRating().toFixed(1)}★.`);
-    return { ok: true, earned: state.earned };
-  }
-
-  function pickSpot(excludeId) {
-    const pool = TAXI_SPOTS.filter((s) => s.id !== excludeId);
-    return pool[Math.floor(rng() * pool.length)];
-  }
-
-  function offerFare() {
-    if (!state.onShift) return { ok: false, reason: 'not-on-shift' };
-    const vipUnlocked = avgRating() >= 4.5 && state.completed >= 5;
-    const pool = vipUnlocked
-      ? PASSENGER_TYPES
-      : PASSENGER_TYPES.filter((p) => p.id !== 'vip' || rng() < 0.05);
-    const passenger = pool[Math.floor(rng() * pool.length)];
-    const from = pickSpot(null);
-    const to = pickSpot(from.id);
-    const dist = Math.hypot(from.x - to.x, from.z - to.z);
-    const fare = fareForDistance(dist, passenger);
-    state.offered = {
-      id: `fare-${state.completed + state.failed + 1}`,
-      passenger, from, to, dist: Math.round(dist), fare,
-      deadline: Math.round(20 + dist / 12 * passenger.patience),
-    };
-    return { ok: true, offered: state.offered };
-  }
-
-  function acceptFare() {
-    if (!state.offered) return { ok: false, reason: 'no-offer' };
-    if (state.fare) return { ok: false, reason: 'fare-active' };
-    state.fare = {
-      ...state.offered, phase: 'pickup',
-      timeLeft: state.offered.deadline, bumps: 0,
-      topSpeed: 0, timeInCar: 0, maxSpeedSeen: 0,
-    };
-    state.offered = null;
-    const p = state.fare.passenger;
-    note(`🚕 Fare: ${p.name} at ${state.fare.from.name} → ${state.fare.to.name}. Fare $${state.fare.fare}. "${p.lines[0]}"`);
-    return { ok: true, fare: state.fare };
-  }
-
-  function declineFare() {
-    state.offered = null;
-    return offerFare();
-  }
-
-  function nearSpot(spot, radius = 8) {
-    const p = playerPos();
-    return Math.hypot(p.x - spot.x, p.z - spot.z) <= radius;
-  }
-
-  function reportBump(severity = 1) {
-    if (!state.fare) return;
-    state.fare.bumps += severity;
-  }
-
-  function tick(dt) {
-    const fare = state.fare;
-    if (!fare) return;
-    fare.timeLeft -= dt;
-    const speed = speedNow();
-    fare.maxSpeedSeen = Math.max(fare.maxSpeedSeen, speed);
-    if (fare.phase === 'pickup' && nearSpot(fare.from)) {
-      fare.phase = 'ride';
-      fare.timeLeft = fare.deadline;
-      note(`🚕 ${fare.passenger.name} is in. Drive to ${fare.to.name}!`);
-      if (typeof ctx.onPickup === 'function') ctx.onPickup(fare);
-    } else if (fare.phase === 'ride') {
-      fare.timeInCar += dt;
-      if (nearSpot(fare.to)) {
-        completeFare(true);
-        return;
-      }
-    }
-    if (fare.timeLeft <= 0) failFare('too-slow');
-  }
-
-  function completeFare(onTime) {
-    const fare = state.fare;
-    state.fare = null;
-    const smoothness = Math.max(0, 1 - fare.bumps * 0.12);
-    const ideal = 12 * fare.passenger.speedPref;
-    const speedScore = Math.max(0, 1 - Math.abs(fare.maxSpeedSeen - ideal) / Math.max(ideal, 8));
-    const tip = tipForRide(fare.fare, smoothness, speedScore, fare.passenger);
-    const stars = starsForRide(smoothness, speedScore, onTime);
-    const total = fare.fare + tip;
-    state.completed += 1;
-    state.earned += total;
-    state.tips += tip;
-    state.ratings.push(stars);
-    if (state.ratings.length > 20) state.ratings.shift();
-    state.streak += 1;
-    state.bestStreak = Math.max(state.bestStreak, state.streak);
-    addCash(total);
-    note(`🚕 Dropped off ${fare.passenger.name}: fare $${fare.fare} + tip $${tip} = $${total}. Rated ${stars}★ (avg ${avgRating().toFixed(1)}★).`);
-    if (avgRating() < 2.5 && state.ratings.length >= 5) {
-      state.firedUntil = dayNow() + 1;
-      state.onShift = false;
-      note('🚕 FIRED! Rating fell below 2.5★. Come back tomorrow.');
-    }
-    if (typeof ctx.onFareComplete === 'function') ctx.onFareComplete(fare, total, stars);
-    if (state.onShift) offerFare();
-    return { ok: true, total, tip, stars, rating: avgRating() };
+    return s;
   }
 
   function failFare(reason) {
-    const fare = state.fare;
+    const f = state.fare;
     state.fare = null;
     state.failed += 1;
     state.streak = 0;
     state.ratings.push(1);
     if (state.ratings.length > 20) state.ratings.shift();
-    note(`🚕 Fare failed (${reason}). ${fare ? fare.passenger.name : ''} left angry. 1★.`);
-    if (state.onShift) offerFare();
-    return { ok: false, reason };
-  }
-
-  function cancelFare() {
-    if (!state.fare) return { ok: false, reason: 'no-fare' };
-    return failFare('cancelled');
-  }
-
-  function stats() {
-    return {
-      onShift: state.onShift,
-      completed: state.completed,
-      failed: state.failed,
-      earned: state.earned,
-      tips: state.tips,
-      rating: +avgRating().toFixed(2),
-      streak: state.streak,
-      bestStreak: state.bestStreak,
-      active: !!state.fare,
-    };
-  }
-
-  function serialize() {
-    return JSON.parse(JSON.stringify(state));
-  }
-
-  function deserialize(data) {
-    if (!data || data.version !== TAXI_VERSION) return false;
-    Object.assign(state, data);
-    return true;
-  }
-
-  function hudLine() {
-    if (state.fare) {
-      const f = state.fare;
-      const target = f.phase === 'pickup' ? f.from.name : f.to.name;
-      return `🚕 ${f.phase === 'pickup' ? 'PICKUP' : 'DROP'} ${f.passenger.name} → ${target} — ${Math.max(0, Math.ceil(f.timeLeft))}s — $${f.fare}`;
+    say(`Fare failed: ${reason}.`);
+    if (averageRating(state.ratings) < 2.5 && state.ratings.length >= 5) {
+      state.firedUntilDay = dayNow() + 1;
+      state.onShift = false;
+      state.offer = null;
+      say('Fired! Low rating. Come back tomorrow.');
     }
-    if (state.offered) return `🚕 Fare offered: ${state.offered.passenger.name} → ${state.offered.to.name} — $${state.offered.fare}`;
-    if (state.onShift) return '🚕 On shift — waiting for fares';
-    return '';
+    return { ok: false, reason, fare: f };
   }
 
-  return {
-    name: 'taxi',
+  const sys = {
+    name: 'Taxi',
     version: TAXI_VERSION,
     state,
     spots: TAXI_SPOTS,
     passengers: PASSENGER_TYPES,
-    startShift,
-    endShift,
-    offerFare,
-    acceptFare,
-    declineFare,
-    tick,
-    reportBump,
-    cancelFare,
-    stats,
-    serialize,
-    deserialize,
-    hudLine,
+
+    startShift() {
+      if (state.onShift) return { ok: false, reason: 'already-on-shift' };
+      if (dayNow() < state.firedUntilDay) return { ok: false, reason: 'fired', firedUntilDay: state.firedUntilDay };
+      state.onShift = true;
+      say('Shift started. Looking for fares.');
+      const offered = sys.offerFare();
+      return { ok: true, offer: offered.ok ? offered.offer : null };
+    },
+
+    endShift() {
+      if (!state.onShift) return { ok: false, reason: 'not-on-shift' };
+      state.onShift = false;
+      state.fare = null;
+      state.offer = null;
+      say(`Shift over. Earned $${state.earned}, rating ${averageRating(state.ratings).toFixed(2)}.`);
+      return { ok: true, earned: state.earned, rating: averageRating(state.ratings) };
+    },
+
+    offerFare() {
+      if (!state.onShift) return { ok: false, reason: 'not-on-shift' };
+      const avg = averageRating(state.ratings);
+      const vipUnlocked = avg >= 4.5 && state.completed >= 5;
+      let passenger;
+      if (vipUnlocked || roll() < 0.05) {
+        passenger = passengerById('vip');
+      } else {
+        const pool = PASSENGER_TYPES.filter((p) => p.id !== 'vip');
+        passenger = pool[Math.floor(roll() * pool.length)];
+      }
+      const from = pickSpot(null);
+      const to = pickSpot(from);
+      const distance = Math.round(Math.hypot(to.x - from.x, to.z - from.z));
+      const fare = fareForDistance(distance, passenger);
+      state.offerSeq += 1;
+      state.offer = {
+        id: state.offerSeq,
+        passenger: passenger.id,
+        passengerName: passenger.name,
+        from, to,
+        distance,
+        fare,
+        deadline: 20 + (distance / 12) * passenger.patience,
+      };
+      return { ok: true, offer: clone(state.offer) };
+    },
+
+    acceptFare() {
+      if (!state.offer) return { ok: false, reason: 'no-offer' };
+      if (state.fare) return { ok: false, reason: 'fare-active' };
+      const offer = state.offer;
+      state.offer = null;
+      state.fare = {
+        ...clone(offer),
+        phase: 'pickup',
+        timeLeft: offer.deadline,
+        bumps: 0,
+        topSpeed: 0,
+        timeInCar: 0,
+        maxSpeed: 0,
+      };
+      const p = passengerById(offer.passenger);
+      say(`${p.name}: "${p.lines[0]}"`);
+      return { ok: true, fare: clone(state.fare) };
+    },
+
+    declineFare() {
+      state.offer = null;
+      return sys.offerFare();
+    },
+
+    tick(dt) {
+      const step = Number(dt) || 0;
+      const f = state.fare;
+      if (!f) return;
+      f.timeLeft -= step;
+      const spd = speedNow();
+      if (spd > f.maxSpeed) f.maxSpeed = spd;
+      if (spd > f.topSpeed) f.topSpeed = spd;
+      const pos = posNow();
+      const target = f.phase === 'pickup' ? f.from : f.to;
+      const d = Math.hypot(target.x - pos.x, target.z - pos.z);
+      if (f.phase === 'pickup' && d < 8) {
+        f.phase = 'ride';
+        f.timeLeft = 20 + (f.distance / 12) * passengerById(f.passenger).patience;
+        if (typeof c.onPickup === 'function') c.onPickup(f);
+        say('Passenger picked up.');
+        return;
+      }
+      if (f.phase === 'ride') {
+        f.timeInCar += step;
+        if (d < 8) {
+          const passenger = passengerById(f.passenger);
+          const smoothness = Math.max(0, 1 - f.bumps * 0.12);
+          const ideal = 12 * passenger.speedPref;
+          const gap = Math.abs(f.maxSpeed - ideal);
+          const speedScore = Math.max(0, 1 - gap / 20);
+          const tip = tipForRide(f.fare, smoothness, speedScore, passenger);
+          const late = f.timeLeft < 0;
+          const stars = starsForRide(smoothness, speedScore, late);
+          const total = f.fare + tip;
+          if (typeof c.addCash === 'function') c.addCash(total);
+          else if (typeof c.cash === 'number') c.cash += total;
+          state.earned += total;
+          state.tips += tip;
+          state.completed += 1;
+          state.streak += 1;
+          if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+          state.ratings.push(stars);
+          if (state.ratings.length > 20) state.ratings.shift();
+          state.fare = null;
+          if (typeof c.onFareComplete === 'function') c.onFareComplete({ fare: f.fare, tip, stars, total });
+          say(`Fare complete: $${total} (tip $${tip}), ${stars} stars.`);
+          if (averageRating(state.ratings) < 2.5 && state.ratings.length >= 5) {
+            state.firedUntilDay = dayNow() + 1;
+            state.onShift = false;
+            state.offer = null;
+            say('Fired! Low rating. Come back tomorrow.');
+          }
+          return;
+        }
+      }
+      if (f.timeLeft <= 0) {
+        failFare('too-slow');
+      }
+    },
+
+    reportBump(severity = 1) {
+      if (!state.fare) return;
+      state.fare.bumps += severity;
+    },
+
+    cancelFare() {
+      if (!state.fare) return { ok: false, reason: 'no-fare' };
+      return failFare('cancelled');
+    },
+
+    stats() {
+      return {
+        onShift: state.onShift,
+        completed: state.completed,
+        failed: state.failed,
+        earned: state.earned,
+        tips: state.tips,
+        rating: Math.round(averageRating(state.ratings) * 100) / 100,
+        streak: state.streak,
+        bestStreak: state.bestStreak,
+        active: !!state.fare,
+        hasFare: !!state.fare,
+      };
+    },
+
+    serialize() { return clone(state); },
+
+    deserialize(input) {
+      if (!input || typeof input !== 'object') return false;
+      if (input.version !== TAXI_VERSION) return false;
+      Object.keys(input).forEach((k) => { state[k] = clone(input[k]); });
+      return true;
+    },
+
+    hudLine() {
+      if (state.fare) {
+        const f = state.fare;
+        const target = f.phase === 'pickup' ? f.from : f.to;
+        const label = f.phase === 'pickup' ? 'Pickup' : 'Drop off';
+        return `${label} ${f.passengerName} at ${target.name} · ${Math.max(0, Math.ceil(f.timeLeft))}s · $${f.fare}`;
+      }
+      if (state.offer) {
+        return `Fare offered: ${state.offer.passengerName} ${state.offer.from.name} → ${state.offer.to.name} · $${state.offer.fare}`;
+      }
+      if (state.onShift) return 'Taxi: on shift, waiting for fares…';
+      return '';
+    },
   };
+
+  return sys;
 }
 
 export default createTaxiSystem;

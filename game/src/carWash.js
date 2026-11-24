@@ -1,271 +1,292 @@
-// Solara Nights - Car Wash (Round 7 mega-rebuild, written fresh).
-// The Gleaming Gull car wash: offer wash packages, run the bays, and
-// send every car out shining like a showroom dream. Sunny days bring
-// queues around the block; rain sends everyone home. Foam, wax,
-// ceramic coats and one very serious vacuum row. A clean car is a
-// happy driver, and a happy driver tells the whole street.
-// Pure logic: no rendering, no imports. The game wires it through the
-// standard ctx { rng, getDay, getHour, getCash, addCash, addHeat, log,
-// getPlayerPos, getWeather } and drives tick/tickDay from the main loop.
-// Mechanic: venue.
-
 export const WASH_PACKAGES = [
-  { id: 'quick-rinse', name: 'Quick Rinse', price: 8, rarity: 0.35, difficulty: 1, minutes: 5, shine: 1, extras: 'Water only',
-    desc: 'Five minutes, a splash of water, and off you go.' },
-  { id: 'standard-wash', name: 'Standard Wash', price: 15, rarity: 0.3, difficulty: 1, minutes: 10, shine: 2, extras: 'Soap and rinse',
-    desc: 'Soap, scrub, rinse, and a wave goodbye.' },
-  { id: 'foam-party', name: 'Foam Party Wash', price: 25, rarity: 0.22, difficulty: 2, minutes: 15, shine: 3, extras: 'Thick foam',
-    desc: 'A mountain of foam swallows the car whole. Kids love it.' },
-  { id: 'wax-shine', name: 'Wax Shine', price: 35, rarity: 0.18, difficulty: 2, minutes: 20, shine: 4, extras: 'Hand wax',
-    desc: 'Hand wax, slow circles, and a mirror finish.' },
-  { id: 'interior-detail', name: 'Interior Detail', price: 50, rarity: 0.15, difficulty: 3, minutes: 30, shine: 4, extras: 'Vacuum and dash',
-    desc: 'Crumbs, dust and mystery smells, all evicted.' },
-  { id: 'full-detail', name: 'Full Detail', price: 90, rarity: 0.1, difficulty: 3, minutes: 60, shine: 5, extras: 'Inside and out',
-    desc: 'The works: inside, outside, and every forgotten corner.' },
-  { id: 'ceramic-coat', name: 'Ceramic Coating', price: 180, rarity: 0.06, difficulty: 4, minutes: 90, shine: 5, extras: '12-month coat',
-    desc: 'A glass-hard shield that laughs at bird droppings.' },
-  { id: 'engine-bay', name: 'Engine Bay Clean', price: 45, rarity: 0.14, difficulty: 3, minutes: 25, shine: 3, extras: 'Degrease',
-    desc: 'Grease gone, engine gleaming like it just left the factory.' },
-  { id: 'pet-hair-special', name: 'Pet Hair Special', price: 40, rarity: 0.16, difficulty: 2, minutes: 25, shine: 3, extras: 'Deep vacuum',
-    desc: 'Three dogs, one hatchback, zero hair left behind.' },
-  { id: 'vip-concours', name: 'VIP Concours Prep', price: 300, rarity: 0.03, difficulty: 5, minutes: 120, shine: 5, extras: 'Show finish',
-    desc: 'Two hours of perfection for cars that win trophies.' },
+  { id: 'quick-rinse', name: 'Quick Rinse', price: 50, rarity: 0.2, difficulty: 1, minutes: 10, shine: 3, extras: 'Water only', desc: 'A fast spray-down for dusty daily drivers.' },
+  { id: 'basic-wash', name: 'Basic Wash', price: 90, rarity: 0.3, difficulty: 1, minutes: 20, shine: 5, extras: 'Soap + rinse', desc: 'Soap, scrub and rinse, the everyday classic.' },
+  { id: 'foam-party', name: 'Foam Party', price: 130, rarity: 0.4, difficulty: 2, minutes: 25, shine: 6, extras: 'Foam cannon', desc: 'A thick blanket of foam before the rinse.' },
+  { id: 'wax-shine', name: 'Wax Shine', price: 180, rarity: 0.5, difficulty: 2, minutes: 35, shine: 8, extras: 'Wax coat', desc: 'A hand wax that makes the paint glow.' },
+  { id: 'interior-detail', name: 'Interior Detail', price: 220, rarity: 0.55, difficulty: 3, minutes: 45, shine: 7, extras: 'Vacuum + wipe', desc: 'Every vent, seam and cup holder, spotless.' },
+  { id: 'full-detail', name: 'Full Detail', price: 300, rarity: 0.7, difficulty: 3, minutes: 60, shine: 10, extras: 'Everything inside + out', desc: 'The whole car, inside and out, like new.' },
+  { id: 'ceramic-coat', name: 'Ceramic Coat', price: 380, rarity: 0.8, difficulty: 4, minutes: 90, shine: 10, extras: 'Ceramic seal', desc: 'A glass-hard seal that shrugs off rain.' },
+  { id: 'engine-bay', name: 'Engine Bay', price: 160, rarity: 0.45, difficulty: 2, minutes: 30, shine: 6, extras: 'Degrease + dress', desc: 'Degrease and dress the heart of the car.' },
+  { id: 'pet-hair-special', name: 'Pet Hair Special', price: 140, rarity: 0.35, difficulty: 2, minutes: 40, shine: 6, extras: 'Pet hair removal', desc: 'Every last hair, gone for good.' },
+  { id: 'showroom-shine', name: 'Showroom Shine', price: 500, rarity: 0.95, difficulty: 5, minutes: 120, shine: 10, extras: 'Concours finish', desc: 'A concours finish fit for a showroom floor.' },
 ];
 
 export const CARWASH_UPGRADES = [
-  { id: 'pressure-washer', name: 'Pressure Washer', cost: 150, effect: 'wash-plus', desc: 'Blasts winter grime off in seconds flat.' },
-  { id: 'foam-cannon', name: 'Foam Cannon', cost: 200, effect: 'foam-plus', desc: 'Thicker foam, happier kids, cleaner cars.' },
-  { id: 'vacuum-row', name: 'Vacuum Row', cost: 250, effect: 'vacuum-plus', desc: 'Four vacuums, no queue, no crumbs left behind.' },
-  { id: 'wax-station', name: 'Wax Station', cost: 400, effect: 'wax-plus', desc: 'Warm wax, perfect shine, every single time.' },
-  { id: 'water-recycler', name: 'Water Recycler', cost: 600, effect: 'eco-plus', desc: 'Clean conscience and a smaller water bill.' },
-  { id: 'drying-tunnel', name: 'Drying Tunnel', cost: 900, effect: 'dry-plus', desc: 'Warm air tunnels. No drips, no streaks, no towels.' },
-  { id: 'ceramic-booth', name: 'Ceramic Booth', cost: 1400, effect: 'coat-plus', desc: 'A dust-free room for perfect ceramic coats.' },
-  { id: 'mega-bay', name: 'Mega Bay', cost: 2000, effect: 'capacity-plus', desc: 'Two extra bays. The queue finally moves.' },
+  { id: 'foam-cannon', name: 'Foam Cannon', cost: 120, effect: 'crowd +10%', desc: 'Snow-thick foam on every car.' },
+  { id: 'mega-bay', name: 'Mega Bay', cost: 320, effect: 'capacity +2', desc: 'A second bay for two more packages.' },
+  { id: 'hot-wax', name: 'Hot Wax', cost: 180, effect: 'payout +12%', desc: 'Warm wax that bonds like glass.' },
+  { id: 'water-recycle', name: 'Water Recycle', cost: 200, effect: 'earned +5%', desc: 'Clean water, reused and reused.' },
+  { id: 'air-dryer', name: 'Air Dryer', cost: 150, effect: 'crowd +12%', desc: 'Spot-free drying in seconds.' },
+  { id: 'polish-machine', name: 'Polish Machine', cost: 240, effect: 'payout +10%', desc: 'A buffer that erases swirls.' },
+  { id: 'vacuum-wall', name: 'Vacuum Wall', cost: 140, effect: 'visitors +10%', desc: 'Free vacuums for every customer.' },
+  { id: 'neon-sign', name: 'Neon Sign', cost: 110, effect: 'crowd +8%', desc: 'A glowing sign drivers can see for miles.' },
 ];
 
 export const CARWASH_RANKS = [
-  { level: 0, name: 'Bucket Boy', xp: 0, perk: 'Washes pay base rate.' },
-  { level: 1, name: 'Wash Regular', xp: 150, perk: '+5% prices, drivers wave as they pass.' },
-  { level: 2, name: 'Detail Pro', xp: 400, perk: '+10% prices, the taxi fleets call you.' },
-  { level: 3, name: 'Shine Master', xp: 800, perk: '+15% prices, show cars queue at dawn.' },
-  { level: 4, name: 'Concours Legend', xp: 1500, perk: '+20% prices, your shine is famous.' },
+  { level: 0, name: 'Bucket Boy', xp: 0, perk: 'Still learning the sponge.' },
+  { level: 1, name: 'Wash Regular', xp: 150, perk: 'The locals know your name.' },
+  { level: 2, name: 'Detail Pro', xp: 400, perk: 'Every car leaves gleaming.' },
+  { level: 3, name: 'Shine Master', xp: 800, perk: 'Paint so glossy it mirrors the sky.' },
+  { level: 4, name: 'Concours Legend', xp: 1500, perk: 'Show cars queue for your hands.' },
 ];
 
 export const CARWASH_STAFF = [
-  { id: 'washer-wes', name: 'Wes the Washer', wage: 25, skill: 'wash', bonus: 0.15, desc: 'Two sponges, one bucket, zero missed spots.' },
-  { id: 'dryer-dot', name: 'Dot the Dryer', wage: 25, skill: 'dry', bonus: 0.15, desc: 'Chamois in hand, streaks fear her.' },
-  { id: 'detailer-dan', name: 'Dan the Detailer', wage: 40, skill: 'detail', bonus: 0.2, desc: 'Finds dirt the owner did not know existed.' },
-  { id: 'cashier-cam', name: 'Cam the Cashier', wage: 30, skill: 'sales', bonus: 0.15, desc: 'Sells the wax upgrade with a smile and a story.' },
+  { id: 'washer-dex', name: 'Dex the Washer', wage: 40, skill: 'wash', bonus: 2, desc: 'Fast hands, zero streaks.' },
+  { id: 'dryer-ivy', name: 'Ivy the Dryer', wage: 35, skill: 'dry', bonus: 2, desc: 'A chamois wizard, spot-free every time.' },
+  { id: 'detailer-ray', name: 'Ray the Detailer', wage: 60, skill: 'detail', bonus: 3, desc: 'Finds dirt nobody else can see.' },
+  { id: 'cashier-may', name: 'May the Cashier', wage: 45, skill: 'cashier', bonus: 2, desc: 'Sells memberships with a smile.' },
 ];
 
 export const CARWASH_DAILY_EVENTS = [
-  { id: 'dusty-convoy', name: 'Dusty Convoy', effect: 'visitors', amount: 50,
-    text: 'A convoy of dusty trucks rolls in from the desert road.' },
-  { id: 'taxi-fleet', name: 'Taxi Fleet Day', effect: 'earn', amount: 350,
-    text: 'The whole taxi fleet books the bays for the morning.' },
-  { id: 'muddy-rally', name: 'Muddy Rally', effect: 'visitors', amount: 60,
-    text: 'Rally cars arrive caked in mud and glory.' },
-  { id: 'broken-pump', name: 'Broken Pump', effect: 'cost', amount: 130,
-    text: 'A pump dies mid-queue. A repair van is called.' },
-  { id: 'sunny-rush', name: 'Sunny Rush', effect: 'visitors', amount: 90,
-    text: 'Blue skies and a queue around the block by nine.' },
-  { id: 'bird-plague', name: 'Bird Dropping Plague', effect: 'visitors', amount: 40,
-    text: 'The gulls declare war on every parked car in Solara.' },
-  { id: 'car-show-prep', name: 'Car Show Prep', effect: 'earn', amount: 400,
-    text: 'Show cars arrive for their pre-show shine.' },
-  { id: 'rainy-slump', name: 'Rainy Slump', effect: 'cost', amount: 40,
-    text: 'Rain washes the cars for free. Nobody visits.' },
-  { id: 'vip-limo', name: 'VIP Limo', effect: 'earn', amount: 280,
-    text: 'A long black limo books the full detail, twice.' },
-  { id: 'soap-shortage', name: 'Soap Shortage', effect: 'cost', amount: 70,
-    text: 'The soap delivery is late. The supplier apologises.' },
+  { id: 'mud-season', name: 'Mud Season', effect: 'visitors', amount: 32, text: 'Rain turns every road to mud; the queue wraps around.' },
+  { id: 'fleet-deal', name: 'Fleet Deal', effect: 'earn', amount: 110, text: 'A taxi company signs a weekly wash deal.' },
+  { id: 'pump-breaks', name: 'Pump Breaks', effect: 'cost', amount: 45, text: 'The main pump dies; repairs are not cheap.' },
+  { id: 'car-show', name: 'Car Show', effect: 'rep', amount: 3, text: 'Show cars roll in and praise your shine.' },
+  { id: 'sunny-weekend', name: 'Sunny Weekend', effect: 'visitors', amount: 28, text: 'Blue skies bring every car in town.' },
+  { id: 'soap-spill', name: 'Soap Spill', effect: 'heat', amount: 2, text: 'A drum of soap floods the bay; inspectors visit.' },
+  { id: 'detail-course', name: 'Detail Course', effect: 'xp', amount: 25, text: 'A concours judge shares the secrets of shine.' },
+  { id: 'hose-burst', name: 'Hose Burst', effect: 'cost', amount: 30, text: 'A burst hose soaks the whole bay.' },
+  { id: 'wedding-convoy', name: 'Wedding Convoy', effect: 'earn', amount: 130, text: 'A wedding convoy needs ten gleaming cars.' },
+  { id: 'dusty-day', name: 'Dusty Day', effect: 'rep', amount: 1, text: 'A slow dusty day, but the regulars stop by.' },
 ];
 
 export const CARWASH_TIPS = [
-  { id: 'sunny-gold', name: 'Sunny Gold', text: 'Sunny days are paydays. Open your best package when the sky clears.' },
-  { id: 'rain-rest', name: 'Rain Rest', text: 'Rain is a day off with pay. Use it to upgrade and repair.' },
-  { id: 'wax-upsell', name: 'Wax Upsell', text: 'Every standard wash is a wax shine waiting to be offered.' },
-  { id: 'fleet-deals', name: 'Fleet Deals', text: 'Taxi fleets pay weekly and never haggle. Court them.' },
-  { id: 'vacuum-queue', name: 'Vacuum Queue', text: 'A short vacuum queue keeps drivers from leaving mid-wash.' },
-  { id: 'ceramic-margin', name: 'Ceramic Margin', text: 'One ceramic coat earns like twenty quick rinses.' },
-  { id: 'show-season', name: 'Show Season', text: 'Car show weekends are the biggest paydays of the year.' },
-  { id: 'shine-sells', name: 'Shine Sells', text: 'A gleaming car in the street is your best advertisement.' },
+  { id: 'tip-sun', name: 'Sunny Days', text: 'Sunshine is your best friend; rain halves the crowd.' },
+  { id: 'tip-bay', name: 'Mega Bay', text: 'Buy the Mega Bay to offer two more packages.' },
+  { id: 'tip-detail', name: 'Detail Cars', text: 'Detail a package before a big wash for extra payout.' },
+  { id: 'tip-streak', name: 'Keep Washing', text: 'Back-to-back washes grow your streak fast.' },
+  { id: 'tip-prices', name: 'Price Watch', text: 'Wash prices drift every day, so check the board.' },
+  { id: 'tip-staff', name: 'Good Crew', text: 'A great detailer turns one wash into a membership.' },
+  { id: 'tip-donate', name: 'Give Back', text: 'Free washes for the school bus build reputation.' },
+  { id: 'tip-rank', name: 'Climb Up', text: 'Every wash pushes you toward Detail Pro.' },
 ];
 
 export const CARWASH_CHALLENGES = [
-  { id: 'first-steps', name: 'First Steps', target: 'runsDone', goal: 3, xp: 40, desc: 'Finish 3 car wash runs.' },
-  { id: 'regular', name: 'Regular', target: 'runsDone', goal: 10, xp: 90, desc: 'Finish 10 car wash runs.' },
-  { id: 'collector', name: 'Collector', target: 'itemsOwned', goal: 4, xp: 100, desc: 'Own 4 different car wash entries.' },
-  { id: 'big-earner', name: 'Big Earner', target: 'earned', goal: 500, xp: 120, desc: 'Earn $500 from the car wash business.' },
-  { id: 'crowd-favourite', name: 'Crowd Favourite', target: 'visitors', goal: 200, xp: 110, desc: 'Draw 200 visitors through the car wash business.' },
-  { id: 'respected', name: 'Respected Name', target: 'reputation', goal: 10, xp: 100, desc: 'Reach 10 reputation in the car wash business.' },
-  { id: 'best-day', name: 'Best Day Ever', target: 'bestRun', goal: 400, xp: 130, desc: 'Score a single run worth $400 or more.' },
-  { id: 'fully-kitted', name: 'Fully Kitted', target: 'upgradesOwned', goal: 6, xp: 150, desc: 'Own 6 upgrades for the car wash business.' },
+  { id: 'ch-runs-5', name: 'Five Washes', target: 'runsDone', goal: 5, xp: 50, desc: 'Wash 5 cars.' },
+  { id: 'ch-earn-500', name: 'First 500', target: 'earned', goal: 500, xp: 80, desc: 'Earn $500 in total.' },
+  { id: 'ch-visitors-200', name: 'Busy Bay', target: 'visitors', goal: 200, xp: 60, desc: 'Welcome 200 visitors.' },
+  { id: 'ch-items-4', name: 'Four Packages', target: 'itemsOwned', goal: 4, xp: 70, desc: 'Offer 4 packages.' },
+  { id: 'ch-upgrades-3', name: 'Well Equipped', target: 'upgradesOwned', goal: 3, xp: 60, desc: 'Own 3 upgrades.' },
+  { id: 'ch-rep-10', name: 'Respected', target: 'reputation', goal: 10, xp: 50, desc: 'Reach 10 reputation.' },
+  { id: 'ch-streak-3', name: 'On a Roll', target: 'streak', goal: 3, xp: 90, desc: 'Reach a 3-wash streak.' },
+  { id: 'ch-best-300', name: 'Big Shine', target: 'bestRun', goal: 300, xp: 100, desc: 'Earn $300 from a single wash.' },
 ];
 
 export const CARWASH_ACHIEVEMENTS = [
-  { id: 'first-run', name: 'First Run', target: 'runsDone', goal: 1, desc: 'Finish your first car wash run.' },
-  { id: 'first-sale', name: 'First Payday', target: 'earned', goal: 1, desc: 'Collect your first dollar of car wash earnings.' },
-  { id: 'ten-runs', name: 'Ten Runs Deep', target: 'runsDone', goal: 10, desc: 'Finish 10 car wash runs.' },
-  { id: 'thousand-club', name: 'Thousand Club', target: 'earned', goal: 1000, desc: 'Earn $1,000 in total from the car wash business.' },
-  { id: 'five-hundred-faces', name: 'Five Hundred Faces', target: 'visitors', goal: 500, desc: 'Welcome 500 visitors through the car wash business.' },
-  { id: 'rank-three', name: 'Rising Star', target: 'rank', goal: 3, desc: 'Reach rank 3 in the car wash business.' },
-  { id: 'full-shelf', name: 'Full Shelf', target: 'itemsOwned', goal: 8, desc: 'Own 8 different car wash entries at once.' },
-  { id: 'streak-five', name: 'On A Roll', target: 'bestStreak', goal: 5, desc: 'Build a 5-run streak without a failed car wash run.' },
+  { id: 'ach-runs-10', name: 'Wash Master', target: 'runsDone', goal: 10, desc: 'Wash 10 cars.' },
+  { id: 'ach-earn-1000', name: 'Golden Sponge', target: 'earned', goal: 1000, desc: 'Earn $1,000 in total.' },
+  { id: 'ach-visitors-500', name: 'City Favourite', target: 'visitors', goal: 500, desc: 'Welcome 500 visitors.' },
+  { id: 'ach-items-6', name: 'Full Menu', target: 'itemsOwned', goal: 6, desc: 'Offer 6 packages.' },
+  { id: 'ach-upgrades-5', name: 'Fully Loaded', target: 'upgradesOwned', goal: 5, desc: 'Own 5 upgrades.' },
+  { id: 'ach-rep-20', name: 'Beloved', target: 'reputation', goal: 20, desc: 'Reach 20 reputation.' },
+  { id: 'ach-streak-5', name: 'Unstoppable', target: 'streak', goal: 5, desc: 'Reach a 5-wash streak.' },
+  { id: 'ach-best-500', name: 'Record Shine', target: 'bestRun', goal: 500, desc: 'Earn $500 from a single wash.' },
 ];
 
 export const CARWASH_LEADERBOARD = [
-  { name: 'Splash and Dash', score: 4200, desc: 'Fast, cheap, and always busy.' },
-  { name: 'The Gleam Team', score: 3100, desc: 'Matching shirts, matching shine.' },
-  { name: 'Turbo Wash', score: 2400, desc: 'In and out in four minutes flat.' },
-  { name: 'Bubble Bay', score: 1500, desc: 'Foam parties every single Saturday.' },
-  { name: 'You', score: 0, desc: 'Climbing the car wash ladder.' },
+  { name: 'Sparkle Bros', score: 980, desc: 'Twin brothers, twin bays.' },
+  { name: 'Aqua Shine', score: 760, desc: 'The old wash by the river.' },
+  { name: 'Foam Kings', score: 540, desc: 'Foam so thick you can swim in it.' },
+  { name: 'Bucket Buddies', score: 210, desc: 'Two kids and a dream.' },
+  { name: 'You', score: 0, desc: 'The new name on the board.' },
 ];
 
 export const CARWASH_RECORDS = [
-  { id: 'biggest-run', name: 'Biggest Run', stat: 'bestRun', unit: '$', desc: 'Best single-run payout.' },
-  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$', desc: 'Most money earned overall.' },
-  { id: 'most-visitors', name: 'Most Visitors', stat: 'visitors', unit: 'people', desc: 'Most visitors welcomed.' },
-  { id: 'most-runs', name: 'Most Runs', stat: 'runsDone', unit: 'runs', desc: 'Most runs finished.' },
-  { id: 'best-streak', name: 'Best Streak', stat: 'bestStreak', unit: 'runs', desc: 'Longest run streak.' },
+  { id: 'rec-runs', name: 'Most Washes', stat: 'runsDone', unit: 'washes', desc: 'Total washes completed.' },
+  { id: 'rec-earned', name: 'Top Earnings', stat: 'earned', unit: '$', desc: 'Total money earned.' },
+  { id: 'rec-visitors', name: 'Biggest Crowd', stat: 'visitors', unit: 'drivers', desc: 'Total visitors welcomed.' },
+  { id: 'rec-best', name: 'Best Wash', stat: 'bestRun', unit: '$', desc: 'Best single-wash payout.' },
+  { id: 'rec-streak', name: 'Longest Streak', stat: 'bestStreak', unit: 'washes', desc: 'Longest run of washes.' },
 ];
 
 export const CARWASH_MARKET_EVENTS = [
-  { id: 'quick-rinse-surge', name: 'Quick Rinse Surge', item: 'quick-rinse', mult: 1.35, desc: 'Demand for Quick Rinse swings hard this week.' },
-  { id: 'standard-wash-surge', name: 'Standard Wash Surge', item: 'standard-wash', mult: 0.7, desc: 'Demand for Standard Wash swings hard this week.' },
-  { id: 'foam-party-surge', name: 'Foam Party Wash Surge', item: 'foam-party', mult: 1.35, desc: 'Demand for Foam Party Wash swings hard this week.' },
-  { id: 'wax-shine-surge', name: 'Wax Shine Surge', item: 'wax-shine', mult: 0.7, desc: 'Demand for Wax Shine swings hard this week.' },
-  { id: 'interior-detail-surge', name: 'Interior Detail Surge', item: 'interior-detail', mult: 1.35, desc: 'Demand for Interior Detail swings hard this week.' },
-  { id: 'full-detail-surge', name: 'Full Detail Surge', item: 'full-detail', mult: 0.7, desc: 'Demand for Full Detail swings hard this week.' },
-  { id: 'ceramic-coat-surge', name: 'Ceramic Coating Surge', item: 'ceramic-coat', mult: 1.35, desc: 'Demand for Ceramic Coating swings hard this week.' },
-  { id: 'engine-bay-surge', name: 'Engine Bay Clean Surge', item: 'engine-bay', mult: 0.7, desc: 'Demand for Engine Bay Clean swings hard this week.' },
-  { id: 'pet-hair-special-surge', name: 'Pet Hair Special Surge', item: 'pet-hair-special', mult: 1.35, desc: 'Demand for Pet Hair Special swings hard this week.' },
-  { id: 'vip-concours-surge', name: 'VIP Concours Prep Surge', item: 'vip-concours', mult: 0.7, desc: 'Demand for VIP Concours Prep swings hard this week.' },
+  { id: 'me-rinse', name: 'Rinse Rush', item: 'quick-rinse', mult: 1.35, desc: 'Everyone wants a quick spray.' },
+  { id: 'me-basic', name: 'Basic Dip', item: 'basic-wash', mult: 0.7, desc: 'The classic cools off.' },
+  { id: 'me-foam', name: 'Foam Fever', item: 'foam-party', mult: 1.35, desc: 'Foam parties are trending.' },
+  { id: 'me-wax', name: 'Wax Lull', item: 'wax-shine', mult: 0.7, desc: 'Wax waits for dry weather.' },
+  { id: 'me-interior', name: 'Interior Boom', item: 'interior-detail', mult: 1.35, desc: 'Spring cleaning hits the cars.' },
+  { id: 'me-full', name: 'Full Dip', item: 'full-detail', mult: 0.7, desc: 'Big details slow down.' },
+  { id: 'me-ceramic', name: 'Ceramic Craze', item: 'ceramic-coat', mult: 1.35, desc: 'Everyone wants the glass seal.' },
+  { id: 'me-engine', name: 'Engine Cool', item: 'engine-bay', mult: 0.7, desc: 'Engine bays rest this week.' },
+  { id: 'me-pet', name: 'Pet Season', item: 'pet-hair-special', mult: 1.35, desc: 'Shedding season fills the bay.' },
+  { id: 'me-show', name: 'Showroom Pause', item: 'showroom-shine', mult: 0.7, desc: 'The show cars rest between shows.' },
 ];
 
 export const CARWASH_SEASONS = [
-  { id: 'spring-pollen', name: 'Spring Pollen', mult: 1.05, desc: 'Yellow dust on every bonnet in Solara.' },
-  { id: 'summer-dust', name: 'Summer Dust', mult: 1.2, desc: 'Dry roads, dusty cars, endless queues.' },
-  { id: 'autumn-leaves', name: 'Autumn Leaves', mult: 1.0, desc: 'Leaves in the gutters, mud on the wheels.' },
-  { id: 'winter-salt', name: 'Winter Salt', mult: 1.1, desc: 'Road salt eats paint. Drivers wash twice as often.' },
+  { id: 'summer', name: 'Summer', mult: 1.15, desc: 'Dust and bugs bring every car in.' },
+  { id: 'autumn', name: 'Autumn', mult: 1.0, desc: 'Leaves and rain, steady work.' },
+  { id: 'winter', name: 'Winter', mult: 0.85, desc: 'Salt and slush, fewer washes.' },
+  { id: 'spring', name: 'Spring', mult: 1.05, desc: 'Spring cleaning for cars.' },
 ];
 
 export const CARWASH_FACTS = [
-  { id: 'fact-quick-rinse', text: 'Quick Rinse: Five minutes, a splash of water, and off you go.' },
-  { id: 'fact-standard-wash', text: 'Standard Wash: Soap, scrub, rinse, and a wave goodbye.' },
-  { id: 'fact-foam-party', text: 'Foam Party Wash: A mountain of foam swallows the car whole. Kids love it.' },
-  { id: 'fact-wax-shine', text: 'Wax Shine: Hand wax, slow circles, and a mirror finish.' },
-  { id: 'fact-interior-detail', text: 'Interior Detail: Crumbs, dust and mystery smells, all evicted.' },
-  { id: 'fact-full-detail', text: 'Full Detail: The works: inside, outside, and every forgotten corner.' },
-  { id: 'fact-ceramic-coat', text: 'Ceramic Coating: A glass-hard shield that laughs at bird droppings.' },
-  { id: 'fact-engine-bay', text: 'Engine Bay Clean: Grease gone, engine gleaming like it just left the factory.' },
-  { id: 'fact-pet-hair-special', text: 'Pet Hair Special: Three dogs, one hatchback, zero hair left behind.' },
-  { id: 'fact-vip-concours', text: 'VIP Concours Prep: Two hours of perfection for cars that win trophies.' },
-  { id: 'fact-general-0', text: 'The best car wash operators in Solara check their prices every morning before opening.' },
-  { id: 'fact-general-1', text: 'Regulars remember how you treated them yesterday more than what you charged.' },
-  { id: 'fact-general-2', text: 'A rainy day changes everything: some crowds grow, others vanish entirely.' },
-  { id: 'fact-general-3', text: 'Upgrades pay for themselves if you run the business every single day.' },
-  { id: 'fact-general-4', text: 'Reputation is slow to build and fast to lose. Guard it.' },
-  { id: 'fact-general-5', text: 'The first run of the day is always the cheapest lesson.' },
-  { id: 'fact-general-6', text: 'Staff with the right skill quietly add money to every run.' },
-  { id: 'fact-general-7', text: 'A five-run streak without a failure is worth more than any single big payday.' },
-  { id: 'fact-general-8', text: 'Prices drift daily. Selling on a surge day can double a quiet week.' },
-  { id: 'fact-general-9', text: 'Every rival in town started with one room, one stall, or one microphone.' },
+  { id: 'fact-rinse', text: 'The Quick Rinse uses recycled rainwater.' },
+  { id: 'fact-basic', text: 'The Basic Wash has not changed its recipe in 20 years.' },
+  { id: 'fact-foam', text: 'The Foam Party cannon holds 50 litres of foam.' },
+  { id: 'fact-wax', text: 'Wax Shine uses beeswax from a local farm.' },
+  { id: 'fact-interior', text: 'Interior Detail once found a lost wedding ring.' },
+  { id: 'fact-full', text: 'A Full Detail takes two people a full hour.' },
+  { id: 'fact-ceramic', text: 'Ceramic Coat can last two years on paint.' },
+  { id: 'fact-engine', text: 'Engine Bay cleaning started with race cars.' },
+  { id: 'fact-pet', text: 'Pet Hair Special uses rubber brushes and static.' },
+  { id: 'fact-show', text: 'Showroom Shine is judged under white light.' },
+  { id: 'fact-1', text: 'The first car wash opened in Detroit in 1914.' },
+  { id: 'fact-2', text: 'A sponge can hold 25 times its weight in water.' },
+  { id: 'fact-3', text: 'Foam lifts dirt so the sponge never scratches.' },
+  { id: 'fact-4', text: 'Ceramic coating was first used on space shuttles.' },
+  { id: 'fact-5', text: 'Microfibre cloths were invented for lenses.' },
+  { id: 'fact-6', text: 'A dirty car uses more fuel than a clean one.' },
+  { id: 'fact-7', text: 'Chamois leather comes from a mountain goat.' },
+  { id: 'fact-8', text: 'The shiniest cars are washed in the shade.' },
+  { id: 'fact-9', text: 'Wax was first used on carriages, not cars.' },
+  { id: 'fact-10', text: 'A good detailer can spot swirl marks in seconds.' },
 ];
 
 export const CARWASH_NPC_LINES = [
-  { id: 'npc-0', text: 'I came all the way across town for the Quick Rinse. Worth it.' },
-  { id: 'npc-1', text: 'My cousin runs a car wash place too, but yours is better. Do not tell him.' },
-  { id: 'npc-2', text: 'Is the Foam Party Wash really as good as everyone says? I am about to find out.' },
-  { id: 'npc-3', text: 'I bring my kids here every weekend. They ask for the Standard Wash by name.' },
-  { id: 'npc-4', text: 'You should put the Wax Shine on a poster. People would come just for that.' },
-  { id: 'npc-5', text: 'I heard the Interior Detail here is the best in Solara. The rumour was right.' },
-  { id: 'npc-6', text: 'Quiet day today. The Full Detail still made my afternoon.' },
-  { id: 'npc-7', text: 'I saved up for weeks to try the Ceramic Coating. No regrets.' },
-  { id: 'npc-8', text: 'The staff told me about the Engine Bay Clean. Now I tell everyone I meet.' },
-  { id: 'npc-9', text: 'I have been to every car wash spot in the city. This one wins.' },
-  { id: 'npc-10', text: 'One day I want to run a car wash place of my own. I am taking notes.' },
-  { id: 'npc-11', text: 'The Pet Hair Special is the reason my friends finally believe my stories.' },
-  { id: 'npc-12', text: 'Do you ever get tired of the VIP Concours Prep? I never would.' },
-  { id: 'npc-13', text: 'I wrote a review about the Quick Rinse last night. Five stars, obviously.' },
-  { id: 'npc-14', text: 'My grandmother loved the Standard Wash. I come here to remember her.' },
-  { id: 'npc-15', text: 'If the Foam Party Wash gets any better, the whole city will queue around the block.' },
+  { id: 'npc-1', text: 'My car has never looked this good!' },
+  { id: 'npc-2', text: 'The foam party is my kids favourite part.' },
+  { id: 'npc-3', text: 'That wax shine is like a mirror.' },
+  { id: 'npc-4', text: 'You got every hair out, amazing.' },
+  { id: 'npc-5', text: 'I bring the taxi here every Friday.' },
+  { id: 'npc-6', text: 'The ceramic coat survived a whole winter.' },
+  { id: 'npc-7', text: 'Fastest wash in town, hands down.' },
+  { id: 'npc-8', text: 'My engine bay looks brand new.' },
+  { id: 'npc-9', text: 'I can see my face in the paint now.' },
+  { id: 'npc-10', text: 'The staff here are so friendly.' },
+  { id: 'npc-11', text: 'That showroom shine won me a trophy.' },
+  { id: 'npc-12', text: 'I will never wash it myself again.' },
+  { id: 'npc-13', text: 'The interior smells like new leather.' },
+  { id: 'npc-14', text: 'Worth every cent, every single time.' },
+  { id: 'npc-15', text: 'My dog approves of the pet special.' },
+  { id: 'npc-16', text: 'See you next week, same time!' },
 ];
 
 export const CARWASH_GUIDE = [
-  { id: 'guide-0', text: 'Open your first car wash entry: it costs cash, but it unlocks everything else.' },
-  { id: 'guide-1', text: 'Run it once and watch the timer. A finished run parks its payout in the till.' },
-  { id: 'guide-2', text: 'Collect the till before you start the next run, or the money just sits there.' },
-  { id: 'guide-3', text: 'Check the price board each morning: drift changes what everything is worth.' },
-  { id: 'guide-4', text: 'Buy the cheapest upgrade first. Small edges compound faster than big splurges.' },
-  { id: 'guide-5', text: 'Hire one staff member with a skill that matches what you do most.' },
-  { id: 'guide-6', text: 'Take the daily event as it comes. Some days the city hands you money.' },
-  { id: 'guide-7', text: 'Level up your best entry instead of opening a weak new one.' },
-  { id: 'guide-8', text: 'A boosted entry pays about a third more on its next run. Boost before big days.' },
-  { id: 'guide-9', text: 'Keep a cash buffer. A surprise repair bill on an empty wallet ends runs.' },
-  { id: 'guide-10', text: 'Chase the weekly goal: five runs, $500 earned, one hundred visitors.' },
-  { id: 'guide-11', text: 'When a run finishes, the streak grows. Protect the streak.' },
-  { id: 'guide-12', text: 'Sell an entry you never run. Half its price back beats dust on a shelf.' },
-  { id: 'guide-13', text: 'Reputation opens doors: better events, better staff, better prices.' },
-  { id: 'guide-14', text: 'Read the leaderboard sometimes. The rivals ahead of you started exactly where you are.' },
-  { id: 'guide-15', text: 'Come back tomorrow. Drift resets, events refresh, and the city forgets yesterday.' },
+  { id: 'guide-1', text: 'Step 1: Offer a wash package from the list.' },
+  { id: 'guide-2', text: 'Step 2: Pay the offering cost from your cash.' },
+  { id: 'guide-3', text: 'Step 3: Wash a car to start the wash.' },
+  { id: 'guide-4', text: 'Step 4: Wait for the wash timer to finish.' },
+  { id: 'guide-5', text: 'Step 5: Collect the wash revenue from the till.' },
+  { id: 'guide-6', text: 'Step 6: Detail a car to boost the next wash.' },
+  { id: 'guide-7', text: 'Step 7: Spend earnings on wash upgrades.' },
+  { id: 'guide-8', text: 'Step 8: Hire washers and detailers for the bay.' },
+  { id: 'guide-9', text: 'Step 9: Level up packages to raise their value.' },
+  { id: 'guide-10', text: 'Step 10: Watch market events for hot packages.' },
+  { id: 'guide-11', text: 'Step 11: Claim challenges as you hit each goal.' },
+  { id: 'guide-12', text: 'Step 12: Donate free washes for reputation.' },
+  { id: 'guide-13', text: 'Step 13: Check the price board before selling.' },
+  { id: 'guide-14', text: 'Step 14: Keep washing to grow your streak.' },
+  { id: 'guide-15', text: 'Step 15: Trade in bulk when the market is hot.' },
+  { id: 'guide-16', text: 'Step 16: Become a Concours Legend.' },
 ];
 
+export const CARWASH_META = { system: 'carwash', version: '7-B4', author: 'builder-4', mechanic: 'venue', dataCount: 10, dataName: 'WASH_PACKAGES' };
+
+function carwashCondName(weather) {
+  if (typeof weather === 'string') return weather;
+  if (weather && weather.condition) return weather.condition;
+  return 'clear';
+}
+
+function carwashSky(table, weather) {
+  const got = table[carwashCondName(weather)];
+  if (got === undefined) return 1;
+  return got;
+}
+
+function carwashOneDec(n) {
+  return Math.round(n * 10) / 10;
+}
+
 export function carwashRankFor(xp) {
-  let rank = 0;
-  for (let i = 0; i < CARWASH_RANKS.length; i++) {
-    if (xp >= CARWASH_RANKS[i].xp) rank = i;
+  let lvl = 0;
+  let i = 0;
+  while (i < CARWASH_RANKS.length) {
+    if (xp >= CARWASH_RANKS[i].xp) lvl = CARWASH_RANKS[i].level;
+    i += 1;
   }
-  return rank;
+  return lvl;
 }
 
 export function carwashItemById(id) {
-  return WASH_PACKAGES.find((x) => x.id === id) || null;
+  let i = 0;
+  while (i < WASH_PACKAGES.length) {
+    if (WASH_PACKAGES[i].id === id) return WASH_PACKAGES[i];
+    i += 1;
+  }
+  return null;
 }
 
 export function carwashPriceFor(id, drift, rank, upgrades) {
-  const item = WASH_PACKAGES.find((x) => x.id === id);
+  const item = carwashItemById(id);
   if (!item) return 0;
-  let price = item.price;
-  price *= 1 + (drift[id] || 0);
-  price *= 1 + rank * 0.05;
-  if (upgrades && upgrades.length >= 3) price *= 1.1;
-  return Math.max(1, Math.round(price * 10) / 10);
+  let p = item.price * (1 + (drift || 0)) * (1 + (rank || 0) * 0.05);
+  if (upgrades && upgrades.length >= 3) p = p * 1.1;
+  const rounded = carwashOneDec(p);
+  if (rounded < 1) return 1;
+  return rounded;
 }
 
 export function carwashCapacityFor(rank, upgrades) {
-  let cap = 3 + rank;
-  if (upgrades && upgrades.indexOf('mega-bay') >= 0) cap += 2;
+  let cap = 3 + (rank || 0);
+  if (!upgrades) return cap;
+  let i = 0;
+  while (i < upgrades.length) {
+    if (upgrades[i] === 'mega-bay') cap = cap + 2;
+    i += 1;
+  }
   return cap;
 }
 
 export function carwashPayoutFor(item, rank, upgrades, weather, boosted) {
-  let mult = 0.6 + rank * 0.1 + (boosted ? 0.3 : 0);
-  if (weather === 'rain') mult *= 0.6;
-  if (weather === 'sunny') mult *= 1.2;
-  if (weather === 'storm') mult *= 0.7;
-  if (upgrades && upgrades.length >= 4) mult *= 1.15;
-  return Math.max(5, Math.round(item.price * mult));
+  if (!item) return 0;
+  let mult = 0.6 + (rank || 0) * 0.1;
+  if (boosted) mult = mult + 0.3;
+  mult = mult * carwashSky({ rain: 0.6, sunny: 1.2, storm: 0.7 }, weather);
+  if (upgrades && upgrades.length >= 4) mult = mult * 1.15;
+  const payout = Math.round(item.price * mult);
+  if (payout < 5) return 5;
+  return payout;
 }
 
 export function carwashCrowdFor(item, rank, weather) {
-  let crowd = 10 + item.difficulty * 8 + rank * 5;
-  if (weather === 'rain') crowd = Math.round(crowd * 0.6);
-  if (weather === 'sunny') crowd = Math.round(crowd * 1.2);
-  if (weather === 'storm') crowd = Math.round(crowd * 0.5);
-  return Math.max(1, crowd);
+  const diff = item ? item.difficulty : 0;
+  const base = 10 + diff * 8 + (rank || 0) * 5;
+  const crowd = Math.round(base * carwashSky({ rain: 0.6, sunny: 1.2, storm: 0.5 }, weather));
+  if (crowd < 1) return 1;
+  return crowd;
 }
 
 export function carwashUpgradeById(id) {
-  return CARWASH_UPGRADES.find((x) => x.id === id) || null;
+  let i = 0;
+  while (i < CARWASH_UPGRADES.length) {
+    if (CARWASH_UPGRADES[i].id === id) return CARWASH_UPGRADES[i];
+    i += 1;
+  }
+  return null;
 }
 
 export function carwashStaffById(id) {
-  return CARWASH_STAFF.find((x) => x.id === id) || null;
+  let i = 0;
+  while (i < CARWASH_STAFF.length) {
+    if (CARWASH_STAFF[i].id === id) return CARWASH_STAFF[i];
+    i += 1;
+  }
+  return null;
 }
 
 export function carwashEventById(id) {
-  return CARWASH_DAILY_EVENTS.find((x) => x.id === id) || null;
+  let i = 0;
+  while (i < CARWASH_DAILY_EVENTS.length) {
+    if (CARWASH_DAILY_EVENTS[i].id === id) return CARWASH_DAILY_EVENTS[i];
+    i += 1;
+  }
+  let j = 0;
+  while (j < CARWASH_MARKET_EVENTS.length) {
+    if (CARWASH_MARKET_EVENTS[j].id === id) return CARWASH_MARKET_EVENTS[j];
+    j += 1;
+  }
+  return null;
 }
 
 export function carwashTipFor(day) {
@@ -281,31 +302,39 @@ export function carwashNpcLineFor(day) {
 }
 
 export function carwashGuideStep(step) {
-  return CARWASH_GUIDE[step] || null;
+  if (step < 0) return null;
+  if (step >= CARWASH_GUIDE.length) return null;
+  return CARWASH_GUIDE[step];
 }
 
 export function carwashSeasonMult(seasonId) {
-  const s = CARWASH_SEASONS.find((x) => x.id === seasonId);
-  return s ? s.mult : 1;
+  let i = 0;
+  while (i < CARWASH_SEASONS.length) {
+    if (CARWASH_SEASONS[i].id === seasonId) return CARWASH_SEASONS[i].mult;
+    i += 1;
+  }
+  return 1;
 }
 
 export function carwashMarketEventMult(eventId, itemId) {
-  const ev = CARWASH_MARKET_EVENTS.find((x) => x.id === eventId);
-  if (!ev) return 1;
-  return ev.item === itemId ? ev.mult : 1;
+  if (!eventId) return 1;
+  let i = 0;
+  while (i < CARWASH_MARKET_EVENTS.length) {
+    const e = CARWASH_MARKET_EVENTS[i];
+    if (e.id === eventId) {
+      if (e.item === itemId) return e.mult;
+      return 1;
+    }
+    i += 1;
+  }
+  return 1;
 }
 
 export function carwashWeeklyGoal(state) {
-  const goal = { runs: 5, earned: 500, visitors: 100 };
-  const runsDone = state.runsDone >= goal.runs;
-  const earnedDone = state.earned >= goal.earned;
-  const visitorsDone = state.visitors >= goal.visitors;
-  return {
-    runs: { have: state.runsDone, goal: goal.runs, done: runsDone },
-    earned: { have: Math.round(state.earned), goal: goal.earned, done: earnedDone },
-    visitors: { have: state.visitors, goal: goal.visitors, done: visitorsDone },
-    allDone: runsDone && earnedDone && visitorsDone,
-  };
+  const runs = { have: state.runsDone, goal: 5, done: state.runsDone >= 5 };
+  const earned = { have: state.earned, goal: 500, done: state.earned >= 500 };
+  const visitors = { have: state.visitors, goal: 100, done: state.visitors >= 100 };
+  return { runs, earned, visitors, allDone: runs.done && earned.done && visitors.done };
 }
 
 export function carwashEfficiency(state) {
@@ -316,202 +345,247 @@ export function carwashEfficiency(state) {
 
 export function carwashProfitPerRun(state) {
   if (state.runsDone === 0) return 0;
-  return Math.round((state.earned / state.runsDone) * 10) / 10;
+  return carwashOneDec(state.earned / state.runsDone);
 }
 
 export function carwashInventoryValue(state) {
-  let total = 0;
-  for (const id of Object.keys(state.owned || {})) {
-    const item = WASH_PACKAGES.find((x) => x.id === id);
-    if (item) total += item.price * (state.levels[id] || 1);
+  let sum = 0;
+  const keys = Object.keys(state.owned);
+  let i = 0;
+  while (i < keys.length) {
+    const item = carwashItemById(keys[i]);
+    if (item) sum = sum + item.price * (state.levels[keys[i]] || 1);
+    i += 1;
   }
-  return Math.round(total * 10) / 10;
+  return carwashOneDec(sum);
 }
 
 export function carwashSummary(state) {
-  const rankName = CARWASH_RANKS[state.rank] ? CARWASH_RANKS[state.rank].name : 'Unknown';
-  return 'Car Wash ' + rankName + ': ' + state.runsDone + ' runs, '
-    + state.itemsOwned + ' entries, $' + Math.round(state.earned)
-    + ' earned, ' + state.visitors + ' visitors.';
+  return 'Car Wash at rank ' + carwashRankNameFor(state.rank) + ': ' + state.runsDone + ' runs, ' + state.itemsOwned + ' entries, $' + state.earned + ' earned, ' + state.visitors + ' visitors.';
 }
 
 export function carwashNextGoal(state) {
-  if (state.itemsOwned < 1) return 'Open your first entry.';
+  if (state.itemsOwned === 0) return 'Open your first entry.';
   if (state.runsDone < 5) return 'Finish 5 runs.';
   if (state.earned < 500) return 'Earn $500 in total.';
-  if (state.rank < 2) return 'Reach rank ' + CARWASH_RANKS[2].name + '.';
+  if (state.rank < 2) return 'Reach rank ' + carwashRankNameFor(2) + '.';
   if (state.upgradesOwned < 4) return 'Own 4 upgrades.';
-  return 'Become a Car Wash legend.';
+  return 'Become a legend of the Car Wash.';
 }
 
-export function carwashRecordFor(recordId, state) {
-  const r = CARWASH_RECORDS.find((x) => x.id === recordId);
-  if (!r) return null;
-  return { id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit };
+export function carwashRecordFor(id, state) {
+  let rec = null;
+  let i = 0;
+  while (i < CARWASH_RECORDS.length) {
+    if (CARWASH_RECORDS[i].id === id) rec = CARWASH_RECORDS[i];
+    i += 1;
+  }
+  if (!rec) return null;
+  const value = state[rec.stat] === undefined ? 0 : state[rec.stat];
+  return { id: rec.id, name: rec.name, stat: rec.stat, unit: rec.unit, desc: rec.desc, value };
 }
 
 export function carwashAllRecords(state) {
-  return CARWASH_RECORDS.map((r) => ({
-    id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit, desc: r.desc,
-  }));
+  const out = [];
+  let i = 0;
+  while (i < CARWASH_RECORDS.length) {
+    out.push(carwashRecordFor(CARWASH_RECORDS[i].id, state));
+    i += 1;
+  }
+  return out;
 }
 
-export function carwashLeaderboardWith(playerScore) {
-  const board = CARWASH_LEADERBOARD.map((e) => ({
-    name: e.name, score: e.name === 'You' ? playerScore : e.score, desc: e.desc,
-  }));
+export function carwashLeaderboardWith(score) {
+  const board = [];
+  let i = 0;
+  while (i < CARWASH_LEADERBOARD.length) {
+    const e = CARWASH_LEADERBOARD[i];
+    if (e.name === 'You') board.push({ name: e.name, score, desc: e.desc });
+    else board.push({ name: e.name, score: e.score, desc: e.desc });
+    i += 1;
+  }
   board.sort((a, b) => b.score - a.score);
-  return board.map((e, i) => ({ rank: i + 1, name: e.name, score: e.score, desc: e.desc }));
+  const ranked = [];
+  let j = 0;
+  while (j < board.length) {
+    ranked.push({ rank: j + 1, name: board[j].name, score: board[j].score, desc: board[j].desc });
+    j += 1;
+  }
+  return ranked;
 }
 
 export function carwashSeasonReport(state, seasonId) {
   const mult = carwashSeasonMult(seasonId);
-  return WASH_PACKAGES.map((item) => ({
-    id: item.id,
-    name: item.name,
-    basePrice: item.price,
-    seasonPrice: Math.round(item.price * mult * 10) / 10,
-    owned: !!state.owned[item.id],
-    level: state.levels[item.id] || 0,
-  }));
+  const rows = [];
+  let i = 0;
+  while (i < WASH_PACKAGES.length) {
+    const it = WASH_PACKAGES[i];
+    rows.push({ id: it.id, name: it.name, basePrice: it.price, seasonPrice: carwashOneDec(it.price * mult), owned: !!state.owned[it.id], level: state.levels[it.id] || 0 });
+    i += 1;
+  }
+  return rows;
 }
 
 export function carwashChallengeProgress(challenge, state) {
-  const v = state[challenge.target] || 0;
-  return {
-    id: challenge.id, name: challenge.name, have: Math.floor(v),
-    goal: challenge.goal, done: v >= challenge.goal, xp: challenge.xp,
-  };
+  const have = Math.floor(state[challenge.target] || 0);
+  return { id: challenge.id, name: challenge.name, have, goal: challenge.goal, done: have >= challenge.goal, xp: challenge.xp };
 }
 
 export function carwashBestEntryFor(rank) {
   let best = null;
   let bestScore = -1;
-  for (const item of WASH_PACKAGES) {
-    if (item.difficulty > rank + 2) continue;
-    const score = item.price * (1 + item.rarity * 2) / item.difficulty;
-    if (score > bestScore) { bestScore = score; best = item; }
+  let i = 0;
+  while (i < WASH_PACKAGES.length) {
+    const it = WASH_PACKAGES[i];
+    if (it.difficulty <= rank + 2) {
+      const score = (it.price * (1 + it.rarity * 2)) / it.difficulty;
+      if (score > bestScore) {
+        bestScore = score;
+        best = it;
+      }
+    }
+    i += 1;
   }
   return best;
+}
+
+export function carwashEventFor(day) {
+  return CARWASH_MARKET_EVENTS[day % CARWASH_MARKET_EVENTS.length];
+}
+
+export function carwashDailyEventFor(day) {
+  return CARWASH_DAILY_EVENTS[day % CARWASH_DAILY_EVENTS.length];
+}
+
+export function carwashRankNameFor(level) {
+  let i = 0;
+  while (i < CARWASH_RANKS.length) {
+    if (CARWASH_RANKS[i].level === level) return CARWASH_RANKS[i].name;
+    i += 1;
+  }
+  return 'Unknown';
+}
+
+export function carwashTotalValue(state) {
+  return carwashOneDec(carwashInventoryValue(state) + state.pending + state.earned);
+}
+
+export function carwashProgressPercent(state) {
+  const total = state.runsDone + state.failures;
+  if (total === 0) return 0;
+  return Math.round((state.runsDone / total) * 100);
+}
+
+export function carwashStaffBonusFor(staffIds, skill) {
+  let total = 0;
+  let i = 0;
+  while (i < staffIds.length) {
+    const s = carwashStaffById(staffIds[i]);
+    if (s && s.skill === skill) total = total + s.bonus;
+    i += 1;
+  }
+  return total;
+}
+
+export function carwashCheapestEntry() {
+  let best = WASH_PACKAGES[0];
+  let i = 1;
+  while (i < WASH_PACKAGES.length) {
+    if (WASH_PACKAGES[i].price < best.price) best = WASH_PACKAGES[i];
+    i += 1;
+  }
+  return best;
+}
+
+export function carwashPriciestEntry() {
+  let best = WASH_PACKAGES[0];
+  let i = 1;
+  while (i < WASH_PACKAGES.length) {
+    if (WASH_PACKAGES[i].price > best.price) best = WASH_PACKAGES[i];
+    i += 1;
+  }
+  return best;
+}
+
+export function carwashEntriesByDifficulty(difficulty) {
+  const ids = [];
+  let i = 0;
+  while (i < WASH_PACKAGES.length) {
+    if (WASH_PACKAGES[i].difficulty === difficulty) ids.push(WASH_PACKAGES[i].id);
+    i += 1;
+  }
+  return ids;
+}
+
+export function carwashEntriesByRarity(maxRarity) {
+  const ids = [];
+  let i = 0;
+  while (i < WASH_PACKAGES.length) {
+    if (WASH_PACKAGES[i].rarity <= maxRarity) ids.push(WASH_PACKAGES[i].id);
+    i += 1;
+  }
+  return ids;
+}
+
+export function carwashGradeFor(runsDone, earned, visitors) {
+  const score = runsDone * 10 + Math.round(earned / 10) + Math.floor(visitors / 10);
+  if (score >= 500) return 'S';
+  if (score >= 300) return 'A';
+  if (score >= 150) return 'B';
+  if (score >= 50) return 'C';
+  return 'D';
 }
 
 export function createCarWashSystem(ctx) {
   const c = ctx || {};
   const rng = typeof c.rng === 'function' ? c.rng : Math.random;
+  const getDay = typeof c.getDay === 'function' ? c.getDay : () => 1;
+  const getHour = typeof c.getHour === 'function' ? c.getHour : () => 12;
   const getCash = typeof c.getCash === 'function' ? c.getCash : () => 0;
   const addCash = typeof c.addCash === 'function' ? c.addCash : () => {};
   const addHeat = typeof c.addHeat === 'function' ? c.addHeat : () => {};
   const log = typeof c.log === 'function' ? c.log : () => {};
-  const getDay = typeof c.getDay === 'function' ? c.getDay : () => 1;
-  const getHour = typeof c.getHour === 'function' ? c.getHour : () => 12;
-  const getPos = typeof c.getPlayerPos === 'function' ? c.getPlayerPos : () => ({ x: 0, z: 0 });
   const getWeather = typeof c.getWeather === 'function' ? c.getWeather : () => ({ condition: 'clear' });
-  const MECH = 'venue';
+
+  const drift = {};
+  const holdings = {};
+  const prices = {};
+  WASH_PACKAGES.forEach((it) => {
+    drift[it.id] = 0;
+    holdings[it.id] = 0;
+    prices[it.id] = it.price;
+  });
 
   const state = {
-    xp: 0,
-    rank: 0,
-    runsDone: 0,
-    itemsOwned: 0,
-    visitors: 0,
-    earned: 0,
-    spent: 0,
-    reputation: 0,
-    heat: 0,
-    upgrades: [],
-    upgradesOwned: 0,
-    staff: [],
-    staffHired: 0,
-    owned: {},
-    levels: {},
-    boosted: {},
-    active: null,
-    activeId: null,
-    activeTimer: 0,
-    activeBase: 0,
-    pending: 0,
-    dailyEarned: 0,
-    dailyVisitors: 0,
-    bestRun: 0,
-    bestRunName: null,
-    streak: 0,
-    bestStreak: 0,
-    failures: 0,
-    donations: 0,
-    challengesClaimed: [],
-    lastDay: 1,
-    drift: {},
-    holdings: {},
-    prices: {},
-    viewers: 0,
-    followers: 0,
-    subs: 0,
-    peakViewers: 0,
-    streamMinutes: 0,
-    support: 50,
-    volunteers: 0,
-    donors: 0,
-    polls: 50,
-    occupancy: 0,
-    attendanceToday: 0,
-    dividendsPaid: 0,
-    wagesPaid: 0,
+    xp: 0, rank: 0, runsDone: 0, itemsOwned: 0, visitors: 0, earned: 0, spent: 0,
+    reputation: 0, heat: 0, upgrades: [], upgradesOwned: 0, staff: [], staffHired: 0,
+    owned: {}, levels: {}, boosted: {}, active: null, activeId: null, activeTimer: 0,
+    activeBase: 0, pending: 0, dailyEarned: 0, dailyVisitors: 0, bestRun: 0,
+    bestRunName: null, streak: 0, bestStreak: 0, failures: 0, donations: 0,
+    challengesClaimed: [], lastDay: 1, drift, holdings, prices, viewers: 0,
+    followers: 0, subs: 0, peakViewers: 0, streamMinutes: 0, support: 50,
+    volunteers: 0, donors: 0, polls: 50, occupancy: 0, attendanceToday: 0,
+    dividendsPaid: 0, wagesPaid: 0,
   };
-  for (const item of WASH_PACKAGES) {
-    state.drift[item.id] = 0;
-    state.prices[item.id] = item.price;
-  }
-
-  function refreshRank() {
-    const r = carwashRankFor(state.xp);
-    if (r > state.rank) {
-      state.rank = r;
-      log('Car Wash rank up: ' + CARWASH_RANKS[r].name + ' - ' + CARWASH_RANKS[r].perk);
-    }
-  }
 
   function gainXp(n) {
     state.xp += n;
-    refreshRank();
-  }
-
-  function weatherCond() {
-    const w = getWeather();
-    if (w && typeof w.condition === 'string') return w.condition;
-    return 'clear';
-  }
-
-  function staffBonus(skill) {
-    let bonus = 0;
-    for (const id of state.staff) {
-      const s = CARWASH_STAFF.find((x) => x.id === id);
-      if (s && s.skill === skill) bonus += s.bonus;
-    }
-    return bonus;
-  }
-
-  function driftPrices() {
-    for (const item of WASH_PACKAGES) {
-      const roll = rng();
-      if (roll < 0.35) {
-        const change = Math.round((rng() * 0.24 - 0.12) * 100) / 100;
-        state.drift[item.id] = Math.round((state.drift[item.id] + change) * 100) / 100;
-        state.prices[item.id] = Math.max(1, Math.round(item.price * (1 + state.drift[item.id]) * 10) / 10);
-      }
+    const lvl = carwashRankFor(state.xp);
+    if (lvl > state.rank) {
+      state.rank = lvl;
+      log('Rank up! You are now ' + carwashRankNameFor(lvl) + '.');
     }
   }
 
   function offerPackage(id) {
-    const item = WASH_PACKAGES.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-package' };
-    if (state.owned[id]) return { ok: false, reason: 'already-owned' };
-    if (state.itemsOwned >= carwashCapacityFor(state.rank, state.upgrades)) {
-      return { ok: false, reason: 'capacity-full', cap: carwashCapacityFor(state.rank, state.upgrades) };
-    }
-    if (state.rank < Math.max(0, item.difficulty - 2)) {
-      return { ok: false, reason: 'rank-too-low', need: Math.max(0, item.difficulty - 2) };
-    }
-    const cost = carwashPriceFor(id, state.drift, 0, []);
+    const item = carwashItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id };
+    if (state.owned[id]) return { ok: false, reason: 'already-owned', id };
+    const cap = carwashCapacityFor(state.rank, state.upgrades);
+    if (state.itemsOwned >= cap) return { ok: false, reason: 'capacity-full', cap };
+    const need = Math.max(0, item.difficulty - 2);
+    if (state.rank < need) return { ok: false, reason: 'rank-too-low', rank: need };
+    const cost = carwashPriceFor(id, state.drift[id] || 0, 0, []);
     if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost };
     addCash(-cost);
     state.spent += cost;
@@ -519,46 +593,47 @@ export function createCarWashSystem(ctx) {
     state.levels[id] = 1;
     state.itemsOwned += 1;
     gainXp(10);
-    log('Offered ' + item.name + ' for $' + cost + '. Welcome to the Car Wash business.');
+    log('Offered package ' + item.name + ' for $' + cost + '.');
     return { ok: true, id, cost, name: item.name };
   }
 
   function washCar(id) {
-    const item = WASH_PACKAGES.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-package' };
+    const item = carwashItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id };
     if (state.active) return { ok: false, reason: 'already-running', active: state.activeId };
-    if (!state.owned[id]) return { ok: false, reason: 'not-owned' };
+    if (!state.owned[id]) return { ok: false, reason: 'not-owned', id };
     state.active = 'run';
     state.activeId = id;
     state.activeTimer = 30 + item.difficulty * 10;
     state.activeBase = item.price;
-    log('Wash started: ' + item.name + ' is under way.');
+    log('Wash started: ' + item.name + '.');
     return { ok: true, id, seconds: state.activeTimer };
   }
 
   function settleRun() {
-    const id = state.activeId;
-    const item = WASH_PACKAGES.find((x) => x.id === id);
+    const item = carwashItemById(state.activeId);
+    const doneId = state.activeId;
+    const sky = getWeather();
+    const payout = carwashPayoutFor(item, state.rank, state.upgrades, sky, !!state.boosted[doneId]);
+    const crowd = carwashCrowdFor(item, state.rank, sky);
     state.active = null;
     state.activeId = null;
     state.activeTimer = 0;
-    if (!item) return;
-    const cond = weatherCond();
-    const boosted = !!state.boosted[id];
-    const payout = carwashPayoutFor(item, state.rank, state.upgrades, cond, boosted);
-    const crowd = carwashCrowdFor(item, state.rank, cond);
     state.visitors += crowd;
     state.dailyVisitors += crowd;
     state.attendanceToday += crowd;
     state.pending += payout;
     state.dailyEarned += payout;
     state.runsDone += 1;
-    if (payout > state.bestRun) { state.bestRun = payout; state.bestRunName = item.name; }
+    if (payout > state.bestRun) {
+      state.bestRun = payout;
+      state.bestRunName = item ? item.name : doneId;
+    }
     state.streak += 1;
-    state.bestStreak = Math.max(state.bestStreak, state.streak);
-    state.boosted[id] = false;
-    gainXp(15 + item.difficulty * 3);
-    log('Car gleaming after ' + item.name + ': ' + crowd + ' visitors, $' + payout + ' in the till.');
+    if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+    state.boosted[doneId] = false;
+    gainXp(15 + (item ? item.difficulty : 0) * 3);
+    log('Wash ' + (item ? item.name : doneId) + ' drew ' + crowd + ' drivers and earned $' + payout + '.');
   }
 
   function collectWashRevenue() {
@@ -567,203 +642,199 @@ export function createCarWashSystem(ctx) {
     state.pending = 0;
     state.earned += amount;
     addCash(amount);
-    log('Collected $' + amount + ' from the till.');
+    log('Collected $' + amount + ' in wash revenue.');
     return { ok: true, amount };
   }
 
-  function sellMembership(id, qty) {
-    const item = WASH_PACKAGES.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-package' };
-    void qty;
-    if (!state.owned[id]) return { ok: false, reason: 'not-owned' };
+  function sellMembership(id) {
+    const item = carwashItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id };
+    if (!state.owned[id]) return { ok: false, reason: 'not-owned', id };
     const refund = Math.round(item.price * 0.5);
     delete state.owned[id];
     delete state.levels[id];
     state.itemsOwned -= 1;
-    addCash(refund);
     state.earned += refund;
+    addCash(refund);
     gainXp(5);
-    log('Sold off ' + item.name + ' for $' + refund + '. Half price, clean break.');
+    log('Sold membership stock from ' + item.name + ' for $' + refund + '.');
     return { ok: true, total: refund, qty: 1 };
   }
 
   function detailCar(id) {
-    const item = WASH_PACKAGES.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-package' };
-    if (!state.owned[id]) return { ok: false, reason: 'not-owned' };
+    const item = carwashItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id };
+    if (!state.owned[id]) return { ok: false, reason: 'not-owned', id };
     if (getCash() < 40) return { ok: false, reason: 'not-enough-cash', cost: 40 };
     addCash(-40);
     state.spent += 40;
     state.boosted[id] = true;
     state.reputation += 1;
     gainXp(10);
-    log('Detailing crew on ' + item.name + ' is boosted for its next run.');
+    log('Detailed a car for ' + item.name + '.');
     return { ok: true, id, boosted: true };
   }
 
   function buyUpgrade(id) {
-    const u = CARWASH_UPGRADES.find((x) => x.id === id);
-    if (!u) return { ok: false, reason: 'no-such-upgrade' };
-    if (state.upgrades.indexOf(id) >= 0) return { ok: false, reason: 'already-owned' };
-    if (getCash() < u.cost) return { ok: false, reason: 'not-enough-cash', cost: u.cost };
-    addCash(-u.cost);
-    state.spent += u.cost;
+    const up = carwashUpgradeById(id);
+    if (!up) return { ok: false, reason: 'unknown-upgrade', id };
+    if (state.upgrades.includes(id)) return { ok: false, reason: 'already-owned', id };
+    if (getCash() < up.cost) return { ok: false, reason: 'not-enough-cash', cost: up.cost };
+    addCash(-up.cost);
+    state.spent += up.cost;
     state.upgrades.push(id);
     state.upgradesOwned += 1;
     gainXp(20);
-    log('Bought upgrade: ' + u.name + ' for $' + u.cost + '. ' + u.desc);
-    return { ok: true, id, name: u.name };
+    log('Bought upgrade ' + up.name + ' for $' + up.cost + '.');
+    return { ok: true, id, name: up.name };
   }
 
   function hireStaff(id) {
-    const s = CARWASH_STAFF.find((x) => x.id === id);
-    if (!s) return { ok: false, reason: 'no-such-staff' };
-    if (state.staff.indexOf(id) >= 0) return { ok: false, reason: 'already-hired' };
+    const s = carwashStaffById(id);
+    if (!s) return { ok: false, reason: 'unknown-staff', id };
+    if (state.staff.includes(id)) return { ok: false, reason: 'already-hired', id };
     if (getCash() < s.wage) return { ok: false, reason: 'not-enough-cash', cost: s.wage };
     addCash(-s.wage);
     state.spent += s.wage;
     state.staff.push(id);
     state.staffHired += 1;
     gainXp(10);
-    log('Hired ' + s.name + ' for $' + s.wage + ' signing fee.');
+    log('Hired ' + s.name + ' for $' + s.wage + '.');
     return { ok: true, id, name: s.name, wage: s.wage };
   }
 
   function fireStaff(id) {
-    const i = state.staff.indexOf(id);
-    if (i < 0) return { ok: false, reason: 'not-hired' };
-    state.staff.splice(i, 1);
-    log('Let go of ' + id + '. The team is smaller now.');
+    const at = state.staff.indexOf(id);
+    if (at < 0) return { ok: false, reason: 'not-hired', id };
+    state.staff.splice(at, 1);
+    log('Let go of staff member ' + id + '.');
     return { ok: true, id };
   }
 
   function upgradeItem(id) {
-    const item = WASH_PACKAGES.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-package' };
-    if (!state.owned[id]) return { ok: false, reason: 'not-owned' };
+    const item = carwashItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id };
+    if (!state.owned[id]) return { ok: false, reason: 'not-owned', id };
     const lvl = state.levels[id] || 1;
-    if (lvl >= 5) return { ok: false, reason: 'max-level' };
+    if (lvl >= 5) return { ok: false, reason: 'max-level', id, level: lvl };
     const cost = Math.round(item.price * 0.4 * lvl);
     if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost };
     addCash(-cost);
     state.spent += cost;
     state.levels[id] = lvl + 1;
     gainXp(15);
-    log(item.name + ' upgraded to level ' + (lvl + 1) + ' for $' + cost + '.');
+    log('Upgraded ' + item.name + ' to level ' + (lvl + 1) + '.');
     return { ok: true, id, level: lvl + 1 };
   }
 
   function priceBoard() {
-    return WASH_PACKAGES.map((item) => ({
-      id: item.id,
-      name: item.name,
-      price: carwashPriceFor(item.id, state.drift, state.rank, state.upgrades),
-      basePrice: item.price,
-      drift: state.drift[item.id],
-      owned: !!state.owned[item.id],
-      level: state.levels[item.id] || 0,
-      difficulty: item.difficulty,
-      rarity: item.rarity,
-    }));
+    const rows = [];
+    for (const it of WASH_PACKAGES) {
+      rows.push({
+        id: it.id,
+        name: it.name,
+        price: state.prices[it.id],
+        basePrice: it.price,
+        drift: state.drift[it.id] || 0,
+        owned: !!state.owned[it.id],
+        level: state.levels[it.id] || 0,
+        difficulty: it.difficulty,
+        rarity: it.rarity,
+      });
+    }
+    return rows;
   }
 
   function listItems() {
-    return WASH_PACKAGES.map((item) => ({
-      id: item.id, name: item.name, price: item.price,
-      difficulty: item.difficulty, rarity: item.rarity, desc: item.desc,
-      owned: !!state.owned[item.id],
-    }));
+    const rows = [];
+    for (const it of WASH_PACKAGES) {
+      rows.push({ id: it.id, name: it.name, price: it.price, difficulty: it.difficulty, rarity: it.rarity, desc: it.desc, owned: !!state.owned[it.id] });
+    }
+    return rows;
   }
 
   function info(id) {
-    const item = WASH_PACKAGES.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-package' };
-    return {
-      ok: true, item,
-      owned: !!state.owned[id],
-      level: state.levels[id] || 0,
-      price: carwashPriceFor(id, state.drift, state.rank, state.upgrades),
-      holdings: state.holdings[id] || 0,
-    };
+    const item = carwashItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id };
+    return { ok: true, item, owned: !!state.owned[id], level: state.levels[id] || 0, price: state.prices[id], holdings: state.holdings[id] || 0 };
   }
 
   function dailyEvent() {
-    const idx = Math.floor(rng() * CARWASH_DAILY_EVENTS.length);
-    const ev = CARWASH_DAILY_EVENTS[idx];
-    if (!ev) return { event: 'none' };
-    if (ev.effect === 'earn') {
-      state.pending += ev.amount;
-      log(ev.text);
-    } else if (ev.effect === 'cost') {
+    if (CARWASH_DAILY_EVENTS.length === 0) return { event: 'none', name: '', effect: '', amount: 0 };
+    const ev = CARWASH_DAILY_EVENTS[Math.floor(rng() * CARWASH_DAILY_EVENTS.length)];
+    if (ev.effect === 'earn') state.pending += ev.amount;
+    else if (ev.effect === 'cost') {
       if (getCash() >= ev.amount) {
         addCash(-ev.amount);
         state.spent += ev.amount;
       }
-      log(ev.text);
-    } else if (ev.effect === 'rep') {
-      state.reputation += ev.amount;
-      log(ev.text);
-    } else if (ev.effect === 'visitors') {
+    } else if (ev.effect === 'rep') state.reputation += ev.amount;
+    else if (ev.effect === 'visitors') {
       state.visitors += ev.amount;
       state.dailyVisitors += ev.amount;
-      log(ev.text);
     } else if (ev.effect === 'heat') {
       state.heat += ev.amount;
       addHeat(ev.amount);
-      log(ev.text);
-    } else if (ev.effect === 'xp') {
-      gainXp(ev.amount);
-      log(ev.text);
-    } else {
-      log(ev.text);
-    }
+    } else if (ev.effect === 'xp') gainXp(ev.amount);
+    log(ev.text);
     return { event: ev.id, name: ev.name, effect: ev.effect, amount: ev.amount };
   }
 
   function tick(dt) {
     if (!state.active) return;
     state.activeTimer -= dt;
-    if (state.activeTimer <= 0) settleRun();
+    if (state.activeTimer <= 0) {
+      state.activeTimer = 0;
+      settleRun();
+    }
   }
 
   function tickDay(day) {
-    if (day === state.lastDay) return;
+    if (day === state.lastDay) return null;
     state.lastDay = day;
-    driftPrices();
+    for (const it of WASH_PACKAGES) {
+      if (rng() < 0.35) {
+        const shift = Math.round((rng() * 0.24 - 0.12) * 100) / 100;
+        const next = Math.round(((state.drift[it.id] || 0) + shift) * 100) / 100;
+        state.drift[it.id] = next;
+        state.prices[it.id] = Math.max(1, Math.round(it.price * (1 + next) * 10) / 10);
+      }
+    }
     state.dailyEarned = 0;
     state.dailyVisitors = 0;
     state.attendanceToday = 0;
     state.occupancy = 0;
-    dailyEvent();
+    return dailyEvent();
   }
 
   function serialize() {
     return JSON.parse(JSON.stringify(state));
   }
 
-  function deserialize(d) {
-    if (!d || typeof d !== 'object') return;
-    for (const k of Object.keys(state)) {
-      if (d[k] !== undefined) state[k] = d[k];
+  function deserialize(saved) {
+    if (!saved || typeof saved !== 'object') return;
+    for (const k of Object.keys(saved)) state[k] = saved[k];
+    if (!state.drift || typeof state.drift !== 'object') state.drift = {};
+    if (!state.prices || typeof state.prices !== 'object') state.prices = {};
+    if (!state.holdings || typeof state.holdings !== 'object') state.holdings = {};
+    for (const it of WASH_PACKAGES) {
+      if (state.drift[it.id] === undefined) state.drift[it.id] = 0;
+      if (state.prices[it.id] === undefined) state.prices[it.id] = it.price;
+      if (state.holdings[it.id] === undefined) state.holdings[it.id] = 0;
     }
-    for (const item of WASH_PACKAGES) {
-      if (state.drift[item.id] === undefined) state.drift[item.id] = 0;
-      if (state.prices[item.id] === undefined) state.prices[item.id] = item.price;
-      if (state.holdings[item.id] === undefined) state.holdings[item.id] = 0;
-    }
-    if (!state.owned) state.owned = {};
-    if (!state.levels) state.levels = {};
-    if (!state.boosted) state.boosted = {};
-    refreshRank();
+    if (!state.owned || typeof state.owned !== 'object') state.owned = {};
+    if (!state.levels || typeof state.levels !== 'object') state.levels = {};
+    if (!state.boosted || typeof state.boosted !== 'object') state.boosted = {};
+    state.rank = carwashRankFor(state.xp);
   }
 
   function stats() {
     let holdingsCount = 0;
-    for (const k of Object.keys(state.holdings)) holdingsCount += state.holdings[k];
+    for (const k of Object.keys(state.holdings)) holdingsCount += state.holdings[k] || 0;
     return {
       name: 'Car Wash',
-      mechanic: MECH,
-      rank: CARWASH_RANKS[state.rank] ? CARWASH_RANKS[state.rank].name : 'Unknown',
+      mechanic: 'venue',
+      rank: carwashRankNameFor(state.rank),
       rankLevel: state.rank,
       xp: state.xp,
       runsDone: state.runsDone,
@@ -808,29 +879,24 @@ export function createCarWashSystem(ctx) {
   }
 
   function hudLine() {
-    if (state.active) {
-      return 'Car Wash: running ' + state.activeId + ' - ' + Math.max(0, Math.ceil(state.activeTimer)) + 's left';
-    }
-    if (state.pending > 0) {
-      return 'Car Wash: $' + Math.round(state.pending) + ' waiting in the till';
-    }
-    if (state.itemsOwned > 0) {
-      return 'Car Wash: ' + state.itemsOwned + ' entries, $' + Math.round(state.earned) + ' earned';
-    }
+    if (state.active) return 'Car Wash: running ' + state.activeId + ' - ' + Math.ceil(state.activeTimer) + 's left';
+    if (state.pending > 0) return 'Car Wash: $' + state.pending + ' waiting in the till';
+    if (state.itemsOwned > 0) return 'Car Wash: ' + state.itemsOwned + ' entries, $' + state.earned + ' earned';
     return '';
   }
 
   function interact(action, a, b) {
-    if (!action || action === 'status') return { ok: true, stats: stats(), hint: 'open <package> to offer it, run <package> to wash a car, collect to empty the till' };
+    if (!action || action === 'status') {
+      return { ok: true, stats: stats(), hint: 'open a package to offer it, run a package to wash a car, collect to empty the till' };
+    }
     if (action === 'open') return offerPackage(a);
     if (action === 'run') return washCar(a);
     if (action === 'collect') return collectWashRevenue();
     if (action === 'sell') return sellMembership(a, b);
-    if (action === 'upgrade') return buyUpgrade(a);
-    if (action === 'levelup') return upgradeItem(a);
+    if (action === 'upgrade' || action === 'levelup') return upgradeItem(a);
     if (action === 'hire') return hireStaff(a);
     if (action === 'fire') return fireStaff(a);
-    if (action === 'special') return detailCar(a, b);
+    if (action === 'special') return detailCar(a);
     if (action === 'info') return info(a);
     if (action === 'prices') return { ok: true, prices: priceBoard() };
     if (action === 'list') return { ok: true, items: listItems() };
@@ -866,7 +932,7 @@ export function createCarWashSystem(ctx) {
     run: washCar,
     collect: collectWashRevenue,
     sell: sellMembership,
-    upgrade: buyUpgrade,
+    upgrade: upgradeItem,
     hire: hireStaff,
   };
 }
@@ -874,81 +940,83 @@ export function createCarWashSystem(ctx) {
 export function createCarWashExtras(system) {
   const helpers = [];
   const claimed = [];
-  let helperWagesPaid = 0;
+  let wagesPaid = 0;
 
   function challenges() {
-    return CARWASH_CHALLENGES.map((ch) => carwashChallengeProgress(ch, system.state));
+    const out = [];
+    for (const ch of CARWASH_CHALLENGES) out.push(carwashChallengeProgress(ch, system.state));
+    return out;
   }
 
   function claimChallenge(id) {
-    const ch = CARWASH_CHALLENGES.find((x) => x.id === id);
-    if (!ch) return { ok: false, reason: 'no-such-challenge' };
-    if (claimed.indexOf(id) >= 0) return { ok: false, reason: 'already-claimed' };
-    const p = carwashChallengeProgress(ch, system.state);
-    if (!p.done) return { ok: false, reason: 'not-done', have: p.have, goal: p.goal };
+    let ch = null;
+    for (const c of CARWASH_CHALLENGES) {
+      if (c.id === id) ch = c;
+    }
+    if (!ch) return { ok: false, reason: 'unknown-challenge', id };
+    if (claimed.includes(id)) return { ok: false, reason: 'already-claimed', id };
+    const prog = carwashChallengeProgress(ch, system.state);
+    if (!prog.done) return { ok: false, reason: 'not-done', id, have: prog.have, goal: prog.goal };
     claimed.push(id);
     system.state.challengesClaimed.push(id);
-    if (typeof system.gainXp === 'function') system.gainXp(ch.xp);
+    system.gainXp(ch.xp);
     return { ok: true, id, xp: ch.xp };
   }
 
   function achievements() {
-    return CARWASH_ACHIEVEMENTS.map((a) => ({
-      id: a.id,
-      name: a.name,
-      desc: a.desc,
-      target: a.target,
-      goal: a.goal,
-      have: Math.floor(system.state[a.target] || 0),
-      done: (system.state[a.target] || 0) >= a.goal,
-    }));
+    const out = [];
+    for (const a of CARWASH_ACHIEVEMENTS) {
+      const have = Math.floor(system.state[a.target] || 0);
+      out.push({ id: a.id, name: a.name, desc: a.desc, target: a.target, goal: a.goal, have, done: have >= a.goal });
+    }
+    return out;
   }
 
   function hireHelper(id) {
-    const h = CARWASH_STAFF.find((x) => x.id === id);
-    if (!h) return { ok: false, reason: 'no-such-helper' };
-    if (helpers.indexOf(id) >= 0) return { ok: false, reason: 'already-hired' };
+    const s = carwashStaffById(id);
+    if (!s) return { ok: false, reason: 'unknown-staff', id };
+    if (helpers.includes(id)) return { ok: false, reason: 'already-hired', id };
     helpers.push(id);
-    return { ok: true, id, name: h.name, wage: h.wage };
+    return { ok: true, id, name: s.name, wage: s.wage };
   }
 
   function fireHelper(id) {
-    const i = helpers.indexOf(id);
-    if (i < 0) return { ok: false, reason: 'not-hired' };
-    helpers.splice(i, 1);
+    const at = helpers.indexOf(id);
+    if (at < 0) return { ok: false, reason: 'not-hired', id };
+    helpers.splice(at, 1);
     return { ok: true, id };
   }
 
   function payWages() {
     let due = 0;
-    for (const id of helpers) {
-      const h = CARWASH_STAFF.find((x) => x.id === id);
-      if (h) due += h.wage;
+    for (const hid of helpers) {
+      const s = carwashStaffById(hid);
+      if (s) due += s.wage;
     }
-    helperWagesPaid += due;
+    wagesPaid += due;
     system.state.wagesPaid += due;
-    return { due, helpers: helpers.slice(), totalPaid: helperWagesPaid };
+    return { due, helpers: helpers.length, totalPaid: wagesPaid };
   }
 
   function helperBonus(skill) {
-    let bonus = 0;
-    for (const id of helpers) {
-      const h = CARWASH_STAFF.find((x) => x.id === id);
-      if (h && h.skill === skill) bonus += h.bonus;
+    let total = 0;
+    for (const hid of helpers) {
+      const s = carwashStaffById(hid);
+      if (s && s.skill === skill) total += s.bonus;
     }
-    return bonus;
+    return total;
   }
 
   function donate(amount) {
-    if (!amount || amount <= 0) return { ok: false, reason: 'bad-amount' };
+    if (!amount || amount <= 0) return { ok: false, reason: 'bad-amount', amount };
     system.state.donations += amount;
-    system.state.reputation += Math.floor(amount / 100);
-    return { ok: true, amount, reputation: system.state.reputation };
+    const rep = Math.floor(amount / 100);
+    system.state.reputation += rep;
+    return { ok: true, amount, reputation: rep };
   }
 
   function quickBoost(id) {
-    const item = WASH_PACKAGES.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-package' };
+    if (!carwashItemById(id)) return { ok: false, reason: 'unknown-item', id };
     system.state.boosted[id] = true;
     return { ok: true, id, boosted: true };
   }
@@ -969,17 +1037,19 @@ export function createCarWashExtras(system) {
   }
 
   function staffRoster() {
-    return CARWASH_STAFF.map((s) => ({
-      id: s.id, name: s.name, wage: s.wage, skill: s.skill,
-      hired: helpers.indexOf(s.id) >= 0 || system.state.staff.indexOf(s.id) >= 0,
-    }));
+    const rows = [];
+    for (const s of CARWASH_STAFF) {
+      rows.push({ id: s.id, name: s.name, wage: s.wage, skill: s.skill, hired: helpers.includes(s.id) || system.state.staff.includes(s.id) });
+    }
+    return rows;
   }
 
   function upgradeCatalog() {
-    return CARWASH_UPGRADES.map((u) => ({
-      id: u.id, name: u.name, cost: u.cost, effect: u.effect, desc: u.desc,
-      owned: system.state.upgrades.indexOf(u.id) >= 0,
-    }));
+    const rows = [];
+    for (const u of CARWASH_UPGRADES) {
+      rows.push({ id: u.id, name: u.name, cost: u.cost, effect: u.effect, desc: u.desc, owned: system.state.upgrades.includes(u.id) });
+    }
+    return rows;
   }
 
   return {
@@ -998,7 +1068,7 @@ export function createCarWashExtras(system) {
     upgradeCatalog,
     get helpers() { return helpers.slice(); },
     get claimed() { return claimed.slice(); },
-    get wagesPaid() { return helperWagesPaid; },
+    get wagesPaid() { return wagesPaid; },
   };
 }
 
@@ -1008,31 +1078,35 @@ export function createCarWashMarket(system) {
   let dealsClaimed = 0;
   let bulkTraded = 0;
 
-  function setEvent(eventId) {
-    const ev = CARWASH_MARKET_EVENTS.find((x) => x.id === eventId);
-    if (!ev) return { ok: false, reason: 'no-such-event' };
-    currentEvent = eventId;
-    return { ok: true, event: eventId, name: ev.name };
+  function setEvent(id) {
+    let found = null;
+    for (const e of CARWASH_MARKET_EVENTS) {
+      if (e.id === id) found = e;
+    }
+    if (!found) return { ok: false, reason: 'unknown-event', id };
+    currentEvent = id;
+    return { ok: true, event: id };
   }
 
-  function setSeason(seasonId) {
-    const s = CARWASH_SEASONS.find((x) => x.id === seasonId);
-    if (!s) return { ok: false, reason: 'no-such-season' };
-    currentSeason = seasonId;
-    return { ok: true, season: seasonId };
+  function setSeason(id) {
+    let found = null;
+    for (const s of CARWASH_SEASONS) {
+      if (s.id === id) found = s;
+    }
+    if (!found) return { ok: false, reason: 'unknown-season', id };
+    currentSeason = id;
+    return { ok: true, season: id };
   }
 
   function eventPrice(itemId, basePrice) {
-    let price = basePrice;
-    price *= carwashMarketEventMult(currentEvent, itemId);
-    price *= carwashSeasonMult(currentSeason);
-    return Math.round(price * 10) / 10;
+    const mult = carwashMarketEventMult(currentEvent, itemId) * carwashSeasonMult(currentSeason);
+    return Math.round(basePrice * mult * 10) / 10;
   }
 
   function bulkDeal(itemId, qty) {
-    const item = WASH_PACKAGES.find((x) => x.id === itemId);
-    if (!item) return { ok: false, reason: 'no-such-package' };
-    if (!qty || qty < 5) return { ok: false, reason: 'need-5-plus', qty: qty || 0 };
+    const item = carwashItemById(itemId);
+    if (!item) return { ok: false, reason: 'unknown-item', id: itemId };
+    if (!qty || qty < 5) return { ok: false, reason: 'too-few', qty };
     const unit = eventPrice(itemId, item.price);
     const total = Math.round(unit * qty * 1.1 * 10) / 10;
     system.state.pending += total;
@@ -1043,32 +1117,24 @@ export function createCarWashMarket(system) {
   }
 
   function dailyDeals() {
-    const deals = [];
-    for (const item of WASH_PACKAGES) {
-      const mult = carwashMarketEventMult(currentEvent, item.id);
-      if (mult !== 1) {
-        deals.push({ item: item.id, name: item.name, mult, event: currentEvent });
-      }
+    const rows = [];
+    for (const it of WASH_PACKAGES) {
+      const mult = carwashMarketEventMult(currentEvent, it.id);
+      if (mult !== 1) rows.push({ item: it.id, name: it.name, mult, event: currentEvent });
     }
-    return deals;
+    return rows;
   }
 
   function marketSummary() {
-    return {
-      event: currentEvent,
-      season: currentSeason,
-      dealsClaimed,
-      bulkTraded,
-      deals: dailyDeals(),
-    };
+    return { event: currentEvent, season: currentSeason, dealsClaimed, bulkTraded, deals: dailyDeals() };
   }
 
   function seasonPrices() {
-    return WASH_PACKAGES.map((item) => ({
-      id: item.id,
-      name: item.name,
-      price: eventPrice(item.id, item.price),
-    }));
+    const rows = [];
+    for (const it of WASH_PACKAGES) {
+      rows.push({ id: it.id, name: it.name, price: eventPrice(it.id, it.price) });
+    }
+    return rows;
   }
 
   return {
@@ -1083,78 +1149,3 @@ export function createCarWashMarket(system) {
     get season() { return currentSeason; },
   };
 }
-
-export function carwashEventFor(day) {
-  return CARWASH_MARKET_EVENTS[day % CARWASH_MARKET_EVENTS.length];
-}
-
-export function carwashDailyEventFor(day) {
-  return CARWASH_DAILY_EVENTS[day % CARWASH_DAILY_EVENTS.length];
-}
-
-export function carwashRankNameFor(rank) {
-  const r = CARWASH_RANKS[rank];
-  return r ? r.name : 'Unknown';
-}
-
-export function carwashTotalValue(state) {
-  const inv = carwashInventoryValue(state);
-  return Math.round((inv + state.pending + state.earned) * 10) / 10;
-}
-
-export function carwashProgressPercent(state) {
-  const total = state.runsDone + state.failures;
-  if (total === 0) return 0;
-  return Math.round((state.runsDone / total) * 100);
-}
-
-export function carwashStaffBonusFor(staffIds, skill) {
-  let bonus = 0;
-  for (const id of staffIds) {
-    const s = CARWASH_STAFF.find((x) => x.id === id);
-    if (s && s.skill === skill) bonus += s.bonus;
-  }
-  return bonus;
-}
-
-export function carwashCheapestEntry() {
-  let best = WASH_PACKAGES[0];
-  for (const item of WASH_PACKAGES) {
-    if (item.price < best.price) best = item;
-  }
-  return best;
-}
-
-export function carwashPriciestEntry() {
-  let best = WASH_PACKAGES[0];
-  for (const item of WASH_PACKAGES) {
-    if (item.price > best.price) best = item;
-  }
-  return best;
-}
-
-export function carwashEntriesByDifficulty(difficulty) {
-  return WASH_PACKAGES.filter((x) => x.difficulty === difficulty).map((x) => x.id);
-}
-
-export function carwashEntriesByRarity(maxRarity) {
-  return WASH_PACKAGES.filter((x) => x.rarity <= maxRarity).map((x) => x.id);
-}
-
-export function carwashGradeFor(runsDone, earned, visitors) {
-  const score = runsDone * 10 + Math.round(earned / 10) + Math.floor(visitors / 10);
-  if (score >= 500) return 'S';
-  if (score >= 300) return 'A';
-  if (score >= 150) return 'B';
-  if (score >= 50) return 'C';
-  return 'D';
-}
-
-export const CARWASH_META = {
-  system: 'carwash',
-  version: '7-B4',
-  author: 'builder-4',
-  mechanic: 'venue',
-  dataCount: WASH_PACKAGES.length,
-  dataName: 'WASH_PACKAGES',
-};

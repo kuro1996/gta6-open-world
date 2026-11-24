@@ -1,279 +1,274 @@
-// Solara Nights - Museum of Wonders (Round 7 mega-rebuild, written fresh).
-// The Solara Museum of Wonders: buy forgotten treasures, hang them in
-// the right wing, and sell tickets to school trips, tourists and the
-// occasional film crew. Rainy weekends fill the halls; a leaky roof
-// empties the till. Restore exhibits, hire guides, and keep the
-// velvet ropes polished.
-// Pure logic: no rendering, no imports. The game wires it through the
-// standard ctx { rng, getDay, getHour, getCash, addCash, addHeat, log,
-// getPlayerPos, getWeather } and drives tick/tickDay from the main loop.
-// Mechanic: venue.
-
 export const EXHIBITS = [
-  { id: 'sunken-galleon', name: 'The Sunken Galleon', price: 1200, rarity: 0.08, difficulty: 4, era: 'Age of Sail', wing: 'Maritime Hall', crowd: 5,
-    desc: 'A galleon raised from the bay floor, barnacles and all.' },
-  { id: 'dino-skeleton', name: 'Titanosaur Skeleton', price: 2400, rarity: 0.05, difficulty: 5, era: 'Jurassic', wing: 'Fossil Wing', crowd: 5,
-    desc: 'Forty metres of ancient bone, reassembled rib by rib.' },
-  { id: 'crown-jewels', name: 'The Meridian Crown Jewels', price: 3000, rarity: 0.03, difficulty: 5, era: 'Royal Era', wing: 'Treasure Vault', crowd: 4,
-    desc: 'Rubies the colour of harbour sunsets, under three layers of glass.' },
-  { id: 'moon-rock', name: 'Moon Rock Fragment', price: 1800, rarity: 0.06, difficulty: 4, era: 'Space Age', wing: 'Science Wing', crowd: 4,
-    desc: 'A grey pebble that has been further from home than anyone alive.' },
-  { id: 'pharaoh-mask', name: 'Mask of Pharaoh Seti', price: 2200, rarity: 0.05, difficulty: 5, era: 'Ancient Egypt', wing: 'Antiquities', crowd: 5,
-    desc: 'Gold leaf, lapis eyes, and four thousand years of staring back.' },
-  { id: 'robot-1920', name: 'The 1920s Automaton', price: 900, rarity: 0.12, difficulty: 3, era: 'Industrial Age', wing: 'Invention Hall', crowd: 3,
-    desc: 'A brass gentleman that still tips his hat when wound up.' },
-  { id: 'ocean-mural', name: 'The Great Ocean Mural', price: 700, rarity: 0.15, difficulty: 2, era: 'Modern', wing: 'Art Wing', crowd: 4,
-    desc: 'Thirty metres of painted tide, whales and weather.' },
-  { id: 'war-letters', name: 'Letters from the Front', price: 450, rarity: 0.2, difficulty: 2, era: 'World Wars', wing: 'History Hall', crowd: 3,
-    desc: 'Folded paper, faded ink, and the handwriting of the missing.' },
-  { id: 'gem-cave', name: 'The Singing Gem Cave', price: 1500, rarity: 0.07, difficulty: 4, era: 'Natural World', wing: 'Earth Gallery', crowd: 4,
-    desc: 'Crystals that hum when the hall goes quiet at closing time.' },
-  { id: 'flight-pioneer', name: 'Pioneer Biplane', price: 1100, rarity: 0.1, difficulty: 3, era: 'Early Flight', wing: 'Transport Wing', crowd: 3,
-    desc: 'Canvas, wire and courage, hanging from the ceiling by threads.' },
-  { id: 'deep-sea', name: 'Creatures of the Deep', price: 800, rarity: 0.14, difficulty: 3, era: 'Natural World', wing: 'Ocean Gallery', crowd: 4,
-    desc: 'Glass jars of things the sunlight has never met.' },
-  { id: 'city-model', name: 'The City in Miniature', price: 600, rarity: 0.18, difficulty: 2, era: 'Modern', wing: 'City Wing', crowd: 3,
-    desc: 'Every street of Solara at one to five hundred, lit from within.' },
+  { id: 'dino-hall', name: 'Dinosaur Hall', price: 120, rarity: 0.3, difficulty: 1, era: 'Jurassic', wing: 'North Wing', crowd: 40, desc: 'Towering skeletons and a roaring animatronic rex.' },
+  { id: 'space-gallery', name: 'Space Gallery', price: 200, rarity: 0.5, difficulty: 2, era: 'Modern', wing: 'East Wing', crowd: 55, desc: 'Moon rocks, capsules and a walk-through star map.' },
+  { id: 'ocean-room', name: 'Ocean Room', price: 150, rarity: 0.4, difficulty: 2, era: 'Ancient', wing: 'South Wing', crowd: 45, desc: 'A blue-lit hall of whales, reefs and deep-sea light.' },
+  { id: 'egypt-wing', name: 'Egypt Wing', price: 260, rarity: 0.6, difficulty: 3, era: 'Ancient', wing: 'West Wing', crowd: 70, desc: 'Sarcophagi, gold masks and a replica burial chamber.' },
+  { id: 'art-masters', name: 'Art Masters', price: 300, rarity: 0.7, difficulty: 3, era: 'Renaissance', wing: 'North Wing', crowd: 65, desc: 'Framed masters under soft lamps, velvet ropes included.' },
+  { id: 'robot-lab', name: 'Robot Lab', price: 180, rarity: 0.45, difficulty: 2, era: 'Future', wing: 'East Wing', crowd: 50, desc: 'Hands-on robots that wave, draw and answer questions.' },
+  { id: 'gem-vault', name: 'Gem Vault', price: 400, rarity: 0.8, difficulty: 4, era: 'Timeless', wing: 'West Wing', crowd: 80, desc: 'Glittering stones behind thick glass and low light.' },
+  { id: 'fossil-pit', name: 'Fossil Pit', price: 90, rarity: 0.25, difficulty: 1, era: 'Prehistoric', wing: 'South Wing', crowd: 35, desc: 'A dig pit where kids brush real stone for shells.' },
+  { id: 'music-hall', name: 'Music Hall', price: 140, rarity: 0.35, difficulty: 1, era: 'Classical', wing: 'North Wing', crowd: 42, desc: 'Old instruments you can pluck, tap and blow.' },
+  { id: 'photo-archive', name: 'Photo Archive', price: 110, rarity: 0.3, difficulty: 1, era: 'Modern', wing: 'East Wing', crowd: 38, desc: 'A century of city life in black and white prints.' },
+  { id: 'butterfly-house', name: 'Butterfly House', price: 170, rarity: 0.5, difficulty: 2, era: 'Natural', wing: 'South Wing', crowd: 48, desc: 'A warm glasshouse full of drifting wings.' },
+  { id: 'crown-jewels', name: 'Crown Jewels', price: 500, rarity: 0.9, difficulty: 5, era: 'Royal', wing: 'West Wing', crowd: 95, desc: 'The glittering centrepiece every visitor queues to see.' },
 ];
 
 export const MUSEUM_UPGRADES = [
-  { id: 'audio-guide', name: 'Audio Guides', cost: 150, effect: 'audio-plus', desc: 'Visitors linger longer: tours pay a little more.' },
-  { id: 'velvet-rope', name: 'Velvet Ropes', cost: 250, effect: 'crowd-plus', desc: 'Crowds flow smoothly instead of bunching at the door.' },
-  { id: 'climate-control', name: 'Climate Control', cost: 400, effect: 'preserve', desc: 'Exhibits stop fading in the summer heat.' },
-  { id: 'security-cameras', name: 'Security Cameras', cost: 550, effect: 'guard', desc: 'Fewer incidents, calmer insurance people.' },
-  { id: 'gift-shop', name: 'Gift Shop', cost: 700, effect: 'shop-plus', desc: 'Postcards and tiny dinosaurs pay the electric bill.' },
-  { id: 'cafe', name: 'Museum Cafe', cost: 900, effect: 'cafe-plus', desc: 'Coffee and cake keep visitors inside for hours.' },
-  { id: 'planetarium-dome', name: 'Planetarium Dome', cost: 1400, effect: 'dome-plus', desc: 'Star shows sell out every Friday night.' },
-  { id: 'grand-hall', name: 'Grand Hall', cost: 2000, effect: 'capacity-plus', desc: 'A new wing: room for two more exhibits.' },
+  { id: 'audio-guide', name: 'Audio Guide', cost: 80, effect: 'visitors +10%', desc: 'Handheld guides that tell every story.' },
+  { id: 'grand-hall', name: 'Grand Hall', cost: 300, effect: 'capacity +2', desc: 'A vast hall for blockbuster shows.' },
+  { id: 'gift-shop', name: 'Gift Shop', cost: 150, effect: 'payout +10%', desc: 'Souvenirs waiting at the exit.' },
+  { id: 'night-tours', name: 'Night Tours', cost: 200, effect: 'crowd +15%', desc: 'After-dark torchlight tours.' },
+  { id: 'vip-lounge', name: 'VIP Lounge', cost: 250, effect: 'payout +15%', desc: 'A quiet lounge for patrons.' },
+  { id: 'hologram-show', name: 'Hologram Show', cost: 350, effect: 'crowd +20%', desc: 'Ghosts of history in light.' },
+  { id: 'security-plus', name: 'Security Plus', cost: 120, effect: 'heat -1', desc: 'Extra guards keeping the galleries calm.' },
+  { id: 'cafe-corner', name: 'Cafe Corner', cost: 100, effect: 'earned +5%', desc: 'Coffee and cake by the atrium.' },
 ];
 
 export const MUSEUM_RANKS = [
-  { level: 0, name: 'Docent', xp: 0, perk: 'Tours pay base rate.' },
-  { level: 1, name: 'Curator', xp: 150, perk: '+5% prices, visitors trust the labels.' },
-  { level: 2, name: 'Keeper', xp: 400, perk: '+10% prices, school trips double.' },
-  { level: 3, name: 'Director', xp: 800, perk: '+15% prices, galas pay double.' },
-  { level: 4, name: 'Legend', xp: 1500, perk: '+20% prices, the city funds your dreams.' },
+  { level: 0, name: 'Docent', xp: 0, perk: 'Knows every label by heart.' },
+  { level: 1, name: 'Curator', xp: 150, perk: 'Picks the shows that draw crowds.' },
+  { level: 2, name: 'Senior Curator', xp: 400, perk: 'Two wings run at once.' },
+  { level: 3, name: 'Museum Director', xp: 800, perk: 'The whole building answers to you.' },
+  { level: 4, name: 'Living Legend', xp: 1500, perk: 'Your name is on the door.' },
 ];
 
 export const MUSEUM_STAFF = [
-  { id: 'guide-ana', name: 'Ana the Guide', wage: 30, skill: 'tour', bonus: 0.15, desc: 'Knows every story behind every plaque.' },
-  { id: 'restorer-bo', name: 'Bo the Restorer', wage: 45, skill: 'restore', bonus: 0.2, desc: 'Can fix a cracked vase with patience and glue.' },
-  { id: 'guard-milo', name: 'Milo the Guard', wage: 35, skill: 'guard', bonus: 0.15, desc: 'Stands very still. Notices everything.' },
-  { id: 'cleaner-ida', name: 'Ida the Cleaner', wage: 25, skill: 'clean', bonus: 0.1, desc: 'The floors gleam before the doors open.' },
+  { id: 'guide-ana', name: 'Ana the Guide', wage: 40, skill: 'guide', bonus: 2, desc: 'Knows every story in the building.' },
+  { id: 'guard-ben', name: 'Ben the Guard', wage: 35, skill: 'security', bonus: 1, desc: 'Keeps the galleries calm and quiet.' },
+  { id: 'curator-cleo', name: 'Cleo the Curator', wage: 60, skill: 'curator', bonus: 3, desc: 'Picks the shows that draw the crowds.' },
+  { id: 'host-dan', name: 'Dan the Host', wage: 45, skill: 'host', bonus: 2, desc: 'Welcomes every school group with a smile.' },
 ];
 
 export const MUSEUM_DAILY_EVENTS = [
-  { id: 'school-trip', name: 'School Trip Day', effect: 'visitors', amount: 40,
-    text: 'A busload of schoolkids storms the Fossil Wing.' },
-  { id: 'critic-visit', name: 'Critic Visit', effect: 'rep', amount: 2,
-    text: 'The city critic loved the new wing. Reputation up.' },
-  { id: 'leaky-roof', name: 'Leaky Roof', effect: 'cost', amount: 120,
-    text: 'Rain found the old roof. Repairs cost money.' },
-  { id: 'donation-day', name: 'Donation Day', effect: 'earn', amount: 200,
-    text: 'A quiet benefactor leaves an envelope at the desk.' },
-  { id: 'film-crew', name: 'Film Crew', effect: 'earn', amount: 350,
-    text: 'A documentary crew pays to film the Crown Jewels.' },
-  { id: 'power-cut', name: 'Power Cut', effect: 'cost', amount: 80,
-    text: 'The lights die for an hour. An electrician is called.' },
-  { id: 'vip-gala', name: 'VIP Gala', effect: 'earn', amount: 500,
-    text: 'Black ties, champagne, and a very generous auction.' },
-  { id: 'school-holiday', name: 'School Holiday', effect: 'visitors', amount: 60,
-    text: 'Families pour in all day long.' },
-  { id: 'artifact-loan', name: 'Artifact Loan', effect: 'earn', amount: 250,
-    text: 'Another museum borrows a piece and pays handsomely.' },
-  { id: 'rainy-weekend', name: 'Rainy Weekend', effect: 'visitors', amount: 25,
-    text: 'Everyone in Solara decides the museum is the plan.' },
+  { id: 'school-trip', name: 'School Trip', effect: 'visitors', amount: 25, text: 'A busload of school kids pours through the doors.' },
+  { id: 'vip-donor', name: 'VIP Donor', effect: 'earn', amount: 60, text: 'A wealthy patron leaves a generous gift.' },
+  { id: 'broken-ac', name: 'Broken AC', effect: 'cost', amount: 40, text: 'The air conditioning dies on the hottest day.' },
+  { id: 'press-visit', name: 'Press Visit', effect: 'rep', amount: 3, text: 'A newspaper critic writes a glowing review.' },
+  { id: 'rainy-rush', name: 'Rainy Rush', effect: 'visitors', amount: 15, text: 'Rain drives the whole town indoors to your halls.' },
+  { id: 'art-thief-scare', name: 'Art Thief Scare', effect: 'heat', amount: 2, text: 'A false alarm brings the police to the vault.' },
+  { id: 'history-buff', name: 'History Buff', effect: 'xp', amount: 20, text: 'A retired professor shares a lifetime of stories.' },
+  { id: 'leaky-roof', name: 'Leaky Roof', effect: 'cost', amount: 25, text: 'A drip over the fossils needs urgent patching.' },
+  { id: 'gala-night', name: 'Gala Night', effect: 'earn', amount: 120, text: 'Black tie, champagne, and a packed auction hall.' },
+  { id: 'quiet-day', name: 'Quiet Day', effect: 'rep', amount: 1, text: 'A slow day, but the few guests leave happy.' },
 ];
 
 export const MUSEUM_TIPS = [
-  { id: 'rain-days', name: 'Rain Days', text: 'Rain fills the halls. Open your best exhibit when the forecast turns grey.' },
-  { id: 'first-upgrade', name: 'First Upgrade', text: 'Buy the audio guides before anything else. Cheap, and they pay daily.' },
-  { id: 'school-lunch', name: 'School Lunch', text: 'School trips arrive hungry for stories. Guides with the tour skill earn more.' },
-  { id: 'glass-matters', name: 'Glass Matters', text: 'The Crown Jewels under clean glass are worth more than a dusty dinosaur.' },
-  { id: 'gift-shop-math', name: 'Gift Shop Math', text: 'The gift shop turns one visitor into two sales. Build it early.' },
-  { id: 'restore-first', name: 'Restore First', text: 'A restored exhibit draws a bigger crowd than a new dusty one.' },
-  { id: 'gala-season', name: 'Gala Season', text: 'Save your best tour for gala week. The rich pay double for a story.' },
-  { id: 'quiet-mondays', name: 'Quiet Mondays', text: 'Mondays are slow. Use them to restore, upgrade and plan.' },
+  { id: 'tip-hours', name: 'Open Hours', text: 'Rainy days bring the biggest crowds indoors.' },
+  { id: 'tip-tours', name: 'Tour Timing', text: 'Run tours back to back to keep the streak alive.' },
+  { id: 'tip-boost', name: 'Restoration', text: 'Restore an exhibit before a big tour for a payout lift.' },
+  { id: 'tip-capacity', name: 'More Halls', text: 'Buy the Grand Hall to hang two more exhibits.' },
+  { id: 'tip-staff', name: 'Good Guides', text: 'Hire guides whose skills match your busiest wings.' },
+  { id: 'tip-prices', name: 'Watch Prices', text: 'Check the price board daily; drift moves fast.' },
+  { id: 'tip-donate', name: 'Give Back', text: 'Small donations build reputation with the city.' },
+  { id: 'tip-rank', name: 'Climb Ranks', text: 'Every tour and sale pushes you toward Curator.' },
 ];
 
 export const MUSEUM_CHALLENGES = [
-  { id: 'first-steps', name: 'First Steps', target: 'runsDone', goal: 3, xp: 40, desc: 'Finish 3 museum runs.' },
-  { id: 'regular', name: 'Regular', target: 'runsDone', goal: 10, xp: 90, desc: 'Finish 10 museum runs.' },
-  { id: 'collector', name: 'Collector', target: 'itemsOwned', goal: 4, xp: 100, desc: 'Own 4 different museum entries.' },
-  { id: 'big-earner', name: 'Big Earner', target: 'earned', goal: 500, xp: 120, desc: 'Earn $500 from the museum business.' },
-  { id: 'crowd-favourite', name: 'Crowd Favourite', target: 'visitors', goal: 200, xp: 110, desc: 'Draw 200 visitors through the museum business.' },
-  { id: 'respected', name: 'Respected Name', target: 'reputation', goal: 10, xp: 100, desc: 'Reach 10 reputation in the museum business.' },
-  { id: 'best-day', name: 'Best Day Ever', target: 'bestRun', goal: 400, xp: 130, desc: 'Score a single run worth $400 or more.' },
-  { id: 'fully-kitted', name: 'Fully Kitted', target: 'upgradesOwned', goal: 6, xp: 150, desc: 'Own 6 upgrades for the museum business.' },
+  { id: 'ch-tours-5', name: 'Five Tours', target: 'runsDone', goal: 5, xp: 50, desc: 'Host 5 tours.' },
+  { id: 'ch-earn-500', name: 'First 500', target: 'earned', goal: 500, xp: 80, desc: 'Earn $500 in total.' },
+  { id: 'ch-visitors-200', name: 'Crowd Puller', target: 'visitors', goal: 200, xp: 60, desc: 'Welcome 200 visitors.' },
+  { id: 'ch-exhibits-4', name: 'Four Wings', target: 'itemsOwned', goal: 4, xp: 70, desc: 'Open 4 exhibits.' },
+  { id: 'ch-upgrades-3', name: 'Well Equipped', target: 'upgradesOwned', goal: 3, xp: 60, desc: 'Own 3 upgrades.' },
+  { id: 'ch-rep-10', name: 'Respected', target: 'reputation', goal: 10, xp: 50, desc: 'Reach 10 reputation.' },
+  { id: 'ch-streak-3', name: 'On a Roll', target: 'streak', goal: 3, xp: 90, desc: 'Reach a 3-tour streak.' },
+  { id: 'ch-best-300', name: 'Blockbuster', target: 'bestRun', goal: 300, xp: 100, desc: 'Earn $300 from a single tour.' },
 ];
 
 export const MUSEUM_ACHIEVEMENTS = [
-  { id: 'first-run', name: 'First Run', target: 'runsDone', goal: 1, desc: 'Finish your first museum run.' },
-  { id: 'first-sale', name: 'First Payday', target: 'earned', goal: 1, desc: 'Collect your first dollar of museum earnings.' },
-  { id: 'ten-runs', name: 'Ten Runs Deep', target: 'runsDone', goal: 10, desc: 'Finish 10 museum runs.' },
-  { id: 'thousand-club', name: 'Thousand Club', target: 'earned', goal: 1000, desc: 'Earn $1,000 in total from the museum business.' },
-  { id: 'five-hundred-faces', name: 'Five Hundred Faces', target: 'visitors', goal: 500, desc: 'Welcome 500 visitors through the museum business.' },
-  { id: 'rank-three', name: 'Rising Star', target: 'rank', goal: 3, desc: 'Reach rank 3 in the museum business.' },
-  { id: 'full-shelf', name: 'Full Shelf', target: 'itemsOwned', goal: 8, desc: 'Own 8 different museum entries at once.' },
-  { id: 'streak-five', name: 'On A Roll', target: 'bestStreak', goal: 5, desc: 'Build a 5-run streak without a failed museum run.' },
+  { id: 'ach-tours-10', name: 'Tour Master', target: 'runsDone', goal: 10, desc: 'Host 10 tours.' },
+  { id: 'ach-earn-1000', name: 'Golden Till', target: 'earned', goal: 1000, desc: 'Earn $1,000 in total.' },
+  { id: 'ach-visitors-500', name: 'City Favourite', target: 'visitors', goal: 500, desc: 'Welcome 500 visitors.' },
+  { id: 'ach-exhibits-6', name: 'Full House', target: 'itemsOwned', goal: 6, desc: 'Open 6 exhibits.' },
+  { id: 'ach-upgrades-5', name: 'Fully Loaded', target: 'upgradesOwned', goal: 5, desc: 'Own 5 upgrades.' },
+  { id: 'ach-rep-20', name: 'Beloved', target: 'reputation', goal: 20, desc: 'Reach 20 reputation.' },
+  { id: 'ach-streak-5', name: 'Unstoppable', target: 'streak', goal: 5, desc: 'Reach a 5-tour streak.' },
+  { id: 'ach-best-500', name: 'Record Night', target: 'bestRun', goal: 500, desc: 'Earn $500 from a single tour.' },
 ];
 
 export const MUSEUM_LEADERBOARD = [
-  { name: 'The National Museum', score: 4200, desc: 'The big one downtown. Marble everything.' },
-  { name: 'The Maritime Archive', score: 3100, desc: 'Ships, charts and salty old captains.' },
-  { name: 'The Modern Wing', score: 2400, desc: 'White walls, strange art, long queues.' },
-  { name: 'The Old Library', score: 1500, desc: 'Books, dust, and a very loyal crowd.' },
-  { name: 'You', score: 0, desc: 'Climbing the museum ladder.' },
+  { name: 'Curator Ada', score: 980, desc: 'Runs the old city museum.' },
+  { name: 'Director Ben', score: 720, desc: 'A strict but fair director.' },
+  { name: 'Guide Cleo', score: 540, desc: 'Knows every ghost story.' },
+  { name: 'Intern Dan', score: 210, desc: 'Still learning the ropes.' },
+  { name: 'You', score: 0, desc: 'The new name on the board.' },
 ];
 
 export const MUSEUM_RECORDS = [
-  { id: 'biggest-run', name: 'Biggest Run', stat: 'bestRun', unit: '$', desc: 'Best single-run payout.' },
-  { id: 'most-earned', name: 'Most Earned', stat: 'earned', unit: '$', desc: 'Most money earned overall.' },
-  { id: 'most-visitors', name: 'Most Visitors', stat: 'visitors', unit: 'people', desc: 'Most visitors welcomed.' },
-  { id: 'most-runs', name: 'Most Runs', stat: 'runsDone', unit: 'runs', desc: 'Most runs finished.' },
-  { id: 'best-streak', name: 'Best Streak', stat: 'bestStreak', unit: 'runs', desc: 'Longest run streak.' },
+  { id: 'rec-tours', name: 'Most Tours', stat: 'runsDone', unit: 'tours', desc: 'Total tours hosted.' },
+  { id: 'rec-earned', name: 'Top Earnings', stat: 'earned', unit: '$', desc: 'Total money earned.' },
+  { id: 'rec-visitors', name: 'Biggest Crowd', stat: 'visitors', unit: 'guests', desc: 'Total visitors welcomed.' },
+  { id: 'rec-best', name: 'Best Tour', stat: 'bestRun', unit: '$', desc: 'Best single-tour payout.' },
+  { id: 'rec-streak', name: 'Longest Streak', stat: 'bestStreak', unit: 'tours', desc: 'Longest run of tours.' },
 ];
 
 export const MUSEUM_MARKET_EVENTS = [
-  { id: 'sunken-galleon-surge', name: 'The Sunken Galleon Surge', item: 'sunken-galleon', mult: 1.35, desc: 'Demand for The Sunken Galleon swings hard this week.' },
-  { id: 'dino-skeleton-surge', name: 'Titanosaur Skeleton Surge', item: 'dino-skeleton', mult: 0.7, desc: 'Demand for Titanosaur Skeleton swings hard this week.' },
-  { id: 'crown-jewels-surge', name: 'The Meridian Crown Jewels Surge', item: 'crown-jewels', mult: 1.35, desc: 'Demand for The Meridian Crown Jewels swings hard this week.' },
-  { id: 'moon-rock-surge', name: 'Moon Rock Fragment Surge', item: 'moon-rock', mult: 0.7, desc: 'Demand for Moon Rock Fragment swings hard this week.' },
-  { id: 'pharaoh-mask-surge', name: 'Mask of Pharaoh Seti Surge', item: 'pharaoh-mask', mult: 1.35, desc: 'Demand for Mask of Pharaoh Seti swings hard this week.' },
-  { id: 'robot-1920-surge', name: 'The 1920s Automaton Surge', item: 'robot-1920', mult: 0.7, desc: 'Demand for The 1920s Automaton swings hard this week.' },
-  { id: 'ocean-mural-surge', name: 'The Great Ocean Mural Surge', item: 'ocean-mural', mult: 1.35, desc: 'Demand for The Great Ocean Mural swings hard this week.' },
-  { id: 'war-letters-surge', name: 'Letters from the Front Surge', item: 'war-letters', mult: 0.7, desc: 'Demand for Letters from the Front swings hard this week.' },
-  { id: 'gem-cave-surge', name: 'The Singing Gem Cave Surge', item: 'gem-cave', mult: 1.35, desc: 'Demand for The Singing Gem Cave swings hard this week.' },
-  { id: 'flight-pioneer-surge', name: 'Pioneer Biplane Surge', item: 'flight-pioneer', mult: 0.7, desc: 'Demand for Pioneer Biplane swings hard this week.' },
-  { id: 'deep-sea-surge', name: 'Creatures of the Deep Surge', item: 'deep-sea', mult: 1.35, desc: 'Demand for Creatures of the Deep swings hard this week.' },
-  { id: 'city-model-surge', name: 'The City in Miniature Surge', item: 'city-model', mult: 0.7, desc: 'Demand for The City in Miniature swings hard this week.' },
+  { id: 'me-dino', name: 'Dino Fever', item: 'dino-hall', mult: 1.35, desc: 'Everyone wants dinosaurs this week.' },
+  { id: 'me-space', name: 'Space Slump', item: 'space-gallery', mult: 0.7, desc: 'Space fever cools off.' },
+  { id: 'me-ocean', name: 'Ocean Boom', item: 'ocean-room', mult: 1.35, desc: 'A viral shark video fills the hall.' },
+  { id: 'me-egypt', name: 'Egypt Dip', item: 'egypt-wing', mult: 0.7, desc: 'Mummy fatigue sets in.' },
+  { id: 'me-art', name: 'Art Surge', item: 'art-masters', mult: 1.35, desc: 'A famous painting comes to town.' },
+  { id: 'me-robot', name: 'Robot Lull', item: 'robot-lab', mult: 0.7, desc: 'The robots need a software update.' },
+  { id: 'me-gem', name: 'Gem Rush', item: 'gem-vault', mult: 1.35, desc: 'A new diamond makes the news.' },
+  { id: 'me-fossil', name: 'Fossil Fade', item: 'fossil-pit', mult: 0.7, desc: 'The pit is quiet this week.' },
+  { id: 'me-music', name: 'Music Week', item: 'music-hall', mult: 1.35, desc: 'A festival brings music lovers.' },
+  { id: 'me-photo', name: 'Photo Slump', item: 'photo-archive', mult: 0.7, desc: 'Old photos gather dust.' },
+  { id: 'me-butterfly', name: 'Butterfly Season', item: 'butterfly-house', mult: 1.35, desc: 'The glasshouse is in full bloom.' },
+  { id: 'me-crown', name: 'Crown Cool', item: 'crown-jewels', mult: 0.7, desc: 'The jewels rest between royal visits.' },
 ];
 
 export const MUSEUM_SEASONS = [
-  { id: 'spring-showers', name: 'Spring Showers', mult: 1.1, desc: 'Rain drives everyone indoors, into the museum.' },
-  { id: 'summer-crowds', name: 'Summer Crowds', mult: 1.2, desc: 'Tourists fill every wing from open to close.' },
-  { id: 'autumn-schools', name: 'Autumn Schools', mult: 1.05, desc: 'School groups book the whole term.' },
-  { id: 'winter-quiet', name: 'Winter Quiet', mult: 0.85, desc: 'Cold streets, empty halls, time to restore.' },
+  { id: 'summer', name: 'Summer', mult: 1.1, desc: 'Tourists flood the city.' },
+  { id: 'autumn', name: 'Autumn', mult: 1.0, desc: 'Steady school groups.' },
+  { id: 'winter', name: 'Winter', mult: 0.9, desc: 'Quiet halls and cold streets.' },
+  { id: 'spring', name: 'Spring', mult: 1.05, desc: 'Fresh crowds return.' },
 ];
 
 export const MUSEUM_FACTS = [
-  { id: 'fact-sunken-galleon', text: 'The Sunken Galleon: A galleon raised from the bay floor, barnacles and all.' },
-  { id: 'fact-dino-skeleton', text: 'Titanosaur Skeleton: Forty metres of ancient bone, reassembled rib by rib.' },
-  { id: 'fact-crown-jewels', text: 'The Meridian Crown Jewels: Rubies the colour of harbour sunsets, under three layers of glass.' },
-  { id: 'fact-moon-rock', text: 'Moon Rock Fragment: A grey pebble that has been further from home than anyone alive.' },
-  { id: 'fact-pharaoh-mask', text: 'Mask of Pharaoh Seti: Gold leaf, lapis eyes, and four thousand years of staring back.' },
-  { id: 'fact-robot-1920', text: 'The 1920s Automaton: A brass gentleman that still tips his hat when wound up.' },
-  { id: 'fact-ocean-mural', text: 'The Great Ocean Mural: Thirty metres of painted tide, whales and weather.' },
-  { id: 'fact-war-letters', text: 'Letters from the Front: Folded paper, faded ink, and the handwriting of the missing.' },
-  { id: 'fact-gem-cave', text: 'The Singing Gem Cave: Crystals that hum when the hall goes quiet at closing time.' },
-  { id: 'fact-flight-pioneer', text: 'Pioneer Biplane: Canvas, wire and courage, hanging from the ceiling by threads.' },
-  { id: 'fact-deep-sea', text: 'Creatures of the Deep: Glass jars of things the sunlight has never met.' },
-  { id: 'fact-city-model', text: 'The City in Miniature: Every street of Solara at one to five hundred, lit from within.' },
-  { id: 'fact-general-0', text: 'The best museum operators in Solara check their prices every morning before opening.' },
-  { id: 'fact-general-1', text: 'Regulars remember how you treated them yesterday more than what you charged.' },
-  { id: 'fact-general-2', text: 'A rainy day changes everything: some crowds grow, others vanish entirely.' },
-  { id: 'fact-general-3', text: 'Upgrades pay for themselves if you run the business every single day.' },
-  { id: 'fact-general-4', text: 'Reputation is slow to build and fast to lose. Guard it.' },
-  { id: 'fact-general-5', text: 'The first run of the day is always the cheapest lesson.' },
-  { id: 'fact-general-6', text: 'Staff with the right skill quietly add money to every run.' },
-  { id: 'fact-general-7', text: 'A five-run streak without a failure is worth more than any single big payday.' },
-  { id: 'fact-general-8', text: 'Prices drift daily. Selling on a surge day can double a quiet week.' },
-  { id: 'fact-general-9', text: 'Every rival in town started with one room, one stall, or one microphone.' },
+  { id: 'fact-dino', text: 'The Dinosaur Hall skeleton is a cast of a real T. rex.' },
+  { id: 'fact-space', text: 'The Space Gallery moon rock is older than the Earth itself.' },
+  { id: 'fact-ocean', text: 'The Ocean Room whale model weighs as much as a bus.' },
+  { id: 'fact-egypt', text: 'The Egypt Wing burial chamber took two years to paint.' },
+  { id: 'fact-art', text: 'The Art Masters room holds a painting once lost for a century.' },
+  { id: 'fact-robot', text: 'The Robot Lab machines were built by local students.' },
+  { id: 'fact-gem', text: 'The Gem Vault diamond was found in a riverbed by chance.' },
+  { id: 'fact-fossil', text: 'The Fossil Pit shells are 400 million years old.' },
+  { id: 'fact-music', text: 'The Music Hall harp was played for a queen.' },
+  { id: 'fact-photo', text: 'The Photo Archive holds the first photo ever taken in town.' },
+  { id: 'fact-butterfly', text: 'The Butterfly House releases 200 new wings each spring.' },
+  { id: 'fact-crown', text: 'The Crown Jewels replica fooled a thief in 1974.' },
+  { id: 'fact-1', text: 'Museums keep their galleries cool to protect old paint.' },
+  { id: 'fact-2', text: 'The word museum comes from the Greek home of the muses.' },
+  { id: 'fact-3', text: 'Some museums lend exhibits to each other like library books.' },
+  { id: 'fact-4', text: 'Night tours started as a way to show art by candlelight.' },
+  { id: 'fact-5', text: 'A docent is a trained guide who teaches by talking.' },
+  { id: 'fact-6', text: 'The largest museum in the world has over 300 rooms.' },
+  { id: 'fact-7', text: 'Fossils are often found by farmers, not scientists.' },
+  { id: 'fact-8', text: 'Glass cases keep dust and fingers away from treasure.' },
+  { id: 'fact-9', text: 'Many gems glow under ultraviolet light.' },
+  { id: 'fact-10', text: 'School trips are a museum\'s busiest days of the year.' },
 ];
 
 export const MUSEUM_NPC_LINES = [
-  { id: 'npc-0', text: 'I came all the way across town for the The Sunken Galleon. Worth it.' },
-  { id: 'npc-1', text: 'My cousin runs a museum place too, but yours is better. Do not tell him.' },
-  { id: 'npc-2', text: 'Is the The Meridian Crown Jewels really as good as everyone says? I am about to find out.' },
-  { id: 'npc-3', text: 'I bring my kids here every weekend. They ask for the Moon Rock Fragment by name.' },
-  { id: 'npc-4', text: 'You should put the Mask of Pharaoh Seti on a poster. People would come just for that.' },
-  { id: 'npc-5', text: 'I heard the The 1920s Automaton here is the best in Solara. The rumour was right.' },
-  { id: 'npc-6', text: 'Quiet day today. The The Great Ocean Mural still made my afternoon.' },
-  { id: 'npc-7', text: 'I saved up for weeks to try the Letters from the Front. No regrets.' },
-  { id: 'npc-8', text: 'The staff told me about the The Singing Gem Cave. Now I tell everyone I meet.' },
-  { id: 'npc-9', text: 'I have been to every museum spot in the city. This one wins.' },
-  { id: 'npc-10', text: 'One day I want to run a museum place of my own. I am taking notes.' },
-  { id: 'npc-11', text: 'The Creatures of the Deep is the reason my friends finally believe my stories.' },
-  { id: 'npc-12', text: 'Do you ever get tired of the The Sunken Galleon? I never would.' },
-  { id: 'npc-13', text: 'I wrote a review about the Titanosaur Skeleton last night. Five stars, obviously.' },
-  { id: 'npc-14', text: 'My grandmother loved the The Meridian Crown Jewels. I come here to remember her.' },
-  { id: 'npc-15', text: 'If the Pioneer Biplane gets any better, the whole city will queue around the block.' },
+  { id: 'npc-1', text: 'Is that T. rex real? It looks real!' },
+  { id: 'npc-2', text: 'I came for the gems and stayed for the fossils.' },
+  { id: 'npc-3', text: 'The guide told the best ghost story in the Egypt Wing.' },
+  { id: 'npc-4', text: 'My kids will not stop talking about the robots.' },
+  { id: 'npc-5', text: 'This is my third visit this month.' },
+  { id: 'npc-6', text: 'The butterfly house is pure magic.' },
+  { id: 'npc-7', text: 'Do they really let you touch the instruments?' },
+  { id: 'npc-8', text: 'I took forty photos in the Space Gallery.' },
+  { id: 'npc-9', text: 'The crown jewels sparkle even in the dark.' },
+  { id: 'npc-10', text: 'Best rainy-day plan in the whole city.' },
+  { id: 'npc-11', text: 'The cafe cake is worth the ticket alone.' },
+  { id: 'npc-12', text: 'I learned more here than in school all year.' },
+  { id: 'npc-13', text: 'The night tour gave me goosebumps.' },
+  { id: 'npc-14', text: 'That harp sounds like it is singing.' },
+  { id: 'npc-15', text: 'We drove two hours just to see the mummies.' },
+  { id: 'npc-16', text: 'I am bringing my grandmother next weekend.' },
 ];
 
 export const MUSEUM_GUIDE = [
-  { id: 'guide-0', text: 'Open your first museum entry: it costs cash, but it unlocks everything else.' },
-  { id: 'guide-1', text: 'Run it once and watch the timer. A finished run parks its payout in the till.' },
-  { id: 'guide-2', text: 'Collect the till before you start the next run, or the money just sits there.' },
-  { id: 'guide-3', text: 'Check the price board each morning: drift changes what everything is worth.' },
-  { id: 'guide-4', text: 'Buy the cheapest upgrade first. Small edges compound faster than big splurges.' },
-  { id: 'guide-5', text: 'Hire one staff member with a skill that matches what you do most.' },
-  { id: 'guide-6', text: 'Take the daily event as it comes. Some days the city hands you money.' },
-  { id: 'guide-7', text: 'Level up your best entry instead of opening a weak new one.' },
-  { id: 'guide-8', text: 'A boosted entry pays about a third more on its next run. Boost before big days.' },
-  { id: 'guide-9', text: 'Keep a cash buffer. A surprise repair bill on an empty wallet ends runs.' },
-  { id: 'guide-10', text: 'Chase the weekly goal: five runs, $500 earned, one hundred visitors.' },
-  { id: 'guide-11', text: 'When a run finishes, the streak grows. Protect the streak.' },
-  { id: 'guide-12', text: 'Sell an entry you never run. Half its price back beats dust on a shelf.' },
-  { id: 'guide-13', text: 'Reputation opens doors: better events, better staff, better prices.' },
-  { id: 'guide-14', text: 'Read the leaderboard sometimes. The rivals ahead of you started exactly where you are.' },
-  { id: 'guide-15', text: 'Come back tomorrow. Drift resets, events refresh, and the city forgets yesterday.' },
+  { id: 'guide-1', text: 'Step 1: Pick an exhibit to open from the list.' },
+  { id: 'guide-2', text: 'Step 2: Pay the opening cost from your cash.' },
+  { id: 'guide-3', text: 'Step 3: Host a tour to welcome visitors.' },
+  { id: 'guide-4', text: 'Step 4: Wait for the tour timer to finish.' },
+  { id: 'guide-5', text: 'Step 5: Collect the ticket sales from the till.' },
+  { id: 'guide-6', text: 'Step 6: Restore an exhibit to boost its next tour.' },
+  { id: 'guide-7', text: 'Step 7: Spend earnings on upgrades for the halls.' },
+  { id: 'guide-8', text: 'Step 8: Hire staff to help run the museum.' },
+  { id: 'guide-9', text: 'Step 9: Level up exhibits to raise their value.' },
+  { id: 'guide-10', text: 'Step 10: Watch the market events for hot exhibits.' },
+  { id: 'guide-11', text: 'Step 11: Claim challenges as you hit each goal.' },
+  { id: 'guide-12', text: 'Step 12: Donate to the city to build reputation.' },
+  { id: 'guide-13', text: 'Step 13: Check the price board before selling.' },
+  { id: 'guide-14', text: 'Step 14: Keep tours running to grow your streak.' },
+  { id: 'guide-15', text: 'Step 15: Trade in bulk when the market is hot.' },
+  { id: 'guide-16', text: 'Step 16: Become a Living Legend of the museum.' },
 ];
 
+export const MUSEUM_META = { system: 'museum', version: '7-B4', author: 'builder-4', mechanic: 'venue', dataCount: 12, dataName: 'EXHIBITS' };
+
 export function museumRankFor(xp) {
-  let rank = 0;
-  for (let i = 0; i < MUSEUM_RANKS.length; i++) {
-    if (xp >= MUSEUM_RANKS[i].xp) rank = i;
+  let lvl = 0;
+  for (const r of MUSEUM_RANKS) {
+    if (xp >= r.xp) lvl = r.level;
   }
-  return rank;
+  return lvl;
 }
 
 export function museumItemById(id) {
-  return EXHIBITS.find((x) => x.id === id) || null;
+  for (const it of EXHIBITS) {
+    if (it.id === id) return it;
+  }
+  return null;
 }
 
 export function museumPriceFor(id, drift, rank, upgrades) {
-  const item = EXHIBITS.find((x) => x.id === id);
+  const item = museumItemById(id);
   if (!item) return 0;
-  let price = item.price;
-  price *= 1 + (drift[id] || 0);
-  price *= 1 + rank * 0.05;
-  if (upgrades && upgrades.length >= 3) price *= 1.1;
-  return Math.max(1, Math.round(price * 10) / 10);
+  let p = item.price * (1 + (drift || 0)) * (1 + (rank || 0) * 0.05);
+  if (upgrades && upgrades.length >= 3) p = p * 1.1;
+  const rounded = Math.round(p * 10) / 10;
+  return rounded < 1 ? 1 : rounded;
 }
 
 export function museumCapacityFor(rank, upgrades) {
-  let cap = 3 + rank;
-  if (upgrades && upgrades.indexOf('grand-hall') >= 0) cap += 2;
+  let cap = 3 + (rank || 0);
+  if (upgrades && upgrades.indexOf('grand-hall') >= 0) cap = cap + 2;
   return cap;
 }
 
+function museumCondOf(weather) {
+  if (typeof weather === 'string') return weather;
+  if (weather && typeof weather.condition === 'string') return weather.condition;
+  return 'clear';
+}
+
+function museumSkyMult(table, weather) {
+  const cond = museumCondOf(weather);
+  const hit = table[cond];
+  return hit === undefined ? 1 : hit;
+}
+
 export function museumPayoutFor(item, rank, upgrades, weather, boosted) {
-  let mult = 0.6 + rank * 0.1 + (boosted ? 0.3 : 0);
-  if (weather === 'rain') mult *= 1.2;
-  if (weather === 'sunny') mult *= 1.0;
-  if (weather === 'storm') mult *= 0.7;
-  if (upgrades && upgrades.length >= 4) mult *= 1.15;
-  return Math.max(5, Math.round(item.price * mult));
+  if (!item) return 0;
+  let mult = 0.6 + (rank || 0) * 0.1;
+  if (boosted) mult = mult + 0.3;
+  mult = mult * museumSkyMult({ rain: 1.2, sunny: 1.0, storm: 0.7 }, weather);
+  if (upgrades && upgrades.length >= 4) mult = mult * 1.15;
+  const payout = Math.round(item.price * mult);
+  return payout < 5 ? 5 : payout;
 }
 
 export function museumCrowdFor(item, rank, weather) {
-  let crowd = 10 + item.difficulty * 8 + rank * 5;
-  if (weather === 'rain') crowd = Math.round(crowd * 1.2);
-  if (weather === 'sunny') crowd = Math.round(crowd * 1.0);
-  if (weather === 'storm') crowd = Math.round(crowd * 0.5);
-  return Math.max(1, crowd);
+  const diff = item ? item.difficulty : 0;
+  const base = 10 + diff * 8 + (rank || 0) * 5;
+  const crowd = Math.round(base * museumSkyMult({ rain: 1.2, sunny: 1.0, storm: 0.5 }, weather));
+  return crowd < 1 ? 1 : crowd;
 }
 
 export function museumUpgradeById(id) {
-  return MUSEUM_UPGRADES.find((x) => x.id === id) || null;
+  for (const u of MUSEUM_UPGRADES) {
+    if (u.id === id) return u;
+  }
+  return null;
 }
 
 export function museumStaffById(id) {
-  return MUSEUM_STAFF.find((x) => x.id === id) || null;
+  for (const s of MUSEUM_STAFF) {
+    if (s.id === id) return s;
+  }
+  return null;
 }
 
 export function museumEventById(id) {
-  return MUSEUM_DAILY_EVENTS.find((x) => x.id === id) || null;
+  for (const e of MUSEUM_DAILY_EVENTS) {
+    if (e.id === id) return e;
+  }
+  for (const e of MUSEUM_MARKET_EVENTS) {
+    if (e.id === id) return e;
+  }
+  return null;
 }
 
 export function museumTipFor(day) {
@@ -289,31 +284,33 @@ export function museumNpcLineFor(day) {
 }
 
 export function museumGuideStep(step) {
-  return MUSEUM_GUIDE[step] || null;
+  if (step < 0 || step >= MUSEUM_GUIDE.length) return null;
+  return MUSEUM_GUIDE[step];
 }
 
 export function museumSeasonMult(seasonId) {
-  const s = MUSEUM_SEASONS.find((x) => x.id === seasonId);
-  return s ? s.mult : 1;
+  for (const s of MUSEUM_SEASONS) {
+    if (s.id === seasonId) return s.mult;
+  }
+  return 1;
 }
 
 export function museumMarketEventMult(eventId, itemId) {
-  const ev = MUSEUM_MARKET_EVENTS.find((x) => x.id === eventId);
-  if (!ev) return 1;
-  return ev.item === itemId ? ev.mult : 1;
+  if (!eventId) return 1;
+  for (const e of MUSEUM_MARKET_EVENTS) {
+    if (e.id === eventId) {
+      if (e.item === itemId) return e.mult;
+      return 1;
+    }
+  }
+  return 1;
 }
 
 export function museumWeeklyGoal(state) {
-  const goal = { runs: 5, earned: 500, visitors: 100 };
-  const runsDone = state.runsDone >= goal.runs;
-  const earnedDone = state.earned >= goal.earned;
-  const visitorsDone = state.visitors >= goal.visitors;
-  return {
-    runs: { have: state.runsDone, goal: goal.runs, done: runsDone },
-    earned: { have: Math.round(state.earned), goal: goal.earned, done: earnedDone },
-    visitors: { have: state.visitors, goal: goal.visitors, done: visitorsDone },
-    allDone: runsDone && earnedDone && visitorsDone,
-  };
+  const runs = { have: state.runsDone, goal: 5, done: state.runsDone >= 5 };
+  const earned = { have: state.earned, goal: 500, done: state.earned >= 500 };
+  const visitors = { have: state.visitors, goal: 100, done: state.visitors >= 100 };
+  return { runs, earned, visitors, allDone: runs.done && earned.done && visitors.done };
 }
 
 export function museumEfficiency(state) {
@@ -328,450 +325,468 @@ export function museumProfitPerRun(state) {
 }
 
 export function museumInventoryValue(state) {
-  let total = 0;
-  for (const id of Object.keys(state.owned || {})) {
-    const item = EXHIBITS.find((x) => x.id === id);
-    if (item) total += item.price * (state.levels[id] || 1);
+  let sum = 0;
+  for (const id of Object.keys(state.owned)) {
+    const item = museumItemById(id);
+    if (!item) continue;
+    const lvl = state.levels[id] || 1;
+    sum = sum + item.price * lvl;
   }
-  return Math.round(total * 10) / 10;
+  return Math.round(sum * 10) / 10;
 }
 
 export function museumSummary(state) {
-  const rankName = MUSEUM_RANKS[state.rank] ? MUSEUM_RANKS[state.rank].name : 'Unknown';
-  return 'Museum ' + rankName + ': ' + state.runsDone + ' runs, '
-    + state.itemsOwned + ' entries, $' + Math.round(state.earned)
-    + ' earned, ' + state.visitors + ' visitors.';
+  return 'Museum at rank ' + museumRankNameFor(state.rank) + ': ' + state.runsDone + ' runs, ' + state.itemsOwned + ' entries, $' + state.earned + ' earned, ' + state.visitors + ' visitors.';
 }
 
 export function museumNextGoal(state) {
-  if (state.itemsOwned < 1) return 'Open your first entry.';
+  if (state.itemsOwned === 0) return 'Open your first entry.';
   if (state.runsDone < 5) return 'Finish 5 runs.';
   if (state.earned < 500) return 'Earn $500 in total.';
-  if (state.rank < 2) return 'Reach rank ' + MUSEUM_RANKS[2].name + '.';
+  if (state.rank < 2) return 'Reach rank ' + museumRankNameFor(2) + '.';
   if (state.upgradesOwned < 4) return 'Own 4 upgrades.';
-  return 'Become a Museum legend.';
+  return 'Become a legend of the Museum.';
 }
 
-export function museumRecordFor(recordId, state) {
-  const r = MUSEUM_RECORDS.find((x) => x.id === recordId);
-  if (!r) return null;
-  return { id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit };
+export function museumRecordFor(id, state) {
+  let rec = null;
+  for (const r of MUSEUM_RECORDS) {
+    if (r.id === id) rec = r;
+  }
+  if (!rec) return null;
+  const value = state[rec.stat] === undefined ? 0 : state[rec.stat];
+  return { id: rec.id, name: rec.name, stat: rec.stat, unit: rec.unit, desc: rec.desc, value };
 }
 
 export function museumAllRecords(state) {
-  return MUSEUM_RECORDS.map((r) => ({
-    id: r.id, name: r.name, value: state[r.stat] || 0, unit: r.unit, desc: r.desc,
-  }));
+  const out = [];
+  for (const r of MUSEUM_RECORDS) out.push(museumRecordFor(r.id, state));
+  return out;
 }
 
-export function museumLeaderboardWith(playerScore) {
-  const board = MUSEUM_LEADERBOARD.map((e) => ({
-    name: e.name, score: e.name === 'You' ? playerScore : e.score, desc: e.desc,
-  }));
+export function museumLeaderboardWith(score) {
+  const board = [];
+  for (const e of MUSEUM_LEADERBOARD) {
+    if (e.name === 'You') board.push({ name: e.name, score, desc: e.desc });
+    else board.push({ name: e.name, score: e.score, desc: e.desc });
+  }
   board.sort((a, b) => b.score - a.score);
-  return board.map((e, i) => ({ rank: i + 1, name: e.name, score: e.score, desc: e.desc }));
+  const ranked = [];
+  for (let i = 0; i < board.length; i++) {
+    ranked.push({ rank: i + 1, name: board[i].name, score: board[i].score, desc: board[i].desc });
+  }
+  return ranked;
 }
 
 export function museumSeasonReport(state, seasonId) {
   const mult = museumSeasonMult(seasonId);
-  return EXHIBITS.map((item) => ({
-    id: item.id,
-    name: item.name,
-    basePrice: item.price,
-    seasonPrice: Math.round(item.price * mult * 10) / 10,
-    owned: !!state.owned[item.id],
-    level: state.levels[item.id] || 0,
-  }));
+  const rows = [];
+  for (const it of EXHIBITS) {
+    rows.push({
+      id: it.id,
+      name: it.name,
+      basePrice: it.price,
+      seasonPrice: Math.round(it.price * mult * 10) / 10,
+      owned: !!state.owned[it.id],
+      level: state.levels[it.id] || 0,
+    });
+  }
+  return rows;
 }
 
 export function museumChallengeProgress(challenge, state) {
-  const v = state[challenge.target] || 0;
-  return {
-    id: challenge.id, name: challenge.name, have: Math.floor(v),
-    goal: challenge.goal, done: v >= challenge.goal, xp: challenge.xp,
-  };
+  const have = Math.floor(state[challenge.target] || 0);
+  return { id: challenge.id, name: challenge.name, have, goal: challenge.goal, done: have >= challenge.goal, xp: challenge.xp };
 }
 
 export function museumBestEntryFor(rank) {
   let best = null;
   let bestScore = -1;
-  for (const item of EXHIBITS) {
-    if (item.difficulty > rank + 2) continue;
-    const score = item.price * (1 + item.rarity * 2) / item.difficulty;
-    if (score > bestScore) { bestScore = score; best = item; }
+  for (const it of EXHIBITS) {
+    if (it.difficulty > rank + 2) continue;
+    const score = (it.price * (1 + it.rarity * 2)) / it.difficulty;
+    if (score > bestScore) {
+      bestScore = score;
+      best = it;
+    }
   }
   return best;
+}
+
+export function museumEventFor(day) {
+  return MUSEUM_MARKET_EVENTS[day % MUSEUM_MARKET_EVENTS.length];
+}
+
+export function museumDailyEventFor(day) {
+  return MUSEUM_DAILY_EVENTS[day % MUSEUM_DAILY_EVENTS.length];
+}
+
+export function museumRankNameFor(level) {
+  for (const r of MUSEUM_RANKS) {
+    if (r.level === level) return r.name;
+  }
+  return 'Unknown';
+}
+
+export function museumTotalValue(state) {
+  return Math.round((museumInventoryValue(state) + state.pending + state.earned) * 10) / 10;
+}
+
+export function museumProgressPercent(state) {
+  const total = state.runsDone + state.failures;
+  if (total === 0) return 0;
+  return Math.round((state.runsDone / total) * 100);
+}
+
+export function museumStaffBonusFor(staffIds, skill) {
+  let total = 0;
+  for (const id of staffIds) {
+    const s = museumStaffById(id);
+    if (s && s.skill === skill) total = total + s.bonus;
+  }
+  return total;
+}
+
+export function museumCheapestEntry() {
+  let best = EXHIBITS[0];
+  for (const it of EXHIBITS) {
+    if (it.price < best.price) best = it;
+  }
+  return best;
+}
+
+export function museumPriciestEntry() {
+  let best = EXHIBITS[0];
+  for (const it of EXHIBITS) {
+    if (it.price > best.price) best = it;
+  }
+  return best;
+}
+
+export function museumEntriesByDifficulty(difficulty) {
+  const ids = [];
+  for (const it of EXHIBITS) {
+    if (it.difficulty === difficulty) ids.push(it.id);
+  }
+  return ids;
+}
+
+export function museumEntriesByRarity(maxRarity) {
+  const ids = [];
+  for (const it of EXHIBITS) {
+    if (it.rarity <= maxRarity) ids.push(it.id);
+  }
+  return ids;
+}
+
+export function museumGradeFor(runsDone, earned, visitors) {
+  const score = runsDone * 10 + Math.round(earned / 10) + Math.floor(visitors / 10);
+  if (score >= 500) return 'S';
+  if (score >= 300) return 'A';
+  if (score >= 150) return 'B';
+  if (score >= 50) return 'C';
+  return 'D';
 }
 
 export function createMuseumSystem(ctx) {
   const c = ctx || {};
   const rng = typeof c.rng === 'function' ? c.rng : Math.random;
+  const getDay = typeof c.getDay === 'function' ? c.getDay : () => 1;
+  const getHour = typeof c.getHour === 'function' ? c.getHour : () => 12;
   const getCash = typeof c.getCash === 'function' ? c.getCash : () => 0;
   const addCash = typeof c.addCash === 'function' ? c.addCash : () => {};
   const addHeat = typeof c.addHeat === 'function' ? c.addHeat : () => {};
   const log = typeof c.log === 'function' ? c.log : () => {};
-  const getDay = typeof c.getDay === 'function' ? c.getDay : () => 1;
-  const getHour = typeof c.getHour === 'function' ? c.getHour : () => 12;
-  const getPos = typeof c.getPlayerPos === 'function' ? c.getPlayerPos : () => ({ x: 0, z: 0 });
   const getWeather = typeof c.getWeather === 'function' ? c.getWeather : () => ({ condition: 'clear' });
-  const MECH = 'venue';
+
+  const drift = {};
+  const holdings = {};
+  const prices = {};
+  for (const it of EXHIBITS) {
+    drift[it.id] = 0;
+    holdings[it.id] = 0;
+    prices[it.id] = it.price;
+  }
 
   const state = {
-    xp: 0,
-    rank: 0,
-    runsDone: 0,
-    itemsOwned: 0,
-    visitors: 0,
-    earned: 0,
-    spent: 0,
-    reputation: 0,
-    heat: 0,
-    upgrades: [],
-    upgradesOwned: 0,
-    staff: [],
-    staffHired: 0,
-    owned: {},
-    levels: {},
-    boosted: {},
-    active: null,
-    activeId: null,
-    activeTimer: 0,
-    activeBase: 0,
-    pending: 0,
-    dailyEarned: 0,
-    dailyVisitors: 0,
-    bestRun: 0,
-    bestRunName: null,
-    streak: 0,
-    bestStreak: 0,
-    failures: 0,
-    donations: 0,
-    challengesClaimed: [],
-    lastDay: 1,
-    drift: {},
-    holdings: {},
-    prices: {},
-    viewers: 0,
-    followers: 0,
-    subs: 0,
-    peakViewers: 0,
-    streamMinutes: 0,
-    support: 50,
-    volunteers: 0,
-    donors: 0,
-    polls: 50,
-    occupancy: 0,
-    attendanceToday: 0,
-    dividendsPaid: 0,
-    wagesPaid: 0,
+    xp: 0, rank: 0, runsDone: 0, itemsOwned: 0, visitors: 0, earned: 0, spent: 0,
+    reputation: 0, heat: 0, upgrades: [], upgradesOwned: 0, staff: [], staffHired: 0,
+    owned: {}, levels: {}, boosted: {}, active: null, activeId: null, activeTimer: 0,
+    activeBase: 0, pending: 0, dailyEarned: 0, dailyVisitors: 0, bestRun: 0,
+    bestRunName: null, streak: 0, bestStreak: 0, failures: 0, donations: 0,
+    challengesClaimed: [], lastDay: 1, drift, holdings, prices, viewers: 0,
+    followers: 0, subs: 0, peakViewers: 0, streamMinutes: 0, support: 50,
+    volunteers: 0, donors: 0, polls: 50, occupancy: 0, attendanceToday: 0,
+    dividendsPaid: 0, wagesPaid: 0,
   };
-  for (const item of EXHIBITS) {
-    state.drift[item.id] = 0;
-    state.prices[item.id] = item.price;
-  }
-
-  function refreshRank() {
-    const r = museumRankFor(state.xp);
-    if (r > state.rank) {
-      state.rank = r;
-      log('Museum rank up: ' + MUSEUM_RANKS[r].name + ' - ' + MUSEUM_RANKS[r].perk);
-    }
-  }
 
   function gainXp(n) {
-    state.xp += n;
-    refreshRank();
-  }
-
-  function weatherCond() {
-    const w = getWeather();
-    if (w && typeof w.condition === 'string') return w.condition;
-    return 'clear';
-  }
-
-  function staffBonus(skill) {
-    let bonus = 0;
-    for (const id of state.staff) {
-      const s = MUSEUM_STAFF.find((x) => x.id === id);
-      if (s && s.skill === skill) bonus += s.bonus;
-    }
-    return bonus;
-  }
-
-  function driftPrices() {
-    for (const item of EXHIBITS) {
-      const roll = rng();
-      if (roll < 0.35) {
-        const change = Math.round((rng() * 0.24 - 0.12) * 100) / 100;
-        state.drift[item.id] = Math.round((state.drift[item.id] + change) * 100) / 100;
-        state.prices[item.id] = Math.max(1, Math.round(item.price * (1 + state.drift[item.id]) * 10) / 10);
-      }
+    state.xp = state.xp + n;
+    const lvl = museumRankFor(state.xp);
+    if (lvl > state.rank) {
+      state.rank = lvl;
+      log('Rank up! You are now ' + museumRankNameFor(lvl) + '.');
     }
   }
 
   function openExhibit(id) {
-    const item = EXHIBITS.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-exhibit' };
-    if (state.owned[id]) return { ok: false, reason: 'already-owned' };
-    if (state.itemsOwned >= museumCapacityFor(state.rank, state.upgrades)) {
-      return { ok: false, reason: 'capacity-full', cap: museumCapacityFor(state.rank, state.upgrades) };
-    }
-    if (state.rank < Math.max(0, item.difficulty - 2)) {
-      return { ok: false, reason: 'rank-too-low', need: Math.max(0, item.difficulty - 2) };
-    }
-    const cost = museumPriceFor(id, state.drift, 0, []);
+    const item = museumItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id };
+    if (state.owned[id]) return { ok: false, reason: 'already-owned', id };
+    const cap = museumCapacityFor(state.rank, state.upgrades);
+    if (state.itemsOwned >= cap) return { ok: false, reason: 'capacity-full', cap };
+    const need = Math.max(0, item.difficulty - 2);
+    if (state.rank < need) return { ok: false, reason: 'rank-too-low', rank: need };
+    const cost = museumPriceFor(id, state.drift[id] || 0, 0, []);
     if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost };
     addCash(-cost);
-    state.spent += cost;
+    state.spent = state.spent + cost;
     state.owned[id] = 1;
     state.levels[id] = 1;
-    state.itemsOwned += 1;
+    state.itemsOwned = state.itemsOwned + 1;
     gainXp(10);
-    log('Opened ' + item.name + ' for $' + cost + '. Welcome to the Museum business.');
+    log('Opened exhibit ' + item.name + ' for $' + cost + '.');
     return { ok: true, id, cost, name: item.name };
   }
 
   function hostTour(id) {
-    const item = EXHIBITS.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-exhibit' };
+    const item = museumItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id };
     if (state.active) return { ok: false, reason: 'already-running', active: state.activeId };
-    if (!state.owned[id]) return { ok: false, reason: 'not-owned' };
+    if (!state.owned[id]) return { ok: false, reason: 'not-owned', id };
     state.active = 'run';
     state.activeId = id;
     state.activeTimer = 30 + item.difficulty * 10;
     state.activeBase = item.price;
-    log('Tour started: ' + item.name + ' is under way.');
+    log('Tour started at ' + item.name + '.');
     return { ok: true, id, seconds: state.activeTimer };
   }
 
   function settleRun() {
-    const id = state.activeId;
-    const item = EXHIBITS.find((x) => x.id === id);
+    const item = museumItemById(state.activeId);
+    const doneId = state.activeId;
+    const weather = getWeather();
+    const payout = museumPayoutFor(item, state.rank, state.upgrades, weather, !!state.boosted[doneId]);
+    const crowd = museumCrowdFor(item, state.rank, weather);
     state.active = null;
     state.activeId = null;
     state.activeTimer = 0;
-    if (!item) return;
-    const cond = weatherCond();
-    const boosted = !!state.boosted[id];
-    const payout = museumPayoutFor(item, state.rank, state.upgrades, cond, boosted);
-    const crowd = museumCrowdFor(item, state.rank, cond);
-    state.visitors += crowd;
-    state.dailyVisitors += crowd;
-    state.attendanceToday += crowd;
-    state.pending += payout;
-    state.dailyEarned += payout;
-    state.runsDone += 1;
-    if (payout > state.bestRun) { state.bestRun = payout; state.bestRunName = item.name; }
-    state.streak += 1;
-    state.bestStreak = Math.max(state.bestStreak, state.streak);
-    state.boosted[id] = false;
-    gainXp(15 + item.difficulty * 3);
-    log('Tour finished at ' + item.name + ': ' + crowd + ' visitors, $' + payout + ' in the till.');
+    state.visitors = state.visitors + crowd;
+    state.dailyVisitors = state.dailyVisitors + crowd;
+    state.attendanceToday = state.attendanceToday + crowd;
+    state.pending = state.pending + payout;
+    state.dailyEarned = state.dailyEarned + payout;
+    state.runsDone = state.runsDone + 1;
+    if (payout > state.bestRun) {
+      state.bestRun = payout;
+      state.bestRunName = item ? item.name : doneId;
+    }
+    state.streak = state.streak + 1;
+    if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+    state.boosted[doneId] = false;
+    gainXp(15 + (item ? item.difficulty : 0) * 3);
+    log('Tour at ' + (item ? item.name : doneId) + ' drew ' + crowd + ' visitors and earned $' + payout + '.');
   }
 
   function collectTicketSales() {
     if (state.pending <= 0) return { ok: false, reason: 'nothing-pending' };
     const amount = state.pending;
     state.pending = 0;
-    state.earned += amount;
+    state.earned = state.earned + amount;
     addCash(amount);
-    log('Collected $' + amount + ' from the till.');
+    log('Collected $' + amount + ' in ticket sales.');
     return { ok: true, amount };
   }
 
-  function sellSouvenir(id, qty) {
-    const item = EXHIBITS.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-exhibit' };
-    void qty;
-    if (!state.owned[id]) return { ok: false, reason: 'not-owned' };
+  function sellSouvenir(id) {
+    const item = museumItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id };
+    if (!state.owned[id]) return { ok: false, reason: 'not-owned', id };
     const refund = Math.round(item.price * 0.5);
     delete state.owned[id];
     delete state.levels[id];
-    state.itemsOwned -= 1;
+    state.itemsOwned = state.itemsOwned - 1;
+    state.earned = state.earned + refund;
     addCash(refund);
-    state.earned += refund;
     gainXp(5);
-    log('Sold off ' + item.name + ' for $' + refund + '. Half price, clean break.');
+    log('Sold souvenir stock from ' + item.name + ' for $' + refund + '.');
     return { ok: true, total: refund, qty: 1 };
   }
 
   function restoreExhibit(id) {
-    const item = EXHIBITS.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-exhibit' };
-    if (!state.owned[id]) return { ok: false, reason: 'not-owned' };
+    const item = museumItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id };
+    if (!state.owned[id]) return { ok: false, reason: 'not-owned', id };
     if (getCash() < 40) return { ok: false, reason: 'not-enough-cash', cost: 40 };
     addCash(-40);
-    state.spent += 40;
+    state.spent = state.spent + 40;
     state.boosted[id] = true;
-    state.reputation += 1;
+    state.reputation = state.reputation + 1;
     gainXp(10);
-    log('Restoration team on ' + item.name + ' is boosted for its next run.');
+    log('Restored ' + item.name + ' to sparkling condition.');
     return { ok: true, id, boosted: true };
   }
 
   function buyUpgrade(id) {
-    const u = MUSEUM_UPGRADES.find((x) => x.id === id);
-    if (!u) return { ok: false, reason: 'no-such-upgrade' };
-    if (state.upgrades.indexOf(id) >= 0) return { ok: false, reason: 'already-owned' };
-    if (getCash() < u.cost) return { ok: false, reason: 'not-enough-cash', cost: u.cost };
-    addCash(-u.cost);
-    state.spent += u.cost;
+    const up = museumUpgradeById(id);
+    if (!up) return { ok: false, reason: 'unknown-upgrade', id };
+    if (state.upgrades.indexOf(id) >= 0) return { ok: false, reason: 'already-owned', id };
+    if (getCash() < up.cost) return { ok: false, reason: 'not-enough-cash', cost: up.cost };
+    addCash(-up.cost);
+    state.spent = state.spent + up.cost;
     state.upgrades.push(id);
-    state.upgradesOwned += 1;
+    state.upgradesOwned = state.upgradesOwned + 1;
     gainXp(20);
-    log('Bought upgrade: ' + u.name + ' for $' + u.cost + '. ' + u.desc);
-    return { ok: true, id, name: u.name };
+    log('Bought upgrade ' + up.name + ' for $' + up.cost + '.');
+    return { ok: true, id, name: up.name };
   }
 
   function hireStaff(id) {
-    const s = MUSEUM_STAFF.find((x) => x.id === id);
-    if (!s) return { ok: false, reason: 'no-such-staff' };
-    if (state.staff.indexOf(id) >= 0) return { ok: false, reason: 'already-hired' };
+    const s = museumStaffById(id);
+    if (!s) return { ok: false, reason: 'unknown-staff', id };
+    if (state.staff.indexOf(id) >= 0) return { ok: false, reason: 'already-hired', id };
     if (getCash() < s.wage) return { ok: false, reason: 'not-enough-cash', cost: s.wage };
     addCash(-s.wage);
-    state.spent += s.wage;
+    state.spent = state.spent + s.wage;
     state.staff.push(id);
-    state.staffHired += 1;
+    state.staffHired = state.staffHired + 1;
     gainXp(10);
-    log('Hired ' + s.name + ' for $' + s.wage + ' signing fee.');
+    log('Hired ' + s.name + ' for $' + s.wage + '.');
     return { ok: true, id, name: s.name, wage: s.wage };
   }
 
   function fireStaff(id) {
-    const i = state.staff.indexOf(id);
-    if (i < 0) return { ok: false, reason: 'not-hired' };
-    state.staff.splice(i, 1);
-    log('Let go of ' + id + '. The team is smaller now.');
+    const at = state.staff.indexOf(id);
+    if (at < 0) return { ok: false, reason: 'not-hired', id };
+    state.staff.splice(at, 1);
+    log('Let go of staff member ' + id + '.');
     return { ok: true, id };
   }
 
   function upgradeItem(id) {
-    const item = EXHIBITS.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-exhibit' };
-    if (!state.owned[id]) return { ok: false, reason: 'not-owned' };
+    const item = museumItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id };
+    if (!state.owned[id]) return { ok: false, reason: 'not-owned', id };
     const lvl = state.levels[id] || 1;
-    if (lvl >= 5) return { ok: false, reason: 'max-level' };
+    if (lvl >= 5) return { ok: false, reason: 'max-level', id, level: lvl };
     const cost = Math.round(item.price * 0.4 * lvl);
     if (getCash() < cost) return { ok: false, reason: 'not-enough-cash', cost };
     addCash(-cost);
-    state.spent += cost;
+    state.spent = state.spent + cost;
     state.levels[id] = lvl + 1;
     gainXp(15);
-    log(item.name + ' upgraded to level ' + (lvl + 1) + ' for $' + cost + '.');
+    log('Upgraded ' + item.name + ' to level ' + (lvl + 1) + '.');
     return { ok: true, id, level: lvl + 1 };
   }
 
   function priceBoard() {
-    return EXHIBITS.map((item) => ({
-      id: item.id,
-      name: item.name,
-      price: museumPriceFor(item.id, state.drift, state.rank, state.upgrades),
-      basePrice: item.price,
-      drift: state.drift[item.id],
-      owned: !!state.owned[item.id],
-      level: state.levels[item.id] || 0,
-      difficulty: item.difficulty,
-      rarity: item.rarity,
-    }));
+    const rows = [];
+    for (const it of EXHIBITS) {
+      rows.push({
+        id: it.id,
+        name: it.name,
+        price: state.prices[it.id],
+        basePrice: it.price,
+        drift: state.drift[it.id] || 0,
+        owned: !!state.owned[it.id],
+        level: state.levels[it.id] || 0,
+        difficulty: it.difficulty,
+        rarity: it.rarity,
+      });
+    }
+    return rows;
   }
 
   function listItems() {
-    return EXHIBITS.map((item) => ({
-      id: item.id, name: item.name, price: item.price,
-      difficulty: item.difficulty, rarity: item.rarity, desc: item.desc,
-      owned: !!state.owned[item.id],
-    }));
+    const rows = [];
+    for (const it of EXHIBITS) {
+      rows.push({ id: it.id, name: it.name, price: it.price, difficulty: it.difficulty, rarity: it.rarity, desc: it.desc, owned: !!state.owned[it.id] });
+    }
+    return rows;
   }
 
   function info(id) {
-    const item = EXHIBITS.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-exhibit' };
-    return {
-      ok: true, item,
-      owned: !!state.owned[id],
-      level: state.levels[id] || 0,
-      price: museumPriceFor(id, state.drift, state.rank, state.upgrades),
-      holdings: state.holdings[id] || 0,
-    };
+    const item = museumItemById(id);
+    if (!item) return { ok: false, reason: 'unknown-item', id };
+    return { ok: true, item, owned: !!state.owned[id], level: state.levels[id] || 0, price: state.prices[id], holdings: state.holdings[id] || 0 };
   }
 
   function dailyEvent() {
-    const idx = Math.floor(rng() * MUSEUM_DAILY_EVENTS.length);
-    const ev = MUSEUM_DAILY_EVENTS[idx];
-    if (!ev) return { event: 'none' };
-    if (ev.effect === 'earn') {
-      state.pending += ev.amount;
-      log(ev.text);
-    } else if (ev.effect === 'cost') {
+    if (MUSEUM_DAILY_EVENTS.length === 0) return { event: 'none', name: '', effect: '', amount: 0 };
+    const ev = MUSEUM_DAILY_EVENTS[Math.floor(rng() * MUSEUM_DAILY_EVENTS.length)];
+    if (ev.effect === 'earn') state.pending = state.pending + ev.amount;
+    else if (ev.effect === 'cost') {
       if (getCash() >= ev.amount) {
         addCash(-ev.amount);
-        state.spent += ev.amount;
+        state.spent = state.spent + ev.amount;
       }
-      log(ev.text);
-    } else if (ev.effect === 'rep') {
-      state.reputation += ev.amount;
-      log(ev.text);
-    } else if (ev.effect === 'visitors') {
-      state.visitors += ev.amount;
-      state.dailyVisitors += ev.amount;
-      log(ev.text);
+    } else if (ev.effect === 'rep') state.reputation = state.reputation + ev.amount;
+    else if (ev.effect === 'visitors') {
+      state.visitors = state.visitors + ev.amount;
+      state.dailyVisitors = state.dailyVisitors + ev.amount;
     } else if (ev.effect === 'heat') {
-      state.heat += ev.amount;
+      state.heat = state.heat + ev.amount;
       addHeat(ev.amount);
-      log(ev.text);
-    } else if (ev.effect === 'xp') {
-      gainXp(ev.amount);
-      log(ev.text);
-    } else {
-      log(ev.text);
-    }
+    } else if (ev.effect === 'xp') gainXp(ev.amount);
+    log(ev.text);
     return { event: ev.id, name: ev.name, effect: ev.effect, amount: ev.amount };
   }
 
   function tick(dt) {
     if (!state.active) return;
-    state.activeTimer -= dt;
-    if (state.activeTimer <= 0) settleRun();
+    state.activeTimer = state.activeTimer - dt;
+    if (state.activeTimer <= 0) {
+      state.activeTimer = 0;
+      settleRun();
+    }
   }
 
   function tickDay(day) {
-    if (day === state.lastDay) return;
+    if (day === state.lastDay) return null;
     state.lastDay = day;
-    driftPrices();
+    for (const it of EXHIBITS) {
+      if (rng() < 0.35) {
+        const shift = Math.round((rng() * 0.24 - 0.12) * 100) / 100;
+        const next = Math.round(((state.drift[it.id] || 0) + shift) * 100) / 100;
+        state.drift[it.id] = next;
+        state.prices[it.id] = Math.max(1, Math.round(it.price * (1 + next) * 10) / 10);
+      }
+    }
     state.dailyEarned = 0;
     state.dailyVisitors = 0;
     state.attendanceToday = 0;
     state.occupancy = 0;
-    dailyEvent();
+    return dailyEvent();
   }
 
   function serialize() {
     return JSON.parse(JSON.stringify(state));
   }
 
-  function deserialize(d) {
-    if (!d || typeof d !== 'object') return;
-    for (const k of Object.keys(state)) {
-      if (d[k] !== undefined) state[k] = d[k];
+  function deserialize(saved) {
+    if (!saved || typeof saved !== 'object') return;
+    for (const k of Object.keys(saved)) state[k] = saved[k];
+    if (!state.drift || typeof state.drift !== 'object') state.drift = {};
+    if (!state.prices || typeof state.prices !== 'object') state.prices = {};
+    if (!state.holdings || typeof state.holdings !== 'object') state.holdings = {};
+    for (const it of EXHIBITS) {
+      if (state.drift[it.id] === undefined) state.drift[it.id] = 0;
+      if (state.prices[it.id] === undefined) state.prices[it.id] = it.price;
+      if (state.holdings[it.id] === undefined) state.holdings[it.id] = 0;
     }
-    for (const item of EXHIBITS) {
-      if (state.drift[item.id] === undefined) state.drift[item.id] = 0;
-      if (state.prices[item.id] === undefined) state.prices[item.id] = item.price;
-      if (state.holdings[item.id] === undefined) state.holdings[item.id] = 0;
-    }
-    if (!state.owned) state.owned = {};
-    if (!state.levels) state.levels = {};
-    if (!state.boosted) state.boosted = {};
-    refreshRank();
+    if (!state.owned || typeof state.owned !== 'object') state.owned = {};
+    if (!state.levels || typeof state.levels !== 'object') state.levels = {};
+    if (!state.boosted || typeof state.boosted !== 'object') state.boosted = {};
+    state.rank = museumRankFor(state.xp);
   }
 
   function stats() {
     let holdingsCount = 0;
-    for (const k of Object.keys(state.holdings)) holdingsCount += state.holdings[k];
+    for (const k of Object.keys(state.holdings)) holdingsCount = holdingsCount + (state.holdings[k] || 0);
     return {
       name: 'Museum',
-      mechanic: MECH,
-      rank: MUSEUM_RANKS[state.rank] ? MUSEUM_RANKS[state.rank].name : 'Unknown',
+      mechanic: 'venue',
+      rank: museumRankNameFor(state.rank),
       rankLevel: state.rank,
       xp: state.xp,
       runsDone: state.runsDone,
@@ -816,29 +831,24 @@ export function createMuseumSystem(ctx) {
   }
 
   function hudLine() {
-    if (state.active) {
-      return 'Museum: running ' + state.activeId + ' - ' + Math.max(0, Math.ceil(state.activeTimer)) + 's left';
-    }
-    if (state.pending > 0) {
-      return 'Museum: $' + Math.round(state.pending) + ' waiting in the till';
-    }
-    if (state.itemsOwned > 0) {
-      return 'Museum: ' + state.itemsOwned + ' entries, $' + Math.round(state.earned) + ' earned';
-    }
+    if (state.active) return 'Museum: running ' + state.activeId + ' - ' + Math.ceil(state.activeTimer) + 's left';
+    if (state.pending > 0) return 'Museum: $' + state.pending + ' waiting in the till';
+    if (state.itemsOwned > 0) return 'Museum: ' + state.itemsOwned + ' entries, $' + state.earned + ' earned';
     return '';
   }
 
   function interact(action, a, b) {
-    if (!action || action === 'status') return { ok: true, stats: stats(), hint: 'open <exhibit> to hang it, run <exhibit> to host a tour, collect to empty the till' };
+    if (!action || action === 'status') {
+      return { ok: true, stats: stats(), hint: 'open an exhibit to hang it, run an exhibit to host a tour, collect to empty the till' };
+    }
     if (action === 'open') return openExhibit(a);
     if (action === 'run') return hostTour(a);
     if (action === 'collect') return collectTicketSales();
     if (action === 'sell') return sellSouvenir(a, b);
-    if (action === 'upgrade') return buyUpgrade(a);
-    if (action === 'levelup') return upgradeItem(a);
+    if (action === 'upgrade' || action === 'levelup') return upgradeItem(a);
     if (action === 'hire') return hireStaff(a);
     if (action === 'fire') return fireStaff(a);
-    if (action === 'special') return restoreExhibit(a, b);
+    if (action === 'special') return restoreExhibit(a);
     if (action === 'info') return info(a);
     if (action === 'prices') return { ok: true, prices: priceBoard() };
     if (action === 'list') return { ok: true, items: listItems() };
@@ -874,7 +884,7 @@ export function createMuseumSystem(ctx) {
     run: hostTour,
     collect: collectTicketSales,
     sell: sellSouvenir,
-    upgrade: buyUpgrade,
+    upgrade: upgradeItem,
     hire: hireStaff,
   };
 }
@@ -882,81 +892,83 @@ export function createMuseumSystem(ctx) {
 export function createMuseumExtras(system) {
   const helpers = [];
   const claimed = [];
-  let helperWagesPaid = 0;
+  let wagesPaid = 0;
 
   function challenges() {
-    return MUSEUM_CHALLENGES.map((ch) => museumChallengeProgress(ch, system.state));
+    const out = [];
+    for (const ch of MUSEUM_CHALLENGES) out.push(museumChallengeProgress(ch, system.state));
+    return out;
   }
 
   function claimChallenge(id) {
-    const ch = MUSEUM_CHALLENGES.find((x) => x.id === id);
-    if (!ch) return { ok: false, reason: 'no-such-challenge' };
-    if (claimed.indexOf(id) >= 0) return { ok: false, reason: 'already-claimed' };
-    const p = museumChallengeProgress(ch, system.state);
-    if (!p.done) return { ok: false, reason: 'not-done', have: p.have, goal: p.goal };
+    let ch = null;
+    for (const c of MUSEUM_CHALLENGES) {
+      if (c.id === id) ch = c;
+    }
+    if (!ch) return { ok: false, reason: 'unknown-challenge', id };
+    if (claimed.indexOf(id) >= 0) return { ok: false, reason: 'already-claimed', id };
+    const prog = museumChallengeProgress(ch, system.state);
+    if (!prog.done) return { ok: false, reason: 'not-done', id, have: prog.have, goal: prog.goal };
     claimed.push(id);
     system.state.challengesClaimed.push(id);
-    if (typeof system.gainXp === 'function') system.gainXp(ch.xp);
+    system.gainXp(ch.xp);
     return { ok: true, id, xp: ch.xp };
   }
 
   function achievements() {
-    return MUSEUM_ACHIEVEMENTS.map((a) => ({
-      id: a.id,
-      name: a.name,
-      desc: a.desc,
-      target: a.target,
-      goal: a.goal,
-      have: Math.floor(system.state[a.target] || 0),
-      done: (system.state[a.target] || 0) >= a.goal,
-    }));
+    const out = [];
+    for (const a of MUSEUM_ACHIEVEMENTS) {
+      const have = Math.floor(system.state[a.target] || 0);
+      out.push({ id: a.id, name: a.name, desc: a.desc, target: a.target, goal: a.goal, have, done: have >= a.goal });
+    }
+    return out;
   }
 
   function hireHelper(id) {
-    const h = MUSEUM_STAFF.find((x) => x.id === id);
-    if (!h) return { ok: false, reason: 'no-such-helper' };
-    if (helpers.indexOf(id) >= 0) return { ok: false, reason: 'already-hired' };
+    const s = museumStaffById(id);
+    if (!s) return { ok: false, reason: 'unknown-staff', id };
+    if (helpers.indexOf(id) >= 0) return { ok: false, reason: 'already-hired', id };
     helpers.push(id);
-    return { ok: true, id, name: h.name, wage: h.wage };
+    return { ok: true, id, name: s.name, wage: s.wage };
   }
 
   function fireHelper(id) {
-    const i = helpers.indexOf(id);
-    if (i < 0) return { ok: false, reason: 'not-hired' };
-    helpers.splice(i, 1);
+    const at = helpers.indexOf(id);
+    if (at < 0) return { ok: false, reason: 'not-hired', id };
+    helpers.splice(at, 1);
     return { ok: true, id };
   }
 
   function payWages() {
     let due = 0;
-    for (const id of helpers) {
-      const h = MUSEUM_STAFF.find((x) => x.id === id);
-      if (h) due += h.wage;
+    for (const hid of helpers) {
+      const s = museumStaffById(hid);
+      if (s) due = due + s.wage;
     }
-    helperWagesPaid += due;
-    system.state.wagesPaid += due;
-    return { due, helpers: helpers.slice(), totalPaid: helperWagesPaid };
+    wagesPaid = wagesPaid + due;
+    system.state.wagesPaid = system.state.wagesPaid + due;
+    return { due, helpers: helpers.length, totalPaid: wagesPaid };
   }
 
   function helperBonus(skill) {
-    let bonus = 0;
-    for (const id of helpers) {
-      const h = MUSEUM_STAFF.find((x) => x.id === id);
-      if (h && h.skill === skill) bonus += h.bonus;
+    let total = 0;
+    for (const hid of helpers) {
+      const s = museumStaffById(hid);
+      if (s && s.skill === skill) total = total + s.bonus;
     }
-    return bonus;
+    return total;
   }
 
   function donate(amount) {
-    if (!amount || amount <= 0) return { ok: false, reason: 'bad-amount' };
-    system.state.donations += amount;
-    system.state.reputation += Math.floor(amount / 100);
-    return { ok: true, amount, reputation: system.state.reputation };
+    if (!amount || amount <= 0) return { ok: false, reason: 'bad-amount', amount };
+    system.state.donations = system.state.donations + amount;
+    const rep = Math.floor(amount / 100);
+    system.state.reputation = system.state.reputation + rep;
+    return { ok: true, amount, reputation: rep };
   }
 
   function quickBoost(id) {
-    const item = EXHIBITS.find((x) => x.id === id);
-    if (!item) return { ok: false, reason: 'no-such-exhibit' };
+    if (!museumItemById(id)) return { ok: false, reason: 'unknown-item', id };
     system.state.boosted[id] = true;
     return { ok: true, id, boosted: true };
   }
@@ -977,17 +989,19 @@ export function createMuseumExtras(system) {
   }
 
   function staffRoster() {
-    return MUSEUM_STAFF.map((s) => ({
-      id: s.id, name: s.name, wage: s.wage, skill: s.skill,
-      hired: helpers.indexOf(s.id) >= 0 || system.state.staff.indexOf(s.id) >= 0,
-    }));
+    const rows = [];
+    for (const s of MUSEUM_STAFF) {
+      rows.push({ id: s.id, name: s.name, wage: s.wage, skill: s.skill, hired: helpers.indexOf(s.id) >= 0 || system.state.staff.indexOf(s.id) >= 0 });
+    }
+    return rows;
   }
 
   function upgradeCatalog() {
-    return MUSEUM_UPGRADES.map((u) => ({
-      id: u.id, name: u.name, cost: u.cost, effect: u.effect, desc: u.desc,
-      owned: system.state.upgrades.indexOf(u.id) >= 0,
-    }));
+    const rows = [];
+    for (const u of MUSEUM_UPGRADES) {
+      rows.push({ id: u.id, name: u.name, cost: u.cost, effect: u.effect, desc: u.desc, owned: system.state.upgrades.indexOf(u.id) >= 0 });
+    }
+    return rows;
   }
 
   return {
@@ -1006,7 +1020,7 @@ export function createMuseumExtras(system) {
     upgradeCatalog,
     get helpers() { return helpers.slice(); },
     get claimed() { return claimed.slice(); },
-    get wagesPaid() { return helperWagesPaid; },
+    get wagesPaid() { return wagesPaid; },
   };
 }
 
@@ -1016,67 +1030,63 @@ export function createMuseumMarket(system) {
   let dealsClaimed = 0;
   let bulkTraded = 0;
 
-  function setEvent(eventId) {
-    const ev = MUSEUM_MARKET_EVENTS.find((x) => x.id === eventId);
-    if (!ev) return { ok: false, reason: 'no-such-event' };
-    currentEvent = eventId;
-    return { ok: true, event: eventId, name: ev.name };
+  function setEvent(id) {
+    let found = null;
+    for (const e of MUSEUM_MARKET_EVENTS) {
+      if (e.id === id) found = e;
+    }
+    if (!found) return { ok: false, reason: 'unknown-event', id };
+    currentEvent = id;
+    return { ok: true, event: id };
   }
 
-  function setSeason(seasonId) {
-    const s = MUSEUM_SEASONS.find((x) => x.id === seasonId);
-    if (!s) return { ok: false, reason: 'no-such-season' };
-    currentSeason = seasonId;
-    return { ok: true, season: seasonId };
+  function setSeason(id) {
+    let found = null;
+    for (const s of MUSEUM_SEASONS) {
+      if (s.id === id) found = s;
+    }
+    if (!found) return { ok: false, reason: 'unknown-season', id };
+    currentSeason = id;
+    return { ok: true, season: id };
   }
 
   function eventPrice(itemId, basePrice) {
-    let price = basePrice;
-    price *= museumMarketEventMult(currentEvent, itemId);
-    price *= museumSeasonMult(currentSeason);
-    return Math.round(price * 10) / 10;
+    const mult = museumMarketEventMult(currentEvent, itemId) * museumSeasonMult(currentSeason);
+    return Math.round(basePrice * mult * 10) / 10;
   }
 
   function bulkDeal(itemId, qty) {
-    const item = EXHIBITS.find((x) => x.id === itemId);
-    if (!item) return { ok: false, reason: 'no-such-exhibit' };
-    if (!qty || qty < 5) return { ok: false, reason: 'need-5-plus', qty: qty || 0 };
+    const item = museumItemById(itemId);
+    if (!item) return { ok: false, reason: 'unknown-item', id: itemId };
+    if (!qty || qty < 5) return { ok: false, reason: 'too-few', qty };
     const unit = eventPrice(itemId, item.price);
     const total = Math.round(unit * qty * 1.1 * 10) / 10;
-    system.state.pending += total;
-    system.state.dailyEarned += total;
-    bulkTraded += qty;
-    dealsClaimed += 1;
+    system.state.pending = system.state.pending + total;
+    system.state.dailyEarned = system.state.dailyEarned + total;
+    bulkTraded = bulkTraded + qty;
+    dealsClaimed = dealsClaimed + 1;
     return { ok: true, total, qty, unit, bonus: 'bulk +10%' };
   }
 
   function dailyDeals() {
-    const deals = [];
-    for (const item of EXHIBITS) {
-      const mult = museumMarketEventMult(currentEvent, item.id);
-      if (mult !== 1) {
-        deals.push({ item: item.id, name: item.name, mult, event: currentEvent });
-      }
+    const rows = [];
+    for (const it of EXHIBITS) {
+      const mult = museumMarketEventMult(currentEvent, it.id);
+      if (mult !== 1) rows.push({ item: it.id, name: it.name, mult, event: currentEvent });
     }
-    return deals;
+    return rows;
   }
 
   function marketSummary() {
-    return {
-      event: currentEvent,
-      season: currentSeason,
-      dealsClaimed,
-      bulkTraded,
-      deals: dailyDeals(),
-    };
+    return { event: currentEvent, season: currentSeason, dealsClaimed, bulkTraded, deals: dailyDeals() };
   }
 
   function seasonPrices() {
-    return EXHIBITS.map((item) => ({
-      id: item.id,
-      name: item.name,
-      price: eventPrice(item.id, item.price),
-    }));
+    const rows = [];
+    for (const it of EXHIBITS) {
+      rows.push({ id: it.id, name: it.name, price: eventPrice(it.id, it.price) });
+    }
+    return rows;
   }
 
   return {
@@ -1091,78 +1101,3 @@ export function createMuseumMarket(system) {
     get season() { return currentSeason; },
   };
 }
-
-export function museumEventFor(day) {
-  return MUSEUM_MARKET_EVENTS[day % MUSEUM_MARKET_EVENTS.length];
-}
-
-export function museumDailyEventFor(day) {
-  return MUSEUM_DAILY_EVENTS[day % MUSEUM_DAILY_EVENTS.length];
-}
-
-export function museumRankNameFor(rank) {
-  const r = MUSEUM_RANKS[rank];
-  return r ? r.name : 'Unknown';
-}
-
-export function museumTotalValue(state) {
-  const inv = museumInventoryValue(state);
-  return Math.round((inv + state.pending + state.earned) * 10) / 10;
-}
-
-export function museumProgressPercent(state) {
-  const total = state.runsDone + state.failures;
-  if (total === 0) return 0;
-  return Math.round((state.runsDone / total) * 100);
-}
-
-export function museumStaffBonusFor(staffIds, skill) {
-  let bonus = 0;
-  for (const id of staffIds) {
-    const s = MUSEUM_STAFF.find((x) => x.id === id);
-    if (s && s.skill === skill) bonus += s.bonus;
-  }
-  return bonus;
-}
-
-export function museumCheapestEntry() {
-  let best = EXHIBITS[0];
-  for (const item of EXHIBITS) {
-    if (item.price < best.price) best = item;
-  }
-  return best;
-}
-
-export function museumPriciestEntry() {
-  let best = EXHIBITS[0];
-  for (const item of EXHIBITS) {
-    if (item.price > best.price) best = item;
-  }
-  return best;
-}
-
-export function museumEntriesByDifficulty(difficulty) {
-  return EXHIBITS.filter((x) => x.difficulty === difficulty).map((x) => x.id);
-}
-
-export function museumEntriesByRarity(maxRarity) {
-  return EXHIBITS.filter((x) => x.rarity <= maxRarity).map((x) => x.id);
-}
-
-export function museumGradeFor(runsDone, earned, visitors) {
-  const score = runsDone * 10 + Math.round(earned / 10) + Math.floor(visitors / 10);
-  if (score >= 500) return 'S';
-  if (score >= 300) return 'A';
-  if (score >= 150) return 'B';
-  if (score >= 50) return 'C';
-  return 'D';
-}
-
-export const MUSEUM_META = {
-  system: 'museum',
-  version: '7-B4',
-  author: 'builder-4',
-  mechanic: 'venue',
-  dataCount: EXHIBITS.length,
-  dataName: 'EXHIBITS',
-};

@@ -1,52 +1,11 @@
-// Solara Nights — Businesses (round 4 attempt 6, NEW module).
-// Buy a front in Solara Bay and it pays you while you play. A laundromat
-// washes cash quietly, a garage fixes cars for the neighbourhood, a bar
-// pulls a crowd at night — each business has a price, an hourly income,
-// an upkeep cost, and a risk profile. The bigger the earner, the more
-// attention it draws: police raids can shut a business down for a while,
-// and a business left unvisited slowly loses condition until the player
-// pays for repairs. Income accrues per in-game hour and is collected at
-// the premises; uncollected cash piles up (and can be stolen in a raid).
-//
-// Businesses also feed the rest of the game: owning the garage unlocks
-// cheap repairs, owning the bar unlocks the late-night crowd (and the
-// smuggling contacts in smuggling.js), and owning all three unlocks the
-// "King of the Bay" bonus. The module is self-contained and talks to the
-// game only through the optional `ctx` hooks.
-
 export const BUSINESS_VERSION = 1;
 
 export const BUSINESS_TYPES = [
-  {
-    id: 'laundromat', name: 'Spin Cycle Laundromat', price: 800,
-    incomePerHour: 12, upkeepPerHour: 2, risk: 0.05,
-    x: -120, z: 80, desc: 'Quiet, steady, boring — and boring is safe.',
-    perk: 'Wash $200 of heat per visit: cops look the other way.',
-  },
-  {
-    id: 'garage', name: 'Reyes Auto Garage', price: 1500,
-    incomePerHour: 22, upkeepPerHour: 5, risk: 0.08,
-    x: 60, z: -140, desc: 'Fixes cars by day. Fixes other things by night.',
-    perk: 'Repairs cost 50% less; free respray once a day.',
-  },
-  {
-    id: 'bar', name: 'Neon Palms Bar', price: 2500,
-    incomePerHour: 40, upkeepPerHour: 9, risk: 0.14,
-    x: 180, z: 40, desc: 'The strip crowd drinks here. So do the cops.',
-    perk: 'Unlocks smuggling contacts; night income x1.5.',
-  },
-  {
-    id: 'diner', name: 'Sunrise Diner', price: 1200,
-    incomePerHour: 16, upkeepPerHour: 3, risk: 0.04,
-    x: -200, z: -60, desc: 'Breakfast all day, regulars all week.',
-    perk: 'Free health refill once per day.',
-  },
-  {
-    id: 'arcade', name: 'Pixel Palace Arcade', price: 2000,
-    incomePerHour: 30, upkeepPerHour: 7, risk: 0.10,
-    x: 40, z: 200, desc: 'Kids by day, high rollers by night.',
-    perk: 'Stunt score bonus +10% while owned.',
-  },
+  { id: 'laundromat', name: 'Spin Cycle Laundromat', price: 800, incomePerHour: 12, upkeepPerHour: 2, risk: 0.05, x: -120, z: 80, description: 'Quiet cash, clean clothes.', perk: 'heat-wash' },
+  { id: 'garage', name: 'Reyes Auto Garage', price: 1500, incomePerHour: 22, upkeepPerHour: 5, risk: 0.08, x: 60, z: -140, description: 'Fixes cars and reputations.', perk: 'cheap-repairs' },
+  { id: 'bar', name: 'Neon Palms Bar', price: 2500, incomePerHour: 40, upkeepPerHour: 9, risk: 0.14, x: 180, z: 40, description: 'The late-night crowd pays well.', perk: 'smuggling-contacts' },
+  { id: 'diner', name: 'Sunrise Diner', price: 1200, incomePerHour: 16, upkeepPerHour: 3, risk: 0.04, x: -200, z: -60, description: 'Breakfast all day, money all night.', perk: 'health-refill' },
+  { id: 'arcade', name: 'Pixel Palace Arcade', price: 2000, incomePerHour: 30, upkeepPerHour: 7, risk: 0.1, x: 40, z: 200, description: 'Tokens in, cash out.', perk: 'stunt-bonus' },
 ];
 
 export function businessById(id) {
@@ -57,32 +16,31 @@ export function isNightHour(hour) {
   return hour >= 20 || hour < 5;
 }
 
-// Income for one game-hour, before upkeep, with night and condition mods.
-export function hourlyIncome(biz, hour, condition) {
-  let income = biz.incomePerHour;
-  if (biz.id === 'bar' && isNightHour(hour)) income *= 1.5;
-  if (biz.id === 'arcade' && hour >= 15 && hour < 20) income *= 1.25;
-  if (biz.id === 'diner' && hour >= 6 && hour < 11) income *= 1.3;
+export function hourlyIncome(business, hour, condition) {
+  let income = business.incomePerHour;
+  if (business.id === 'bar' && isNightHour(hour)) income *= 1.5;
+  if (business.id === 'arcade' && hour >= 15 && hour <= 19) income *= 1.25;
+  if (business.id === 'diner' && hour >= 6 && hour <= 10) income *= 1.3;
   income *= 0.5 + condition * 0.5;
   return Math.round(income);
 }
 
-export function raidChancePerHour(biz, heatLevel) {
-  // Base risk, doubled when the player is hot, halved when ice cold.
-  const heatMod = heatLevel >= 3 ? 2 : heatLevel === 0 ? 0.5 : 1;
-  return biz.risk * heatMod;
+export function raidChancePerHour(business, heat) {
+  let mod = 1;
+  if (heat >= 3) mod = 2;
+  else if (heat === 0) mod = 0.5;
+  return business.risk * mod;
 }
 
-export function repairCost(biz, condition) {
-  const missing = 1 - condition;
-  return Math.round(biz.price * 0.25 * missing);
+export function repairCost(business, condition) {
+  return Math.round(business.price * 0.25 * (1 - condition));
 }
 
-export function createBusinessSystem(ctx = {}) {
-  const rng = ctx.rng || Math.random;
+export function createBusinessSystem(ctx) {
+  const c = ctx || {};
   const state = {
     version: BUSINESS_VERSION,
-    owned: {}, // id -> { condition, uncollected, hoursOwned, raids, lastVisitHour, shutdownUntil }
+    owned: {},
     totalEarned: 0,
     totalSpent: 0,
     totalRaids: 0,
@@ -90,203 +48,190 @@ export function createBusinessSystem(ctx = {}) {
     log: [],
   };
 
-  function note(msg) {
+  function say(msg) {
     state.log.push(msg);
     if (state.log.length > 40) state.log.shift();
-    if (typeof ctx.log === 'function') ctx.log(msg);
+    if (typeof c.log === 'function') c.log(msg);
   }
-
-  function cash() {
-    return typeof ctx.getCash === 'function' ? ctx.getCash() : (ctx.cash ?? 0);
+  function roll() {
+    return typeof c.rng === 'function' ? c.rng() : Math.random();
   }
-
-  function addCash(amount) {
-    if (typeof ctx.addCash === 'function') ctx.addCash(amount);
-    else if (typeof ctx.cash === 'number') ctx.cash += amount;
+  function cashIn(amount) {
+    if (typeof c.addCash === 'function') c.addCash(amount);
+    else if (typeof c.cash === 'number') c.cash += amount;
   }
-
-  function heatLevel() {
-    if (typeof ctx.getHeatLevel === 'function') return ctx.getHeatLevel();
-    return typeof ctx.heat === 'number' ? ctx.heat : 0;
+  function cashNow() {
+    return typeof c.getCash === 'function' ? c.getCash() : 0;
   }
-
+  function heatNow() {
+    if (typeof c.getHeatLevel === 'function') return c.getHeatLevel();
+    return typeof c.heat === 'number' ? c.heat : 0;
+  }
   function hourNow() {
-    if (typeof ctx.getHour === 'function') return ctx.getHour();
-    return 12;
+    return typeof c.getHour === 'function' ? c.getHour() : 12;
+  }
+  function uncollectedTotal() {
+    let sum = 0;
+    for (const id of Object.keys(state.owned)) sum += state.owned[id].uncollected;
+    return sum;
   }
 
-  function buy(bizId) {
-    const biz = businessById(bizId);
-    if (!biz) return { ok: false, reason: 'unknown-business' };
-    if (state.owned[bizId]) return { ok: false, reason: 'already-owned' };
-    if (cash() < biz.price) return { ok: false, reason: 'not-enough-cash' };
-    addCash(-biz.price);
-    state.totalSpent += biz.price;
-    state.owned[bizId] = {
-      condition: 1, uncollected: 0, hoursOwned: 0,
-      raids: 0, shutdownUntil: 0, visits: 1,
-    };
-    note(`Bought ${biz.name} for $${biz.price}. ${biz.perk}`);
-    if (typeof ctx.onBuyBusiness === 'function') ctx.onBuyBusiness(biz);
-    return { ok: true, business: bizId };
-  }
-
-  function sell(bizId) {
-    const biz = businessById(bizId);
-    const owned = state.owned[bizId];
-    if (!biz || !owned) return { ok: false, reason: 'not-owned' };
-    const refund = Math.round(biz.price * 0.6 * owned.condition) + owned.uncollected;
-    delete state.owned[bizId];
-    addCash(refund);
-    note(`Sold ${biz.name} for $${refund}.`);
-    return { ok: true, refund };
-  }
-
-  // Advance one in-game hour for every owned business.
-  function tickHour(hour = hourNow()) {
-    for (const [id, owned] of Object.entries(state.owned)) {
-      const biz = businessById(id);
-      if (!biz) continue;
-      owned.hoursOwned += 1;
-      if (hour < owned.shutdownUntil) continue; // raided: closed this hour.
-      const income = hourlyIncome(biz, hour, owned.condition);
-      const upkeep = biz.upkeepPerHour;
-      owned.uncollected += Math.max(0, income - upkeep);
-      state.totalEarned += Math.max(0, income - upkeep);
-      // Condition decays slowly; faster when the business is raided or hot.
-      owned.condition = Math.max(0.2, owned.condition - 0.004 - heatLevel() * 0.001);
-      // Raid roll.
-      if (rng() < raidChancePerHour(biz, heatLevel())) {
-        const stolen = Math.floor(owned.uncollected * 0.5);
-        owned.uncollected -= stolen;
-        owned.condition = Math.max(0.2, owned.condition - 0.25);
-        owned.raids += 1;
-        owned.shutdownUntil = hour + 4;
-        state.totalRaids += 1;
-        note(`🚨 RAID at ${biz.name}! Cops seized $${stolen} and shut it down for 4 hours.`);
-        if (typeof ctx.onRaid === 'function') ctx.onRaid(biz, stolen);
-      }
-    }
-  }
-
-  function collect(bizId) {
-    const owned = state.owned[bizId];
-    if (!owned) return { ok: false, reason: 'not-owned' };
-    const amount = owned.uncollected;
-    if (amount <= 0) return { ok: false, reason: 'nothing-to-collect' };
-    owned.uncollected = 0;
-    owned.visits += 1;
-    state.totalCollected += amount;
-    addCash(amount);
-    const biz = businessById(bizId);
-    note(`Collected $${amount} from ${biz.name}.`);
-    // Visiting the laundromat washes a little heat.
-    if (bizId === 'laundromat' && typeof ctx.reduceHeat === 'function') ctx.reduceHeat(10);
-    return { ok: true, amount };
-  }
-
-  function collectAll() {
-    let total = 0;
-    let count = 0;
-    for (const id of Object.keys(state.owned)) {
-      const r = collect(id);
-      if (r.ok) { total += r.amount; count += 1; }
-    }
-    return { ok: count > 0, total, count };
-  }
-
-  function repair(bizId) {
-    const biz = businessById(bizId);
-    const owned = state.owned[bizId];
-    if (!biz || !owned) return { ok: false, reason: 'not-owned' };
-    const cost = repairCost(biz, owned.condition);
-    if (cost <= 0) return { ok: false, reason: 'already-perfect' };
-    if (cash() < cost) return { ok: false, reason: 'not-enough-cash' };
-    addCash(-cost);
-    owned.condition = 1;
-    note(`Repaired ${biz.name} to perfect condition for $${cost}.`);
-    return { ok: true, cost };
-  }
-
-  function visit(bizId) {
-    const owned = state.owned[bizId];
-    if (!owned) return { ok: false, reason: 'not-owned' };
-    owned.visits += 1;
-    return { ok: true, owned };
-  }
-
-  function ownedCount() {
-    return Object.keys(state.owned).length;
-  }
-
-  function hasPerk(perkId) {
-    return !!state.owned[perkId];
-  }
-
-  function kingOfTheBay() {
-    return ownedCount() >= 3;
-  }
-
-  function projectedHourly(hour = hourNow()) {
-    let total = 0;
-    for (const [id, owned] of Object.entries(state.owned)) {
-      const biz = businessById(id);
-      if (biz) total += Math.max(0, hourlyIncome(biz, hour, owned.condition) - biz.upkeepPerHour);
-    }
-    if (kingOfTheBay()) total = Math.round(total * 1.15);
-    return total;
-  }
-
-  function stats() {
-    return {
-      owned: ownedCount(),
-      totalEarned: state.totalEarned,
-      totalSpent: state.totalSpent,
-      totalCollected: state.totalCollected,
-      totalRaids: state.totalRaids,
-      projectedHourly: projectedHourly(),
-      kingOfTheBay: kingOfTheBay(),
-      uncollected: Object.values(state.owned).reduce((a, o) => a + o.uncollected, 0),
-    };
-  }
-
-  function serialize() {
-    return JSON.parse(JSON.stringify(state));
-  }
-
-  function deserialize(data) {
-    if (!data || data.version !== BUSINESS_VERSION) return false;
-    Object.assign(state, data);
-    return true;
-  }
-
-  function hudLine() {
-    const s = stats();
-    if (!s.owned) return '';
-    return `BUSINESS: ${s.owned} owned — $${s.uncollected} uncollected — ~$${s.projectedHourly}/h`;
-  }
-
-  return {
+  const sys = {
     name: 'businesses',
     version: BUSINESS_VERSION,
     state,
     types: BUSINESS_TYPES,
-    buy,
-    sell,
-    tickHour,
-    collect,
-    collectAll,
-    repair,
-    visit,
-    ownedCount,
-    hasPerk,
-    kingOfTheBay,
-    projectedHourly,
-    stats,
-    serialize,
-    deserialize,
-    hudLine,
+
+    buy(id) {
+      const biz = businessById(id);
+      if (!biz) return { ok: false, reason: 'unknown-business' };
+      if (state.owned[id]) return { ok: false, reason: 'already-owned' };
+      if (cashNow() < biz.price) return { ok: false, reason: 'not-enough-cash', need: biz.price };
+      cashIn(-biz.price);
+      state.totalSpent += biz.price;
+      state.owned[id] = { condition: 1, uncollected: 0, hoursOwned: 0, raids: 0, shutdownUntil: 0, visits: 1 };
+      say('Bought ' + biz.name + ' for $' + biz.price + '. Perk: ' + biz.perk + '.');
+      if (typeof c.onBuyBusiness === 'function') c.onBuyBusiness(biz);
+      return { ok: true, business: id };
+    },
+
+    sell(id) {
+      const held = state.owned[id];
+      if (!held) return { ok: false, reason: 'not-owned' };
+      const biz = businessById(id);
+      const refund = Math.round(biz.price * 0.6 * held.condition) + held.uncollected;
+      delete state.owned[id];
+      cashIn(refund);
+      say('Sold ' + biz.name + ' for $' + refund + '.');
+      return { ok: true, refund };
+    },
+
+    tickHour(hour) {
+      const h = hour === undefined ? hourNow() : hour;
+      const heat = heatNow();
+      for (const id of Object.keys(state.owned)) {
+        const held = state.owned[id];
+        const biz = businessById(id);
+        held.hoursOwned += 1;
+        if (h < held.shutdownUntil) continue;
+        const net = Math.max(0, hourlyIncome(biz, h, held.condition) - biz.upkeepPerHour);
+        held.uncollected += net;
+        state.totalEarned += net;
+        held.condition = Math.max(0.2, held.condition - (0.004 + heat * 0.001));
+        if (roll() < raidChancePerHour(biz, heat)) {
+          const stolen = Math.floor(held.uncollected / 2);
+          held.uncollected -= stolen;
+          held.condition = Math.max(0.2, held.condition - 0.25);
+          held.raids += 1;
+          held.shutdownUntil = h + 4;
+          state.totalRaids += 1;
+          say('Raid at ' + biz.name + '! Lost $' + stolen + ', shut down for 4 hours.');
+          if (typeof c.onRaid === 'function') c.onRaid(biz);
+        }
+      }
+    },
+
+    collect(id) {
+      const held = state.owned[id];
+      if (!held) return { ok: false, reason: 'not-owned' };
+      if (held.uncollected <= 0) return { ok: false, reason: 'nothing-to-collect' };
+      const amount = held.uncollected;
+      held.uncollected = 0;
+      held.visits += 1;
+      state.totalCollected += amount;
+      cashIn(amount);
+      say('Collected $' + amount + ' from ' + id + '.');
+      if (id === 'laundromat' && typeof c.reduceHeat === 'function') c.reduceHeat(10);
+      return { ok: true, amount };
+    },
+
+    collectAll() {
+      let total = 0;
+      let count = 0;
+      for (const id of Object.keys(state.owned)) {
+        const res = sys.collect(id);
+        if (res.ok) {
+          total += res.amount;
+          count += 1;
+        }
+      }
+      return { ok: count > 0, total, count };
+    },
+
+    repair(id) {
+      const held = state.owned[id];
+      if (!held) return { ok: false, reason: 'not-owned' };
+      const biz = businessById(id);
+      const cost = repairCost(biz, held.condition);
+      if (cost <= 0) return { ok: false, reason: 'already-perfect' };
+      if (cashNow() < cost) return { ok: false, reason: 'not-enough-cash', need: cost };
+      cashIn(-cost);
+      held.condition = 1;
+      say('Repaired ' + biz.name + ' for $' + cost + '.');
+      return { ok: true, cost };
+    },
+
+    visit(id) {
+      const held = state.owned[id];
+      if (!held) return { ok: false, reason: 'not-owned' };
+      held.visits += 1;
+      return { ok: true, business: held };
+    },
+
+    ownedCount() {
+      return Object.keys(state.owned).length;
+    },
+
+    hasPerk(perkId) {
+      return !!state.owned[perkId];
+    },
+
+    kingOfTheBay() {
+      return sys.ownedCount() >= 3;
+    },
+
+    projectedHourly(hour) {
+      const h = hour === undefined ? hourNow() : hour;
+      let sum = 0;
+      for (const id of Object.keys(state.owned)) {
+        const biz = businessById(id);
+        sum += Math.max(0, hourlyIncome(biz, h, state.owned[id].condition) - biz.upkeepPerHour);
+      }
+      if (sys.kingOfTheBay()) sum = Math.round(sum * 1.15);
+      return sum;
+    },
+
+    stats() {
+      return {
+        owned: sys.ownedCount(),
+        totalEarned: state.totalEarned,
+        totalSpent: state.totalSpent,
+        totalCollected: state.totalCollected,
+        totalRaids: state.totalRaids,
+        projectedHourly: sys.projectedHourly(),
+        kingOfTheBay: sys.kingOfTheBay(),
+        uncollected: uncollectedTotal(),
+      };
+    },
+
+    serialize() {
+      return JSON.parse(JSON.stringify(state));
+    },
+
+    deserialize(data) {
+      if (!data || data.version !== BUSINESS_VERSION) return false;
+      const copy = JSON.parse(JSON.stringify(data));
+      for (const k of Object.keys(state)) delete state[k];
+      Object.assign(state, copy);
+      return true;
+    },
+
+    hudLine() {
+      if (sys.ownedCount() === 0) return '';
+      return 'BUSINESS ' + sys.ownedCount() + ' owned | $' + uncollectedTotal() + ' uncollected | $' + sys.projectedHourly() + '/hr';
+    },
   };
+  return sys;
 }
 
 export default createBusinessSystem;
