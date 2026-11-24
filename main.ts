@@ -41,7 +41,7 @@ if (!existsSync(join(here, 'game', 'index.html'))) {
 }
 // Second pass: the entry point is not the whole game — fail fast when a
 // source module is missing too, instead of handing in a broken bundle.
-for (const src of ['main.js', 'config.js', 'missions.js', 'police.js', 'driving.js', 'vehicles.js', 'hud.js', 'city.js', 'combat.js', 'player.js', 'audio.js', 'weather.js', 'nightops.js', 'blackmarket.js', 'economy.js', 'safehouse.js', 'streetrace.js', 'fishing.js', 'casino.js', 'businesses.js', 'delivery.js', 'stunt.js', 'radio.js', 'photo.js', 'smuggling.js', 'gym.js', 'chopshop.js', 'taxi.js', 'arcade.js', 'bank.js', 'tuning.js', 'nightclub.js', 'bounty.js', 'carmeet.js', 'realestate.js', 'fightclub.js', 'graffiti.js', 'nightmarket.js', 'studio.js', 'detective.js', 'lawyer.js', 'film.js']) {
+for (const src of ['main.js', 'config.js', 'missions.js', 'police.js', 'driving.js', 'vehicles.js', 'hud.js', 'city.js', 'combat.js', 'player.js', 'audio.js', 'weather.js', 'nightops.js', 'blackmarket.js', 'economy.js', 'safehouse.js', 'streetrace.js', 'fishing.js', 'casino.js', 'businesses.js', 'delivery.js', 'stunt.js', 'radio.js', 'photo.js', 'smuggling.js', 'gym.js', 'chopshop.js', 'taxi.js', 'arcade.js', 'bank.js', 'tuning.js', 'nightclub.js', 'bounty.js', 'carmeet.js', 'realestate.js', 'fightclub.js', 'graffiti.js', 'nightmarket.js', 'studio.js', 'detective.js', 'lawyer.js', 'film.js', 'subway.js', 'firefighter.js', 'barber.js', 'pet.js', 'busdriver.js', 'foodtruck.js', 'bowling.js', 'yacht.js', 'skatepark.js', 'karaoke.js']) {
   if (!existsSync(join(here, 'game', 'src', src))) {
     throw new Error(`game/src/${src} is missing — the game cannot run`);
   }

@@ -52,6 +52,18 @@ import { createStudioSystem, STUDIO_GENRES, STUDIO_FEATURES, STUDIO_VENUES } fro
 import { createDetectiveSystem, EYE_CASES, TAIL_TARGETS } from './detective.js';
 import { createLawyerSystem, LAWYERS, CHARGES } from './lawyer.js';
 import { createFilmSystem, FILMS, STUNT_SCRIPTS, FILM_DRIVERS } from './film.js';
+// Round 7 — subway, firefighter, barber, pet, bus driver, food truck,
+// bowling, yacht, skatepark and karaoke, same factory pattern as before.
+import { createSubwaySystem, SUBWAY_STATIONS, SUBWAY_LINES } from './subway.js';
+import { createFirefighterSystem, FIRE_TYPES, FIRE_RANKS } from './firefighter.js';
+import { createBarberSystem, HAIRCUTS, TATTOOS } from './barber.js';
+import { createPetSystem, PET_BREEDS, PET_TRICKS } from './pet.js';
+import { createBusDriverSystem, BUS_ROUTES, BUS_MODELS } from './busdriver.js';
+import { createFoodTruckSystem, FOOD_MENU, FOOD_TRUCK_SPOTS } from './foodtruck.js';
+import { createBowlingSystem, BOWLING_LANES, BOWLING_OPPONENTS } from './bowling.js';
+import { createYachtSystem, BOATS, SEA_ROUTES } from './yacht.js';
+import { createSkateparkSystem, SKATE_PARKS, SKATE_TRICKS } from './skatepark.js';
+import { createKaraokeSystem, KARAOKE_SONGS, KARAOKE_BATTLERS } from './karaoke.js';
 import { Player } from './player.js';
 import { Driving } from './driving.js';
 import { TrafficSystem, spawnParkedCars, syncCarMesh, setCarGlow } from './vehicles.js';
@@ -291,7 +303,58 @@ const film = createFilmSystem({
   getDay: dayCount, addHeat: (n) => wanted.addHeat(n), rng: () => rng.next(),
   addCash: (d) => { money += d; }, log: announce, getCash: () => money,
 });
-const NEW_SYSTEMS = { fishing, casino, businesses, delivery, stunt, radio, photo, smuggling, gym, chopshop, taxi, arcade, bank, tuning, nightclub, bounty, carmeet, realestate, fightclub, graffiti, nightmarket, studio, detective, lawyer, film };
+// Round 7 — ten more systems, same factory pattern as the attempt-9 ones.
+const subway = createSubwaySystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos,
+});
+const firefighter = createFirefighterSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos,
+});
+const barber = createBarberSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos,
+});
+const pet = createPetSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos,
+});
+const busdriver = createBusDriverSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getSpeed: () => (player.inCar ? Math.abs(player.inCar.speed) : 0),
+});
+const foodtruck = createFoodTruckSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos,
+});
+const bowling = createBowlingSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos,
+});
+const yacht = createYachtSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos,
+});
+const skatepark = createSkateparkSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos,
+});
+const karaoke = createKaraokeSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos,
+});
+const NEW_SYSTEMS = { fishing, casino, businesses, delivery, stunt, radio, photo, smuggling, gym, chopshop, taxi, arcade, bank, tuning, nightclub, bounty, carmeet, realestate, fightclub, graffiti, nightmarket, studio, detective, lawyer, film, subway, firefighter, barber, pet, busdriver, foodtruck, bowling, yacht, skatepark, karaoke };
 // NOTE: gameMinutes is declared below (17:40 start); mirror its initial
 // hour here instead of reading it, or the TDZ throws at boot.
 let lastGameHour = Math.floor((17 * 60 + 40) / 60);
@@ -435,7 +498,17 @@ window.__solara = {
       && STUDIO_VENUES.length === 4 && EYE_CASES.length === 6
       && TAIL_TARGETS.length === 6 && LAWYERS.length === 3
       && CHARGES.length === 6 && FILMS.length === 4
-      && STUNT_SCRIPTS.length === 6 && FILM_DRIVERS.length === 4;
+      && STUNT_SCRIPTS.length === 6 && FILM_DRIVERS.length === 4
+      && SUBWAY_STATIONS.length === 8 && SUBWAY_LINES.length === 3
+      && FIRE_TYPES.length === 8 && FIRE_RANKS.length === 5
+      && HAIRCUTS.length === 10 && TATTOOS.length === 12
+      && PET_BREEDS.length === 6 && PET_TRICKS.length === 10
+      && BUS_ROUTES.length === 5 && BUS_MODELS.length === 5
+      && FOOD_MENU.length === 10 && FOOD_TRUCK_SPOTS.length === 7
+      && BOWLING_LANES.length === 6 && BOWLING_OPPONENTS.length === 6
+      && BOATS.length === 7 && SEA_ROUTES.length === 8
+      && SKATE_PARKS.length === 4 && SKATE_TRICKS.length === 20
+      && KARAOKE_SONGS.length === 17 && KARAOKE_BATTLERS.length === 5;
   },
   get fishingSpots() { return FISHING_SPOTS.map((s) => s.id); },
   get businessTypes() { return BUSINESS_TYPES.map((b) => b.id); },
@@ -725,6 +798,13 @@ function handleInteract() {
       return;
     }
   }
+  // Round 7 — the ten new systems answer E near their own places (metro
+  // platforms, Station 7, the barbershop, Rex, the depot, the truck, the
+  // lanes, the marina, the skatepark, the karaoke bar). Each one returns
+  // false when the player is nowhere near it, so cars still work.
+  for (const s of Object.values(NEW_SYSTEMS)) {
+    if (typeof s.interact === 'function' && s.interact()) return;
+  }
   const car = nearestParked(4.5);
   if (!car) return;
   const m = missions.current;
@@ -840,6 +920,20 @@ function stepWorld(dt) {
     taxi.tick(dt);
     radio.tick(dt, { wanted: wanted.level, hour: hourFloat() });
     gym.tick(dt);
+    // Round 7 — the ten new systems, per frame: metro trains run, fires
+    // spread, walk-in clients lose patience, Rex follows, bus passengers
+    // wait, food truck orders cook, bowling and pool sit idle until played,
+    // charters sail, skate runs tick down, karaoke songs play out.
+    subway.tick(dt);
+    firefighter.tick(dt);
+    barber.tick(dt);
+    pet.tick(dt);
+    busdriver.tick(dt);
+    foodtruck.tick(dt);
+    bowling.tick(dt);
+    yacht.tick(dt);
+    skatepark.tick(dt);
+    karaoke.tick(dt);
     if (player.inCar && player.inCar.airborne && !stunt.state.airborne) {
       const ramp = STUNT_RAMPS.find((r) => Math.hypot(r.x - player.inCar.x, r.z - player.inCar.z) < 40) || null;
       stunt.startJump(ramp);
@@ -871,6 +965,19 @@ function stepWorld(dt) {
         detective.tickDay(dayNow);
         lawyer.tickDay(dayNow);
         film.tickDay(dayNow);
+        // Round 7 — metro passes and delays, firehouse restock, barber
+        // trends, Rex's overnight needs, depot service, truck restock,
+        // alley reset, marina fees, sponsor pay and voice rest, once a day.
+        subway.tickDay(dayNow);
+        firefighter.tickDay(dayNow);
+        barber.tickDay(dayNow);
+        pet.tickDay(dayNow);
+        busdriver.tickDay(dayNow);
+        foodtruck.tickDay(dayNow);
+        bowling.tickDay(dayNow);
+        yacht.tickDay(dayNow);
+        skatepark.tickDay(dayNow);
+        karaoke.tickDay(dayNow);
       }
     }
   }
