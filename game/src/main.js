@@ -64,6 +64,29 @@ import { createBowlingSystem, BOWLING_LANES, BOWLING_OPPONENTS } from './bowling
 import { createYachtSystem, BOATS, SEA_ROUTES } from './yacht.js';
 import { createSkateparkSystem, SKATE_PARKS, SKATE_TRICKS } from './skatepark.js';
 import { createKaraokeSystem, KARAOKE_SONGS, KARAOKE_BATTLERS } from './karaoke.js';
+// Round 7b — eighteen more systems: casino royale, angling, courier, ghost
+// hunting, golf, helicopter tours, prison break, surfing, treasure hunting,
+// recycling, drone racing, tennis, hospital, restaurant, pawnshop, bodyguard,
+// jetski, farming. (angling's FISHING_SPOTS is deliberately NOT imported:
+// fishing.js already exports that name.)
+import { createCasinoRoyaleSystem, CHIP_PACKS, SLOT_MACHINES, BLACKJACK_TABLES, VIP_TIERS, CASINO_MISSIONS } from './casinoroyale.js';
+import { createAnglingSystem, FISH_SPECIES, RODS, BAITS, ANGLER_RANKS, TOURNAMENTS } from './angling.js';
+import { createCourierSystem, DISTRICTS, PARCEL_TYPES, COURIER_VEHICLES, COURIER_RANKS, URGENCY } from './courier.js';
+import { createGhostHuntingSystem, EVIDENCE_TYPES, GHOST_TYPES, HAUNTED_LOCATIONS, GHOST_EQUIPMENT, HUNTER_RANKS } from './ghosthunting.js';
+import { createGolfSystem, CLUBS, GOLF_BALLS, COURSES, GOLF_OPPONENTS } from './golf.js';
+import { createHeliTourSystem, HELICOPTERS, TOUR_ROUTES, PHOTO_SPOTS, PASSENGER_TYPES } from './helitours.js';
+import { createPrisonBreakSystem, CELL_BLOCKS, ESCAPE_PLANS, CONTRABAND, CRAFT_RECIPES, GUARDS, ALLIES } from './prisonbreak.js';
+import { createSurfingSystem, SURF_BEACHES, SURFBOARDS, SURF_TRICKS, WETSUITS, SURF_COMPS } from './surfing.js';
+import { createTreasureHuntingSystem, DIG_SITES, TREASURE_MAPS, DETECTORS, SHOVELS, FIND_TABLE } from './treasurehunting.js';
+import { createRecyclingSystem, RECYCLING_MATERIALS, RECYCLING_BINS, RECYCLING_ROUTES } from './recycling.js';
+import { createDroneRacingSystem, DRONE_MODELS, DRONE_TRACKS, DRONE_PARTS } from './droneRacing.js';
+import { createTennisSystem, TENNIS_COURTS, TENNIS_RACKETS, TENNIS_SHOES } from './tennis.js';
+import { createHospitalSystem, HOSPITAL_WARDS, TRIAGE_LEVELS, HOSPITAL_CONDITIONS } from './hospital.js';
+import { createRestaurantSystem, RESTAURANT_DISHES, RESTAURANT_INGREDIENTS, RESTAURANT_CUSTOMERS } from './restaurant.js';
+import { createPawnshopSystem, PAWN_CATEGORIES, PAWN_CUSTOMERS, PAWN_AUCTIONS } from './pawnshop.js';
+import { createBodyguardSystem, BODYGUARD_CLIENTS, BODYGUARD_ROUTES, BODYGUARD_THREATS } from './bodyguard.js';
+import { createJetskiSystem, JETSKI_MODELS, JETSKI_COURSES, JETSKI_TRICKS } from './jetski.js';
+import { createFarmingSystem, FARM_CROPS, FARM_ANIMALS, FARM_PLOTS } from './farming.js';
 import { Player } from './player.js';
 import { Driving } from './driving.js';
 import { TrafficSystem, spawnParkedCars, syncCarMesh, setCarGlow } from './vehicles.js';
@@ -354,7 +377,109 @@ const karaoke = createKaraokeSystem({
   addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
   getPlayerPos: playerPos,
 });
-const NEW_SYSTEMS = { fishing, casino, businesses, delivery, stunt, radio, photo, smuggling, gym, chopshop, taxi, arcade, bank, tuning, nightclub, bounty, carmeet, realestate, fightclub, graffiti, nightmarket, studio, detective, lawyer, film, subway, firefighter, barber, pet, busdriver, foodtruck, bowling, yacht, skatepark, karaoke };
+// Round 7b — eighteen more systems, same factory pattern as the Round 7 ones.
+// The nine attempt-A systems expose summary() instead of stats(), so wire a
+// stats alias at the seam; their tick/hudLine/serialize shapes already match.
+const casinoroyale = createCasinoRoyaleSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+casinoroyale.stats = () => casinoroyale.summary();
+const angling = createAnglingSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+angling.stats = () => angling.summary();
+const courier = createCourierSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+courier.stats = () => courier.summary();
+const ghosthunting = createGhostHuntingSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+ghosthunting.stats = () => ghosthunting.summary();
+const golf = createGolfSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+golf.stats = () => golf.summary();
+const helitours = createHeliTourSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+helitours.stats = () => helitours.summary();
+const prisonbreak = createPrisonBreakSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+prisonbreak.stats = () => prisonbreak.summary();
+const surfing = createSurfingSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+surfing.stats = () => surfing.summary();
+const treasurehunting = createTreasureHuntingSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+treasurehunting.stats = () => treasurehunting.summary();
+const recycling = createRecyclingSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+const droneRacing = createDroneRacingSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+const tennis = createTennisSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+const hospital = createHospitalSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+const restaurant = createRestaurantSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+const pawnshop = createPawnshopSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+const bodyguard = createBodyguardSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+const jetski = createJetskiSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+const farming = createFarmingSystem({
+  rng: () => rng.next(), getDay: dayCount, getHour: hourFloat, getCash: () => money,
+  addCash: (d) => { money += d; }, addHeat: (n) => wanted.addHeat(n), log: announce,
+  getPlayerPos: playerPos, getWeather: () => wxSummary.condition,
+});
+const NEW_SYSTEMS = { fishing, casino, businesses, delivery, stunt, radio, photo, smuggling, gym, chopshop, taxi, arcade, bank, tuning, nightclub, bounty, carmeet, realestate, fightclub, graffiti, nightmarket, studio, detective, lawyer, film, subway, firefighter, barber, pet, busdriver, foodtruck, bowling, yacht, skatepark, karaoke, casinoroyale, angling, courier, ghosthunting, golf, helitours, prisonbreak, surfing, treasurehunting, recycling, droneRacing, tennis, hospital, restaurant, pawnshop, bodyguard, jetski, farming };
 // NOTE: gameMinutes is declared below (17:40 start); mirror its initial
 // hour here instead of reading it, or the TDZ throws at boot.
 let lastGameHour = Math.floor((17 * 60 + 40) / 60);
@@ -508,7 +633,42 @@ window.__solara = {
       && BOWLING_LANES.length === 6 && BOWLING_OPPONENTS.length === 6
       && BOATS.length === 7 && SEA_ROUTES.length === 8
       && SKATE_PARKS.length === 4 && SKATE_TRICKS.length === 20
-      && KARAOKE_SONGS.length === 17 && KARAOKE_BATTLERS.length === 5;
+      && KARAOKE_SONGS.length === 17 && KARAOKE_BATTLERS.length === 5
+      && CHIP_PACKS.length === 4 && SLOT_MACHINES.length === 4
+      && BLACKJACK_TABLES.length === 3 && VIP_TIERS.length === 5
+      && CASINO_MISSIONS.length === 10 && FISH_SPECIES.length === 18
+      && RODS.length === 5 && BAITS.length === 7 && ANGLER_RANKS.length === 6
+      && TOURNAMENTS.length === 3 && DISTRICTS.length === 12
+      && PARCEL_TYPES.length === 20 && COURIER_VEHICLES.length === 6
+      && COURIER_RANKS.length === 5 && URGENCY.length === 4
+      && EVIDENCE_TYPES.length === 8 && GHOST_TYPES.length === 14
+      && HAUNTED_LOCATIONS.length === 12 && GHOST_EQUIPMENT.length === 14
+      && HUNTER_RANKS.length === 5 && CLUBS.length === 12
+      && GOLF_BALLS.length === 5 && COURSES.length === 5
+      && GOLF_OPPONENTS.length === 8 && HELICOPTERS.length === 6
+      && TOUR_ROUTES.length === 12 && PHOTO_SPOTS.length === 16
+      && PASSENGER_TYPES.length === 8 && CELL_BLOCKS.length === 8
+      && ESCAPE_PLANS.length === 10 && CONTRABAND.length === 15
+      && CRAFT_RECIPES.length === 8 && GUARDS.length === 8
+      && ALLIES.length === 8 && SURF_BEACHES.length === 12
+      && SURFBOARDS.length === 10 && SURF_TRICKS.length === 20
+      && WETSUITS.length === 5 && SURF_COMPS.length === 8
+      && DIG_SITES.length === 12 && TREASURE_MAPS.length === 12
+      && DETECTORS.length === 5 && SHOVELS.length === 5
+      && FIND_TABLE.length === 20 && RECYCLING_MATERIALS.length === 12
+      && RECYCLING_BINS.length === 9 && RECYCLING_ROUTES.length === 8
+      && DRONE_MODELS.length === 8 && DRONE_TRACKS.length === 8
+      && DRONE_PARTS.length === 10 && TENNIS_COURTS.length === 8
+      && TENNIS_RACKETS.length === 8 && TENNIS_SHOES.length === 4
+      && HOSPITAL_WARDS.length === 8 && TRIAGE_LEVELS.length === 5
+      && HOSPITAL_CONDITIONS.length === 16 && RESTAURANT_DISHES.length === 12
+      && RESTAURANT_INGREDIENTS.length === 12 && RESTAURANT_CUSTOMERS.length === 8
+      && PAWN_CATEGORIES.length === 16 && PAWN_CUSTOMERS.length === 8
+      && PAWN_AUCTIONS.length === 6 && BODYGUARD_CLIENTS.length === 10
+      && BODYGUARD_ROUTES.length === 8 && BODYGUARD_THREATS.length === 10
+      && JETSKI_MODELS.length === 8 && JETSKI_COURSES.length === 8
+      && JETSKI_TRICKS.length === 10 && FARM_CROPS.length === 14
+      && FARM_ANIMALS.length === 8 && FARM_PLOTS.length === 8;
   },
   get fishingSpots() { return FISHING_SPOTS.map((s) => s.id); },
   get businessTypes() { return BUSINESS_TYPES.map((b) => b.id); },
@@ -934,6 +1094,25 @@ function stepWorld(dt) {
     yacht.tick(dt);
     skatepark.tick(dt);
     karaoke.tick(dt);
+    // Round 7b — the eighteen new systems tick per frame too.
+    casinoroyale.tick(dt);
+    angling.tick(dt);
+    courier.tick(dt);
+    ghosthunting.tick(dt);
+    golf.tick(dt);
+    helitours.tick(dt);
+    prisonbreak.tick(dt);
+    surfing.tick(dt);
+    treasurehunting.tick(dt);
+    recycling.tick(dt);
+    droneRacing.tick(dt);
+    tennis.tick(dt);
+    hospital.tick(dt);
+    restaurant.tick(dt);
+    pawnshop.tick(dt);
+    bodyguard.tick(dt);
+    jetski.tick(dt);
+    farming.tick(dt);
     if (player.inCar && player.inCar.airborne && !stunt.state.airborne) {
       const ramp = STUNT_RAMPS.find((r) => Math.hypot(r.x - player.inCar.x, r.z - player.inCar.z) < 40) || null;
       stunt.startJump(ramp);
@@ -978,6 +1157,11 @@ function stepWorld(dt) {
         yacht.tickDay(dayNow);
         skatepark.tickDay(dayNow);
         karaoke.tickDay(dayNow);
+        // Round 7b — the eighteen new systems settle once a day where they
+        // support it (the nine B systems expose tickDay; the A ones do not).
+        for (const s of [casinoroyale, angling, courier, ghosthunting, golf, helitours, prisonbreak, surfing, treasurehunting, recycling, droneRacing, tennis, hospital, restaurant, pawnshop, bodyguard, jetski, farming]) {
+          if (typeof s.tickDay === 'function') s.tickDay(dayNow);
+        }
       }
     }
   }

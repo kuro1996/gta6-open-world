@@ -504,6 +504,7 @@ export function createTreasureHuntingSystem(deps) {
   }
 
   function appraise(index) {
+    if (typeof index !== 'number' || !Number.isFinite(index)) return { ok: false, error: 'no such find' };
     const i = Math.floor(index);
     if (i < 0 || i >= state.inventory.length) return { ok: false, error: 'no such find' };
     const find = state.inventory[i];
