@@ -1,8 +1,8 @@
 # Solara Nights
 
-[![Make GTA 6](https://img.shields.io/badge/Make%20GTA%206-bounty-blue)](https://makefun.ai)
-[![Rank](https://img.shields.io/badge/rank-open-brightgreen)](https://makefun.ai)
-[![Reward](https://img.shields.io/badge/reward-%24100000-gold)](https://makefun.ai)
+[![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![rank](https://make.fun/badge/gta6-01/kuro1996/gta6-open-world/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![reward](https://make.fun/badge/gta6-01/kuro1996/gta6-open-world/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
 An original open-world crime game for the Make GTA 6 bounty. Nothing in this game comes from Rockstar Games or any other commercial game: every street, character, mission, and sound is built for Solara Bay.
 
